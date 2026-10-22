@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>내적 그림자 노트</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: single reading column, two live diagrams stacked, readout beside each diagram on wide screens */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --a:#2f6fd0; --b:#d2552a; --shadow:#178a66;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --a:#6aa3f0; --b:#f08a5d; --shadow:#4cc79c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --a:#6aa3f0; --b:#f08a5d; --shadow:#4cc79c; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;padding-inline:16px;padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0 0 8px;text-wrap:balance}
+p{margin:0;max-width:65ch}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.def{border-left:3px solid var(--shadow);padding:4px 0 4px 16px;font-size:18px}
+.lab{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctrl label{font-size:14px;color:var(--muted)}
+.ctrl input[type=range]{flex:1;min-width:160px;accent-color:var(--b)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;padding:4px 12px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+.stage{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:center}
+@media (max-width:600px){.stage{grid-template-columns:minmax(0,1fr)}}
+svg{width:100%;height:auto;display:block}
+.read{display:flex;flex-direction:column;gap:6px}
+.big{font-family:var(--mono);font-size:40px;font-weight:500;line-height:1.1}
+.say{font-weight:500}
+.sub{font-size:14px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font-weight:500;color:var(--muted);font-size:13px}
+td.num{white-space:nowrap}
+code{font-family:var(--mono);font-size:.92em}
+pre{font-family:var(--mono);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0;overflow-x:auto}
+ul{margin:0;padding-left:20px}
+.warn{border:1px solid var(--b);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">ProjectF · 3단계 준비 · 2026-10-19</span>
+  <h1>내적(Dot Product)은 그림자 길이다</h1>
+  <p class="lead">종이가 공기를 얼마나 정면으로 받는지 숫자 하나로 알아내는 도구. 화살표를 직접 돌려 보면서 1에서 -1까지 확인합니다.</p>
+</header>
+
+<section>
+  <p class="def">B를 위에서 비췄을 때, A 위에 떨어지는 그림자 길이 = <code>dot(A, B)</code></p>
+</section>
+
+<section class="lab" aria-labelledby="l1">
+  <h2 id="l1">실험 1 · 화살표 두 개</h2>
+  <div class="ctrl">
+    <label for="ang">B 각도</label>
+    <input type="range" id="ang" min="0" max="360" step="1" value="0">
+    <span id="angOut" class="num" style="min-width:44px">0°</span>
+  </div>
+  <div class="btns">
+    <button data-a="0">0°</button><button data-a="45">45°</button><button data-a="90">90°</button><button data-a="135">135°</button><button data-a="180">180°</button><button data-a="315">315°</button><button id="play">자동 회전</button>
+  </div>
+  <div class="stage">
+    <svg viewBox="0 0 320 300" role="img" aria-label="A는 오른쪽 고정, B가 회전하고 B의 그림자가 A 축 위에 초록 막대로 표시됨">
+      <defs>
+        <marker id="ma" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--a)"/></marker>
+        <marker id="mb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--b)"/></marker>
+      </defs>
+      <circle cx="160" cy="150" r="120" fill="none" stroke="var(--line)" stroke-dasharray="4 4"/>
+      <line x1="20" y1="150" x2="300" y2="150" stroke="var(--line)"/>
+      <rect id="sh" x="160" y="145" width="120" height="10" rx="2" fill="var(--shadow)"/>
+      <line id="drop" x1="280" y1="150" x2="280" y2="150" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <line x1="160" y1="150" x2="280" y2="150" stroke="var(--a)" stroke-width="4" marker-end="url(#ma)"/>
+      <text x="262" y="176" fill="var(--a)" font-size="15" font-weight="500">A</text>
+      <line id="bv" x1="160" y1="150" x2="280" y2="150" stroke="var(--b)" stroke-width="4" marker-end="url(#mb)"/>
+      <text id="bl" x="290" y="140" fill="var(--b)" font-size="15" font-weight="500">B</text>
+      <text x="20" y="292" fill="var(--shadow)" font-size="12">초록 막대 = 그림자 = dot</text>
+    </svg>
+    <div class="read">
+      <span class="sub">dot(A, B)</span>
+      <span id="dv" class="big">1.00</span>
+      <svg viewBox="0 0 240 44" aria-hidden="true">
+        <line x1="10" y1="16" x2="230" y2="16" stroke="var(--line)" stroke-width="2"/>
+        <line x1="10" y1="9" x2="10" y2="23" stroke="var(--muted)" stroke-width="2"/>
+        <line x1="120" y1="9" x2="120" y2="23" stroke="var(--muted)" stroke-width="2"/>
+        <line x1="230" y1="9" x2="230" y2="23" stroke="var(--muted)" stroke-width="2"/>
+        <text x="3" y="40" fill="var(--muted)" font-size="12">-1</text>
+        <text x="116" y="40" fill="var(--muted)" font-size="12">0</text>
+        <text x="226" y="40" fill="var(--muted)" font-size="12">1</text>
+        <circle id="mk" cx="230" cy="16" r="7" fill="var(--shadow)"/>
+      </svg>
+      <span id="s1" class="say">같은 방향</span>
+      <span id="s2" class="sub">그림자가 A 쪽으로 꽉 참</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>각도별 값</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>B 각도</th><th>그림자</th><th>dot</th><th>뜻</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0°</td><td>A 쪽으로 꽉 참</td><td class="num">1</td><td>같은 방향</td></tr>
+      <tr><td class="num">45°</td><td>A 쪽으로 7할</td><td class="num">0.71</td><td>대체로 같은 쪽</td></tr>
+      <tr><td class="num">90°</td><td>없음</td><td class="num">0</td><td>직각, 서로 상관없음</td></tr>
+      <tr><td class="num">135°</td><td>반대쪽으로 7할</td><td class="num">-0.71</td><td>대체로 반대</td></tr>
+      <tr><td class="num">180°</td><td>반대쪽으로 꽉 참</td><td class="num">-1</td><td>정반대</td></tr>
+    </tbody>
+  </table></div>
+  <ul style="margin-top:12px">
+    <li><b>양수</b>면 같은 쪽, <b>0</b>이면 직각, <b>음수</b>면 반대쪽</li>
+    <li>45°와 315°는 둘 다 0.71. 내적은 <b>왼쪽으로 꺾였는지 오른쪽인지 모른다</b>. 그건 외적(Cross)이 알려준다</li>
+  </ul>
+</section>
+
+<section class="lab" aria-labelledby="l2">
+  <h2 id="l2">실험 2 · 떨어지는 종이</h2>
+  <p class="sub">A 자리에 종이 법선 N(종이에 꽂은 이쑤시개), B 자리에 떨어지는 방향 V를 넣은 것.</p>
+  <div class="ctrl">
+    <label for="tilt">종이 기울기</label>
+    <input type="range" id="tilt" min="-90" max="90" step="1" value="0">
+    <span id="tiltOut" class="num" style="min-width:44px">0°</span>
+  </div>
+  <div class="stage">
+    <svg viewBox="0 0 320 300" role="img" aria-label="종이 옆모습. 파란 화살표는 법선, 주황 화살표는 낙하 방향">
+      <g id="paper" transform="translate(160,130)">
+        <line x1="-110" y1="0" x2="110" y2="0" stroke="var(--fg)" stroke-width="5" stroke-linecap="round"/>
+        <line x1="0" y1="0" x2="0" y2="-95" stroke="var(--a)" stroke-width="3" marker-end="url(#ma)"/>
+        <text x="10" y="-80" fill="var(--a)" font-size="13">N</text>
+      </g>
+      <line x1="160" y1="190" x2="160" y2="275" stroke="var(--b)" stroke-width="3" marker-end="url(#mb)"/>
+      <text x="172" y="262" fill="var(--b)" font-size="13">V (낙하)</text>
+    </svg>
+    <div class="read">
+      <span class="sub">dot(N, V)</span>
+      <span id="pd" class="big">-1.00</span>
+      <span class="sub">공기저항 = abs(dot)</span>
+      <svg viewBox="0 0 240 18" aria-hidden="true">
+        <rect x="0" y="2" width="240" height="14" rx="4" fill="none" stroke="var(--line)"/>
+        <rect id="pbar" x="0" y="2" width="240" height="14" rx="4" fill="var(--a)"/>
+      </svg>
+      <span id="pm" class="say">누워서 떨어짐 → 저항 최대, 팔랑</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>3단계에서 쓰는 식</h2>
+  <pre>float drag = abs(dot(N, normalize(Vel)));   // 0 = 휙, 1 = 팔랑</pre>
+  <p style="margin-top:10px">종이는 앞뒤가 같아서 부호는 버리고 절댓값만 씁니다. 영상의 "팔랑 → 휙 → 다시 팔랑"은 이 값이 계속 바뀌기 때문입니다.</p>
+</section>
+
+<section>
+  <h2>Unity C# ↔ HLSL</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Unity C#</th><th>HLSL</th></tr></thead>
+    <tbody>
+      <tr><td><code>Vector3.Dot(a, b)</code></td><td><code>dot(a, b)</code></td></tr>
+      <tr><td><code>Mathf.Abs(x)</code></td><td><code>abs(x)</code></td></tr>
+      <tr><td><code>v.normalized</code></td><td><code>normalize(v)</code></td></tr>
+    </tbody>
+  </table></div>
+  <p class="sub" style="margin-top:10px">Unity의 "적이 내 앞에 있나?" = <code>Vector3.Dot(transform.forward, toEnemy) &gt; 0</code> 도 같은 함수입니다.</p>
+</section>
+
+<section class="warn">
+  <h2>함정</h2>
+  <ul>
+    <li>길이를 1로 안 맞추면 값이 망가집니다. 속도 500cm/s를 그대로 넣으면 dot이 -500. 반드시 <code>normalize</code> 후에 넣기</li>
+    <li>속도가 0이면 normalize가 0으로 나누기가 됩니다. 착지한 종이가 여기에 해당하고, 3단계에서 처리합니다</li>
+  </ul>
+</section>
+
+<section>
+  <h2>확인 문제</h2>
+  <ol style="margin:0;padding-left:20px">
+    <li>종이가 바닥에 누워 있고(N = 위), 바람이 옆에서 수평으로 붑니다. dot은 몇이고, 바람을 많이 받을까요?</li>
+    <li>dot이 -0.5면 두 화살표 사이 각도는 90°보다 클까요, 작을까요?</li>
+  </ol>
+</section>
+</main>
+
+<script>
+(function(){
+const s=document.getElementById('ang'),o=document.getElementById('angOut'),bv=document.getElementById('bv'),bl=document.getElementById('bl'),sh=document.getElementById('sh'),dr=document.getElementById('drop'),dv=document.getElementById('dv'),mk=document.getElementById('mk'),s1=document.getElementById('s1'),s2=document.getElementById('s2');
+const CX=160,CY=150,R=120;
+function u(){const deg=+s.value,r=deg*Math.PI/180,c=Math.cos(r),sn=Math.sin(r),d=Math.abs(c)<0.005?0:c;
+o.textContent=deg+'°';const x=CX+R*c,y=CY-R*sn;
+bv.setAttribute('x2',x);bv.setAttribute('y2',y);bl.setAttribute('x',x+(c>=0?8:-20));bl.setAttribute('y',y+(sn>=0?-8:20));
+dr.setAttribute('x1',x);dr.setAttribute('y1',y);dr.setAttribute('x2',x);dr.setAttribute('y2',CY);
+sh.setAttribute('x',Math.min(CX,x));sh.setAttribute('width',Math.abs(x-CX));
+dv.textContent=d.toFixed(2);mk.setAttribute('cx',120+110*d);
+const t=d>0.9?['같은 방향','그림자가 A 쪽으로 꽉 참']:d>0.15?['대체로 같은 쪽','그림자가 A 쪽으로 일부']:d>=-0.15?['직각, 서로 상관없음','그림자가 거의 없음']:d>=-0.9?['대체로 반대 쪽','그림자가 반대쪽으로 일부']:['정반대 방향','그림자가 반대쪽으로 꽉 참'];
+s1.textContent=t[0];s2.textContent=t[1];}
+s.addEventListener('input',()=>{stop();u();});
+let timer=null;const pb=document.getElementById('play');
+function stop(){if(timer){clearInterval(timer);timer=null;pb.textContent='자동 회전';}}
+document.querySelectorAll('button[data-a]').forEach(b=>b.addEventListener('click',()=>{stop();s.value=b.dataset.a;u();}));
+pb.addEventListener('click',()=>{if(timer){stop();return;}pb.textContent='멈춤';timer=setInterval(()=>{s.value=(+s.value+1)%361;u();},30);});
+u();
+
+const ts=document.getElementById('tilt'),to=document.getElementById('tiltOut'),pp=document.getElementById('paper'),pd=document.getElementById('pd'),pbar=document.getElementById('pbar'),pm=document.getElementById('pm');
+function v(){const deg=+ts.value,dot=-Math.cos(deg*Math.PI/180),d=Math.abs(dot)<0.005?0:dot,a=Math.abs(d);
+to.textContent=deg+'°';pp.setAttribute('transform','translate(160,130) rotate('+deg+')');
+pd.textContent=d.toFixed(2);pbar.setAttribute('width',Math.max(0,240*a));
+pm.textContent=a>0.9?'누워서 떨어짐 → 저항 최대, 팔랑':a<0.15?'칼날처럼 섬 → 저항 거의 0, 휙':'비스듬히 받음 → 중간';}
+ts.addEventListener('input',v);v();
+})();
+</script>
