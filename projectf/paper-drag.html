@@ -129,34 +129,55 @@ ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
 
 <section class="lab" aria-labelledby="s3">
   <h2 id="s3">3. 한 프레임에 일어나는 일 (단계별로 넘기기)</h2>
+  <p class="sub">그림 속 화살표에 코드에 나오는 이름을 그대로 붙였습니다. 다음을 누를 때마다 코드가 한 조각씩 진행됩니다. 키보드 ← → 도 됩니다.</p>
   <div class="stage">
-    <svg viewBox="0 0 360 290" role="img" aria-label="기울어진 종이의 속도를 쪼개고 깎고 다시 더하는 과정">
-      <line id="sp" stroke="var(--line)" stroke-width="7" stroke-linecap="round"/>
-      <line id="sn" stroke="var(--n)" stroke-width="2" marker-end="url(#ah)"/>
-      <text id="snl" style="font-size:13px;fill:var(--n)">N</text>
-      <line id="s0" stroke="var(--vel)" stroke-width="3" marker-end="url(#ah)"/>
-      <line id="sog" stroke="var(--vn)" stroke-width="1.5" stroke-dasharray="4 4"/>
-      <line id="sgg" stroke="var(--vt)" stroke-width="1.5" stroke-dasharray="4 4"/>
-      <line id="so" stroke="var(--vn)" stroke-width="3.5" marker-end="url(#ah)"/>
-      <line id="sg" stroke="var(--vt)" stroke-width="3.5" marker-end="url(#ah)"/>
-      <line id="s1" stroke="var(--res)" stroke-width="3.5" marker-end="url(#ah)"/>
+    <svg viewBox="0 0 400 300" role="img" aria-label="기울어진 종이의 속도 Vel을 vn과 vt로 쪼개고, 각각 깎은 뒤, 다시 더해 OutVel을 만드는 과정">
+      <line id="k_nl" stroke="var(--n)" stroke-width="1" stroke-dasharray="3 5"/>
+      <line id="k_paper" stroke="var(--line)" stroke-width="7" stroke-linecap="round"/>
+      <line id="k_n" stroke="var(--n)" stroke-width="2.5" marker-end="url(#ah)"/>
+      <line id="k_vng" stroke="var(--vn)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <line id="k_vtg" stroke="var(--vt)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <line id="k_vel" stroke="var(--vel)" stroke-width="3" marker-end="url(#ah)"/>
+      <line id="k_ray" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <circle id="k_foot" r="4" fill="var(--vn)"/>
+      <line id="k_vn" stroke="var(--vn)" stroke-width="3.5" marker-end="url(#ah)"/>
+      <line id="k_vt" stroke="var(--vt)" stroke-width="3.5" marker-end="url(#ah)"/>
+      <line id="k_vtm" stroke="var(--vt)" stroke-width="3.5" marker-end="url(#ah)"/>
+      <line id="k_out" stroke="var(--res)" stroke-width="4" marker-end="url(#ah)"/>
+      <g style="font-family:var(--mono);font-size:14px;font-weight:500">
+        <text id="t_n" style="fill:var(--n)">N</text>
+        <text id="t_vel" style="fill:var(--vel)">Vel</text>
+        <text id="t_dot1" style="fill:var(--muted);font-family:var(--sans);font-size:13px;font-weight:400"></text>
+        <text id="t_dot2" style="fill:var(--muted);font-size:13px"></text>
+        <text id="t_vn" style="fill:var(--vn)"></text>
+        <text id="t_vt" style="fill:var(--vt)"></text>
+        <text id="t_vtm" style="fill:var(--vt)"></text>
+        <text id="t_out" style="fill:var(--res)">OutVel</text>
+      </g>
     </svg>
     <div class="read">
-      <div class="legend">
-        <span><i style="background:var(--vel)"></i>원래 속도</span>
-        <span><i style="background:var(--vn)"></i>뚫는 쪽 조각</span>
-        <span><i style="background:var(--vt)"></i>비탈 쪽 조각</span>
-        <span><i style="background:var(--res)"></i>새 속도</span>
-      </div>
+      <span id="stStep" class="sub"></span>
       <p id="stCap" class="cap"></p>
       <pre id="stCode" style="font-size:13px"></pre>
       <div class="btns">
         <button id="stPrev">← 이전</button>
-        <span id="stDots" class="c-mu" style="letter-spacing:4px"></span>
+        <span id="stDots" class="c-mu" style="letter-spacing:3px"></span>
         <button id="stNext">다음 →</button>
       </div>
     </div>
   </div>
+  <div class="tbl"><table>
+    <thead><tr><th>그림 속 이름</th><th>색</th><th>뜻</th><th>예시 값</th></tr></thead>
+    <tbody>
+      <tr><td><code>N</code></td><td style="color:var(--n)">보라</td><td>종이 면이 바라보는 방향 (길이 1)</td><td class="num">—</td></tr>
+      <tr><td><code>Vel</code></td><td style="color:var(--vel)">회색</td><td>지금 속도</td><td class="num">아래로 150</td></tr>
+      <tr><td><code>dot(Vel, N)</code></td><td class="c-mu">점선</td><td>Vel의 그림자를 N 줄에 떨어뜨린 길이 (숫자)</td><td class="num">-130</td></tr>
+      <tr><td><code>vn</code></td><td class="c-vn">주황</td><td>뚫는 쪽 조각 = dot × N</td><td class="num">길이 130</td></tr>
+      <tr><td><code>vt</code></td><td class="c-vt">초록</td><td>비탈 쪽 조각 = Vel − vn</td><td class="num">길이 75</td></tr>
+      <tr><td><code>OutVel</code></td><td>검정 (다크 모드는 흰색)</td><td>깎인 두 조각을 다시 더한 새 속도</td><td class="num">—</td></tr>
+    </tbody>
+  </table></div>
+  <p class="sub">종이 기울기 30°, 남기는 비율은 보이게 과장한 값(keepN 30%, keepT 90%)입니다. 단위는 cm/s.</p>
 </section>
 
 <section>
@@ -288,31 +309,45 @@ function geo(deg,V){const t=deg*Math.PI/180,dx=Math.cos(t),dy=Math.sin(t),nx=Mat
   const d=V*ny; return {dx,dy,nx,ny,vn:[d*nx,d*ny],vt:[0-d*nx,V-d*ny]};}
 const OX=150,OY=95,V=150,PH=115;
 
-// stepper
-const g=geo(30,V),KN=.3,KT=.9;
-const vn=g.vn,vt=g.vt,vn2=[vn[0]*KN,vn[1]*KN],vt2=[vt[0]*KT,vt[1]*KT];
-L($('sp'),OX-g.dx*PH,OY-g.dy*PH,OX+g.dx*PH,OY+g.dy*PH);
-L($('sn'),OX,OY,OX+g.nx*55,OY+g.ny*55);$('snl').setAttribute('x',OX+g.nx*55+6);$('snl').setAttribute('y',OY+g.ny*55);
-L($('s0'),OX,OY,OX,OY+V);
+// stepper: tilt 30deg, Vel = 150 straight down, keepN 0.3, keepT 0.9
+const KP={O:[170,100],T:[170,250],F:[105.05,212.5],Nt:[197.5,52.4],Na:[90,238.6],Nb:[210,30.7],
+  P1:[70.4,42.5],P2:[269.6,157.5],M:[234.95,137.5],F2:[150.5,133.75],T2:[215.45,171.25],R:[208.97,167.5]};
+const KL=['k_nl','k_paper','k_n','k_vng','k_vtg','k_vel','k_ray','k_vn','k_vt','k_vtm','k_out'];
+const KT=['t_n','t_vel','t_dot1','t_dot2','t_vn','t_vt','t_vtm','t_out'];
+const BASE=[['k_paper','P1','P2'],['k_n','O','Nt']],BASET=[['t_n',203,50,'N']];
 const ST=[
- {cap:'기울어진 종이가 아래로 떨어지는 중입니다. 회색이 지금 속도입니다.',code:'Vel',s0:1},
- {cap:'회색을 주황과 초록 두 조각으로 쪼갭니다. 주황을 따라간 뒤 이어서 초록을 따라가면 회색 끝에 정확히 도착합니다. 이게 벡터의 덧셈입니다.',code:'vn = dot(Vel, N) * N;\nvt = Vel - vn;',s0:.35,o:vn,g:vt},
- {cap:'각 조각을 자기 비율로 줄입니다. 주황은 많이, 초록은 조금만. 점선이 줄이기 전 길이입니다.',code:'vn * keepN   // 많이 줄임\nvt * keepT   // 조금 줄임',s0:.35,o:vn2,g:vt2,ghost:1},
- {cap:'줄인 두 조각을 다시 이어 붙이면 새 속도입니다. 똑바로 아래였던 속도가 비탈 쪽으로 꺾였습니다. 이게 미끄러짐입니다.',code:'OutVel = vn * keepN + vt * keepT;',s0:.35,o:vn2,g:vt2,res:1,dim:1}
+ {cap:'종이와 N. N은 종이 면에 꽂은 이쑤시개 방향이고, 길이는 1입니다. 종이가 30° 기울어서 N도 같이 기울었습니다.',code:'N   // 3-1에서 회전값으로 구한 것',
+  l:[],t:[]},
+ {cap:'Vel은 지금 속도입니다. 종이가 아래로 150cm/s로 떨어지는 중입니다. 이 회색 화살표 하나를 두 조각으로 나누는 게 목표입니다.',code:'Vel   // PARTICLES Velocity',
+  l:[['k_vel','O','T']],t:[['t_vel',178,200,'Vel']]},
+ {cap:'N 방향으로 줄(보라 점선)을 길게 긋고, Vel 끝에서 그 줄로 빛을 비춥니다(회색 점선). 줄 위에 떨어진 그림자 길이가 dot(Vel, N)입니다. 값은 -130. 음수인 건 N(위쪽)과 반대로, 즉 면을 아래로 뚫고 가고 있어서입니다.',code:'dot(Vel, N)   // = -130 (숫자 하나)',
+  l:[['k_nl','Na','Nb'],['k_vel','O','T'],['k_ray','T','F']],t:[['t_vel',178,200,'Vel'],['t_dot1',118,150,'그림자 길이','end'],['t_dot2',118,167,'dot(Vel, N)','end']],foot:1},
+ {cap:'숫자인 그림자 길이에 방향 N을 곱하면 화살표가 됩니다. 이 주황 화살표가 vn, 면을 뚫고 가는 조각입니다. 길이 130.',code:'float3 vn = dot(Vel, N) * N;',
+  l:[['k_nl','Na','Nb',.5],['k_vel','O','T'],['k_vn','O','F']],t:[['t_vel',178,200,'Vel'],['t_vn',120,165,'vn','end']]},
+ {cap:'Vel에서 vn을 빼고 남은 것이 vt입니다. 그림에서는 vn 끝에서 출발해 Vel 끝까지 가는 초록 화살표입니다. 주황(vn)을 따라간 뒤 초록(vt)을 따라가면 회색(Vel) 끝에 도착합니다. vn + vt = Vel, 벡터의 덧셈입니다.',code:'float3 vt = Vel - vn;',
+  l:[['k_vel','O','T'],['k_vn','O','F'],['k_vt','F','T']],t:[['t_vel',178,200,'Vel'],['t_vn',120,165,'vn','end'],['t_vt',128,250,'vt','end']]},
+ {cap:'vt를 출발점으로 옮겨 보면 종이 면과 딱 나란합니다. 그래서 vt를 "면을 따라 미끄러지는 조각", 비탈 쪽 조각이라고 부릅니다.',code:'// vt는 종이 면과 같은 방향',
+  l:[['k_vel','O','T',.3],['k_vn','O','F',.3],['k_vt','F','T',.3],['k_vtm','O','M']],t:[['t_vtm',240,154,'vt (옮겨 봄)']]},
+ {cap:'vn에 keepN을 곱합니다. NormalDrag가 세서 많이 줄어듭니다. 예시는 30%만 남겨서 130 → 39. 점선이 줄기 전 길이입니다. vt는 아직 그대로, 줄어든 vn 끝에 이어 붙였습니다.',code:'vn * keepN   // 많이 줄임',
+  l:[['k_vel','O','T',.3],['k_vng','O','F'],['k_vn','O','F2'],['k_vt','F2','T2']],t:[['t_vel',178,200,'Vel'],['t_vn',146,122,'vn × keepN','end'],['t_vt',204,146,'vt']]},
+ {cap:'vt에 keepT를 곱합니다. PlaneDrag가 약해서 조금만 줄어듭니다. 예시는 90%를 남겨서 75 → 68.',code:'vt * keepT   // 조금 줄임',
+  l:[['k_vel','O','T',.3],['k_vng','O','F'],['k_vtg','F2','T2'],['k_vn','O','F2'],['k_vt','F2','R']],t:[['t_vel',178,200,'Vel'],['t_vn',146,122,'vn × keepN','end'],['t_vt',204,146,'vt × keepT']]},
+ {cap:'줄어든 두 조각을 이어 붙인 끝까지가 새 속도 OutVel입니다. 원래 Vel은 똑바로 아래였는데, OutVel은 오른쪽 아래로 꺾였습니다. 이게 미끄러짐이고, 다음 프레임은 이 OutVel에서 다시 시작합니다.',code:'OutVel = vn * keepN + vt * keepT;',
+  l:[['k_vel','O','T',.3],['k_vn','O','F2',.45],['k_vt','F2','R',.45],['k_out','O','R']],t:[['t_vel',178,200,'Vel'],['t_vn',146,122,'vn × keepN','end'],['t_vt',204,146,'vt × keepT'],['t_out',214,190,'OutVel']]}
 ];
 let si=0;
 function stShow(){const s=ST[si];
-  $('s0').setAttribute('opacity',s.s0);
-  ['so','sg','s1','sog','sgg'].forEach(id=>$(id).style.display='none');
-  if(s.o){L($('so'),OX,OY,OX+s.o[0],OY+s.o[1]);L($('sg'),OX+s.o[0],OY+s.o[1],OX+s.o[0]+s.g[0],OY+s.o[1]+s.g[1]);
-    $('so').setAttribute('opacity',s.dim?.3:1);$('sg').setAttribute('opacity',s.dim?.3:1);}
-  if(s.ghost){L($('sog'),OX,OY,OX+vn[0],OY+vn[1]);L($('sgg'),OX+s.o[0],OY+s.o[1],OX+s.o[0]+vt[0],OY+s.o[1]+vt[1]);
-    $('sog').setAttribute('opacity',.55);$('sgg').setAttribute('opacity',.55);}
-  if(s.res)L($('s1'),OX,OY,OX+s.o[0]+s.g[0],OY+s.o[1]+s.g[1]);
-  $('stCap').textContent=(si+1)+'단계. '+s.cap;$('stCode').textContent=s.code;
+  KL.forEach(id=>$(id).style.display='none');KT.forEach(id=>$(id).style.display='none');$('k_foot').style.display='none';
+  BASE.concat(s.l).forEach(([id,a,b,op])=>{const e=$(id);L(e,KP[a][0],KP[a][1],KP[b][0],KP[b][1]);e.setAttribute('opacity',op==null?1:op);});
+  BASET.concat(s.t).forEach(([id,x,y,txt,anc])=>{const e=$(id);e.setAttribute('x',x);e.setAttribute('y',y);e.setAttribute('text-anchor',anc||'start');e.textContent=txt;e.style.display='';});
+  if(s.foot){const f=$('k_foot');f.setAttribute('cx',KP.F[0]);f.setAttribute('cy',KP.F[1]);f.style.display='';}
+  $('stStep').textContent=(si+1)+' / '+ST.length+'단계';
+  $('stCap').textContent=s.cap;$('stCode').textContent=s.code;
   $('stDots').textContent=ST.map((_,k)=>k===si?'●':'○').join('');
   $('stPrev').disabled=si===0;$('stNext').disabled=si===ST.length-1;}
-$('stPrev').onclick=()=>{if(si>0){si--;stShow();}};$('stNext').onclick=()=>{if(si<ST.length-1){si++;stShow();}};
+function stGo(d){const n=si+d;if(n>=0&&n<ST.length){si=n;stShow();}}
+$('stPrev').onclick=()=>stGo(-1);$('stNext').onclick=()=>stGo(1);
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowRight')stGo(1);if(e.key==='ArrowLeft')stGo(-1);});
 stShow();
 
 // sandbox
