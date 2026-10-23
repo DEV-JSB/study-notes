@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>벡터 더하기 빼기 곱하기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: same reading column as the dot / paper-drag notes; each operation = draggable picture + numbers + the code line that uses it */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4; --grid:#eceff3; --axis:#c3c9d2;
+  --a:#2f6fd6; --vel:#7d8590; --vn:#d2552a; --vt:#178a66; --n:#6a5acd; --res:#1b2230;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642; --grid:#232a35; --axis:#3d4757;
+  --a:#6ea0f0; --vel:#8f98a6; --vn:#f08a5d; --vt:#4cc79c; --n:#a99cf5; --res:#e4e8ee; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642; --grid:#232a35; --axis:#3d4757;
+  --a:#6ea0f0; --vel:#8f98a6; --vn:#f08a5d; --vt:#4cc79c; --n:#a99cf5; --res:#e4e8ee; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:44px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0 0 10px;text-wrap:balance}
+p{margin:0;max-width:65ch}
+a{color:var(--n)}
+section{display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.def{border-left:3px solid var(--vt);padding:4px 0 4px 16px;font-size:18px}
+.lab{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.stage{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:center}
+@media (max-width:620px){.stage{grid-template-columns:minmax(0,1fr)}}
+svg{width:100%;height:auto;display:block;touch-action:none}
+.read{display:flex;flex-direction:column;gap:8px;min-width:0}
+.eq{font-family:var(--mono);font-size:17px;font-weight:500;line-height:1.5;font-variant-numeric:tabular-nums}
+.sub{font-size:14px;color:var(--muted)}
+.hint{font-size:13px;color:var(--muted)}
+.ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctrl label{font-size:14px;color:var(--muted)}
+.ctrl input[type=range]{flex:1;min-width:150px;accent-color:var(--vn)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:inherit;font-size:13px;padding:4px 12px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--muted)}
+button[aria-pressed="true"]{border-color:var(--vt);color:var(--vt)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--n);outline-offset:2px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+code{font-family:var(--mono);font-size:.92em}
+pre{font-family:var(--mono);font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0;overflow-x:auto;line-height:1.6}
+ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.c-a{color:var(--a)} .c-vn{color:var(--vn)} .c-vt{color:var(--vt)} .c-n{color:var(--n)} .c-vel{color:var(--vel)} .c-mu{color:var(--muted)}
+.panels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:620px){.panels{grid-template-columns:minmax(0,1fr)}}
+.panels figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+.panels figcaption{font-size:14px}
+.panels figcaption b{font-weight:500}
+.qa{display:flex;flex-direction:column;gap:14px}
+.qa div{display:flex;flex-direction:column;gap:2px}
+.qa b{font-weight:500}
+/* svg pieces */
+.grid{stroke:var(--grid);stroke-width:1}
+.axis{stroke:var(--axis);stroke-width:1.5}
+.lbl{font-family:var(--mono);font-size:14px;font-weight:500;paint-order:stroke;stroke:var(--panel);stroke-width:4px;stroke-linejoin:round}
+.tick{font-family:var(--mono);font-size:10px;fill:var(--muted)}
+.hd{stroke:var(--panel);stroke-width:2.5}
+.hit{fill:transparent;cursor:grab}
+.hit:focus{outline:none}
+.hit:focus-visible{stroke:var(--n);stroke-width:2;fill:transparent}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">게임 수학 · ProjectF 3단계 회고 준비 · 2026-10-23</span>
+  <h1>화살표 더하기, 빼기, 곱하기</h1>
+  <p class="lead">판 공기저항 코드는 이 세 가지와 내적만으로 되어 있습니다. 화살표 끝의 동그라미를 직접 끌어 보면서 하나씩 익힙니다.</p>
+</header>
+
+<section>
+  <h2>0. 먼저 약속 두 개</h2>
+  <p><b>벡터는 화살표입니다.</b> 화살표에는 <b>길이</b>와 <b>방향</b> 두 가지만 있습니다. 숫자로 쓰면 (가로, 세로)처럼 칸 수를 적습니다.</p>
+  <ul>
+    <li>언리얼은 세 칸입니다. (X 앞, Y 오른쪽, Z 위)</li>
+    <li>이 노트는 그림이 쉬우라고 두 칸만 씁니다. 계산하는 법은 칸 수와 상관없이 똑같습니다</li>
+  </ul>
+  <p class="def">화살표에는 출발점이 없다. 길이와 방향이 같으면 어디에 그려도 같은 화살표다.</p>
+  <p>이 약속 덕분에 화살표를 들어서 다른 화살표 끝에 옮겨 붙일 수 있습니다. 아래 더하기와 빼기가 전부 이 약속 위에 서 있습니다.</p>
+</section>
+
+<section>
+  <h2>1. 한눈에 보기</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>연산</th><th>넣는 것</th><th>나오는 것</th><th>그림으로 하면</th><th>종이 코드</th></tr></thead>
+    <tbody>
+      <tr><td>더하기</td><td>화살표, 화살표</td><td>화살표</td><td>꼬리를 앞 화살표 끝에 이어 붙이기</td><td><code>vn*keepN + vt*keepT</code></td></tr>
+      <tr><td>빼기</td><td>화살표, 화살표</td><td>화살표</td><td>전체에서 한 조각 떼어내기</td><td><code>Vel - vn</code></td></tr>
+      <tr><td>곱하기</td><td>화살표, 숫자</td><td>화살표</td><td>길이만 늘이고 줄이기</td><td><code>vn * keepN</code></td></tr>
+      <tr><td>내적 (지난 노트)</td><td>화살표, 화살표</td><td><b>숫자</b></td><td>그림자 길이</td><td><code>dot(Vel, N)</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>표에서 볼 것은 <b>나오는 것</b> 칸입니다. 내적만 숫자가 나오고 나머지는 전부 화살표가 나옵니다. 그래서 <code>dot(Vel, N) * N</code>은 "내적으로 숫자를 얻고, 그 숫자를 화살표에 곱해서 다시 화살표로 만든다"는 뜻입니다. 4번과 5번에서 자세히 봅니다.</p>
+</section>
+
+<section>
+  <h2>2. 더하기 = 이어 붙이기</h2>
+  <p>A를 먼저 가고, A가 끝난 자리에서 B를 이어서 가면 어디에 도착하는가. 그 도착점까지 가는 화살표가 <b>A + B</b>입니다.</p>
+  <div class="lab">
+    <div class="stage">
+      <svg id="addSvg" viewBox="0 0 370 280" role="img" aria-label="화살표 A 끝에 화살표 B를 이어 붙이고, 출발점에서 도착점까지 A + B를 그린 그림"></svg>
+      <div class="read">
+        <div class="eq" id="addEq"></div>
+        <div class="sub" id="addSub"></div>
+        <div class="btns"><button type="button" id="addRev" aria-pressed="false">반대 순서(B 먼저)도 보기</button></div>
+        <div class="hint">동그라미를 끌거나, 누른 뒤 방향키로 한 칸씩 옮깁니다. <span class="c-a">파랑</span>은 A의 끝, <span class="c-res" style="color:var(--res)">검정</span>은 도착점입니다.</div>
+      </div>
+    </div>
+  </div>
+  <ul>
+    <li><b>계산은 칸끼리 더하면 끝입니다.</b> 가로는 가로끼리, 세로는 세로끼리 더합니다</li>
+    <li>흐린 점선 B는 옮기기 전 자리입니다. 길이와 방향이 같으니 같은 화살표입니다</li>
+    <li>순서를 바꿔 B를 먼저 가도 같은 곳에 도착합니다. 버튼으로 확인해 보세요</li>
+  </ul>
+  <p><b>게임에서:</b> PaperSim의 중력이 매 프레임 하는 일이 더하기입니다. 지금 속도 화살표 끝에 "중력이 이번 프레임에 주는 작은 아래 화살표"를 이어 붙입니다. 그게 다음 프레임의 속도입니다.</p>
+  <pre>Velocity = Velocity + Gravity * DeltaTime;   // 지금 속도 끝에 작은 아래 화살표를 이어 붙임</pre>
+</section>
+
+<section>
+  <h2>3. 빼기 = 떼어내기</h2>
+  <p>전체 화살표 <span class="c-vel">Vel</span>에서 한 조각 <span class="c-vn">vn</span>을 떼어내면 무엇이 남는가. 남은 것이 <span class="c-vt">vt</span>입니다.</p>
+  <div class="lab">
+    <div class="stage">
+      <svg id="subSvg" viewBox="0 0 370 280" role="img" aria-label="Vel에서 vn을 빼면 vn 끝에서 Vel 끝으로 가는 vt가 남는 그림"></svg>
+      <div class="read">
+        <div class="eq" id="subEq"></div>
+        <div class="sub" id="subSub"></div>
+        <div class="btns"><button type="button" id="subMove" aria-pressed="false">vt를 출발점으로 옮겨 보기</button></div>
+        <div class="hint">회색 동그라미는 Vel의 끝, 주황 동그라미는 vn의 끝입니다.</div>
+      </div>
+    </div>
+  </div>
+  <ul>
+    <li><b>그림으로는 "빼는 것의 끝에서 전체의 끝으로 가는 화살표"</b>입니다. <span class="c-vn">vn</span> 끝에서 <span class="c-vel">Vel</span> 끝으로 가는 <span class="c-vt">초록</span>이 vt입니다</li>
+    <li><b>계산은 칸끼리 빼면 끝입니다</b></li>
+    <li>빼기는 더하기를 거꾸로 한 것입니다. <span class="c-vn">vn</span> 끝에 <span class="c-vt">vt</span>를 이어 붙이면 다시 <span class="c-vel">Vel</span> 끝에 도착합니다</li>
+  </ul>
+  <pre>float3 vt = Vel - vn;   // Vel에서 뚫는 쪽 조각을 떼어내면, 비탈 쪽 조각이 남는다</pre>
+</section>
+
+<section>
+  <h2>4. 곱하기 = 길이만 바꾸기</h2>
+  <p>화살표에 숫자 하나를 곱하면 <b>방향은 그대로, 길이만</b> 그 배수가 됩니다. 계산은 칸마다 같은 숫자를 곱합니다.</p>
+  <div class="lab">
+    <div class="stage">
+      <svg id="mulSvg" viewBox="0 0 376 236" role="img" aria-label="화살표에 숫자를 곱해 길이가 바뀌는 그림"></svg>
+      <div class="read">
+        <div class="eq" id="mulEq"></div>
+        <div class="sub" id="mulSub"></div>
+      </div>
+    </div>
+    <div class="ctrl"><label for="mulK">곱하는 숫자</label><input type="range" id="mulK" min="-2" max="3" step="0.1" value="1.5"><span class="eq" id="mulKv" style="font-size:15px;min-width:3.5em"></span></div>
+    <div class="btns">
+      <button type="button" data-k="0.3">0.3 (keepN)</button>
+      <button type="button" data-k="0.9">0.9 (keepT)</button>
+      <button type="button" data-k="1">1</button>
+      <button type="button" data-k="0">0</button>
+      <button type="button" data-k="-1">-1</button>
+    </div>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>곱하는 숫자</th><th>화살표는</th></tr></thead>
+    <tbody>
+      <tr><td>1보다 큼</td><td>같은 방향으로 길어짐</td></tr>
+      <tr><td>0과 1 사이 (0.3, 0.9)</td><td>같은 방향으로 짧아짐. 종이 코드가 쓰는 게 이것</td></tr>
+      <tr><td>0</td><td>길이 0. 화살표가 사라짐</td></tr>
+      <tr><td>음수</td><td>방향이 뒤집힘</td></tr>
+    </tbody>
+  </table></div>
+  <p>마지막 줄이 중요합니다. 종이 코드에서 <code>keepN = max(0, 1 - NormalDrag * dt)</code>처럼 <code>max(0, …)</code>로 감싼 이유가 이것입니다. keep이 음수가 되면 속도 조각이 뒤집혀 종이가 거꾸로 튕겨 나갑니다. 0 아래로 못 내려가게 막아 둔 것입니다.</p>
+  <pre>vn * keepN   // 뚫는 쪽 조각을 keepN배로 줄임 (방향은 그대로)
+vt * keepT   // 비탈 쪽 조각을 keepT배로 줄임</pre>
+</section>
+
+<section>
+  <h2>5. 길이 1짜리 화살표 × 숫자 = 줄자</h2>
+  <p>곱하기의 특별한 경우입니다. <span class="c-n">N</span>처럼 <b>길이가 딱 1인 화살표</b>에 숫자를 곱하면, N 방향으로 놓인 줄자에서 <b>그 눈금까지 가는 화살표</b>가 됩니다.</p>
+  <div class="lab">
+    <div class="stage">
+      <svg id="rulSvg" viewBox="0 0 320 300" role="img" aria-label="길이 1인 N 방향 줄자 위에서 숫자만큼 가는 화살표"></svg>
+      <div class="read">
+        <div class="eq" id="rulEq"></div>
+        <div class="sub" id="rulSub"></div>
+        <div class="btns"><button type="button" id="rulVel" aria-pressed="false">Vel 그림자로 숫자 정하기</button></div>
+      </div>
+    </div>
+    <div class="ctrl"><label for="rulD">곱하는 숫자</label><input type="range" id="rulD" min="-4" max="4" step="0.1" value="2.5"><span class="eq" id="rulDv" style="font-size:15px;min-width:3.5em"></span></div>
+  </div>
+  <p>버튼을 켜면 숫자를 손으로 고르지 않고 <code>dot(Vel, N)</code>, 즉 Vel의 그림자 길이로 정합니다. 그러면 나오는 화살표가 바로 <span class="c-vn">vn</span>이고, 남은 <span class="c-vt">초록</span>이 vt입니다. 회색 동그라미를 끌어 Vel을 바꿔 보세요.</p>
+  <pre>float3 vn = dot(Vel, N) * N;
+//          ─────┬─────   ┬
+//               │        └ 길이 1인 N 방향 줄자
+//               └ 그림자 길이(숫자). 줄자에서 몇 눈금인지</pre>
+  <ul>
+    <li>N의 길이가 1이 아니면 눈금 간격이 틀어져서 이 줄이 맞지 않습니다. 그래서 N은 늘 길이 1로 만들어 씁니다</li>
+    <li>종이 예시에서는 dot이 -130이었습니다. 줄자에서 -130 눈금, 즉 N 반대쪽으로 130만큼 가는 화살표가 vn입니다</li>
+  </ul>
+</section>
+
+<section>
+  <h2>6. 이제 PaperAero를 다시 읽기</h2>
+  <p>종이 예시 숫자 그대로입니다. Vel은 아래로 150, 종이는 30° 기울었고, keepN 0.3, keepT 0.9입니다.</p>
+  <div class="panels">
+    <figure><svg id="p1" viewBox="0 0 220 215" role="img" aria-label="Vel을 vn과 vt로 쪼갠 그림"></svg>
+      <figcaption><b>① 쪼개기</b> · 곱하기와 빼기<br><code>vn = dot(Vel,N)*N</code><br><code>vt = Vel - vn</code></figcaption></figure>
+    <figure><svg id="p2" viewBox="0 0 220 215" role="img" aria-label="vn과 vt를 각각 다른 비율로 줄인 그림"></svg>
+      <figcaption><b>② 따로 줄이기</b> · 곱하기<br><code>vn * 0.3</code> 많이 줄고<br><code>vt * 0.9</code> 조금 줄고</figcaption></figure>
+    <figure><svg id="p3" viewBox="0 0 220 215" role="img" aria-label="줄인 두 조각을 이어 붙여 OutVel을 만든 그림"></svg>
+      <figcaption><b>③ 이어 붙이기</b> · 더하기<br><code>OutVel = vn*0.3 + vt*0.9</code><br>원래 Vel(점선)보다 비탈 쪽으로 꺾임</figcaption></figure>
+  </div>
+  <pre>float3 vn = dot(Vel, N) * N;            // 내적으로 숫자 → 곱하기로 N 방향 화살표
+float3 vt = Vel - vn;                   // 빼기: 남은 조각
+OutVel    = vn * keepN + vt * keepT;    // 곱하기로 따로 줄이고, 더하기로 이어 붙임</pre>
+  <p>세 줄 모두 이 노트의 연산만 씁니다. 방향이 꺾이는 이유도 여기서 보입니다. 두 조각을 <b>같은 비율로</b> 줄였다면 ③의 화살표는 원래 Vel과 같은 방향에 짧아지기만 합니다. 다른 비율로 줄였기 때문에 이어 붙인 결과의 방향이 바뀝니다.</p>
+  <p><a href="https://dev-jsb.github.io/study-notes/projectf/paper-drag.html">판 공기저항 노트</a>의 3번(한 프레임에 일어나는 일)을 이 노트를 본 뒤 다시 넘겨 보세요.</p>
+</section>
+
+<section>
+  <h2>7. 언리얼과 유니티에서는</h2>
+  <p>이름만 다르고 하는 일은 같습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>Niagara HLSL</th><th>UE C++</th><th>Unity C#</th></tr></thead>
+    <tbody>
+      <tr><td>화살표</td><td><code>float3</code></td><td><code>FVector</code></td><td><code>Vector3</code></td></tr>
+      <tr><td>더하기</td><td><code>a + b</code></td><td><code>A + B</code></td><td><code>a + b</code></td></tr>
+      <tr><td>빼기</td><td><code>a - b</code></td><td><code>A - B</code></td><td><code>a - b</code></td></tr>
+      <tr><td>곱하기</td><td><code>a * 0.3f</code></td><td><code>A * 0.3f</code></td><td><code>a * 0.3f</code></td></tr>
+      <tr><td>내적</td><td><code>dot(a, b)</code></td><td><code>FVector::DotProduct(A, B)</code></td><td><code>Vector3.Dot(a, b)</code></td></tr>
+      <tr><td>길이</td><td><code>length(a)</code></td><td><code>A.Size()</code></td><td><code>a.magnitude</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>8. 자주 헷갈리는 것</h2>
+  <div class="qa">
+    <div><b>화살표를 다른 자리로 옮겨 그려도 되나요?</b><span>네. 길이와 방향만 같으면 같은 화살표입니다. 더하기에서 B를 A 끝으로 옮기는 것, 판 공기저항 6단계에서 vt를 출발점으로 옮기는 것 모두 이 약속 덕분입니다.</span></div>
+    <div><b>더하기 순서를 바꾸면요?</b><span>같은 곳에 도착합니다. A 다음 B로 가든, B 다음 A로 가든 결과가 같습니다.</span></div>
+    <div><b>빼기 순서를 바꾸면요?</b><span>정반대 화살표가 나옵니다. <code>Vel - vn</code>은 vt이고, <code>vn - Vel</code>은 vt를 뒤집은 것입니다.</span></div>
+    <div><b>0.3을 곱하면 방향도 바뀌나요?</b><span>아니요. 길이만 30%가 됩니다. 방향은 음수를 곱할 때만 바뀌고, 그때는 정반대로 뒤집힙니다.</span></div>
+    <div><b>화살표에 화살표를 곱할 수도 있나요?</b><span>이 노트의 곱하기는 화살표와 숫자 사이의 것입니다. 화살표끼리는 내적(숫자가 나옴)이나 외적(나중에 배울 것)을 씁니다.</span></div>
+  </div>
+</section>
+</main>
+
+<script>
+const NS='http://www.w3.org/2000/svg';
+function E(tag,a,p){const e=document.createElementNS(NS,tag);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function clear(g){while(g.firstChild)g.removeChild(g.firstChild);}
+function arrow(g,[x1,y1],[x2,y2],col,o={}){
+  const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy);if(L<0.5)return;
+  const w=o.w||3,h=Math.min(o.head||11,L*.5),ux=dx/L,uy=dy/L,bx=x2-ux*h,by=y2-uy*h,s=h*.5;
+  const st=`stroke:${col};stroke-width:${w};stroke-linecap:round;fill:none`+(o.dash?`;stroke-dasharray:${o.dash}`:'');
+  const grp=E('g',{style:`opacity:${o.op??1}`},g);
+  E('line',{x1,y1,x2:bx,y2:by,style:st},grp);
+  E('polygon',{points:`${x2},${y2} ${bx-uy*s},${by+ux*s} ${bx+uy*s},${by-ux*s}`,style:`fill:${col}`},grp);
+}
+function label(g,[x,y],txt,col,anchor){const t=E('text',{x,y,'text-anchor':anchor||'middle','dominant-baseline':'middle',class:'lbl',style:`fill:${col}`},g);t.textContent=txt;return t;}
+// label beside the middle of a segment, pushed sideways by off px (sign picks the side)
+function sideLabel(g,p1,p2,txt,col,off){const dx=p2[0]-p1[0],dy=p2[1]-p1[1],L=Math.hypot(dx,dy)||1;
+  label(g,[(p1[0]+p2[0])/2-dy/L*off,(p1[1]+p2[1])/2+dx/L*off],txt,col);}
+const fmt=v=>{const r=Math.round(v*10)/10;return (Object.is(r,-0)?0:r).toString().replace('-','−');};
+const pt=v=>`(${fmt(v[0])}, ${fmt(v[1])})`;
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1]], sub=(a,b)=>[a[0]-b[0],a[1]-b[1]], mul=(a,k)=>[a[0]*k,a[1]*k];
+const C=n=>`var(--${n})`;
+
+function plot(svg,o){
+  const P=(x,y)=>[o.ox+o.u*x,o.oy-o.u*y];
+  const gg=E('g',{},svg);
+  for(let x=o.x0;x<=o.x1;x++){E('line',{x1:P(x,o.y0)[0],y1:P(x,o.y0)[1],x2:P(x,o.y1)[0],y2:P(x,o.y1)[1],class:x===0?'axis':'grid'},gg);}
+  for(let y=o.y0;y<=o.y1;y++){E('line',{x1:P(o.x0,y)[0],y1:P(o.x0,y)[1],x2:P(o.x1,y)[0],y2:P(o.x1,y)[1],class:y===0?'axis':'grid'},gg);}
+  const g=E('g',{},svg),hg=E('g',{},svg);
+  const toGrid=e=>{const q=svg.createSVGPoint();q.x=e.clientX;q.y=e.clientY;const p=q.matrixTransform(svg.getScreenCTM().inverse());return[(p.x-o.ox)/o.u,(o.oy-p.y)/o.u];};
+  const clamp=v=>[Math.max(o.x0,Math.min(o.x1,v[0])),Math.max(o.y0,Math.min(o.y1,v[1]))];
+  return {P:v=>P(v[0],v[1]),g,hg,toGrid,clamp,o};
+}
+// draggable dot; get() returns its grid position, move(v) asks the owner to accept a new one
+function handle(pl,col,name,get,move,snap=1){
+  const c=E('circle',{r:8,class:'hd',style:`fill:${col}`},pl.hg);
+  const hit=E('circle',{r:20,class:'hit',tabindex:0,role:'button','aria-label':name+' 끝 옮기기 (방향키)'},pl.hg);
+  const rnd=v=>[Math.round(v[0]/snap)*snap,Math.round(v[1]/snap)*snap];
+  let drag=false;
+  hit.addEventListener('pointerdown',e=>{drag=true;hit.setPointerCapture(e.pointerId);hit.style.cursor='grabbing';e.preventDefault();});
+  hit.addEventListener('pointermove',e=>{if(drag)move(rnd(pl.toGrid(e)));});
+  const end=()=>{drag=false;hit.style.cursor='';};
+  hit.addEventListener('pointerup',end);hit.addEventListener('pointercancel',end);
+  hit.addEventListener('keydown',e=>{const d={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,1],ArrowDown:[0,-1]}[e.key];
+    if(d){e.preventDefault();const p=get();move([p[0]+d[0]*snap,p[1]+d[1]*snap]);}});
+  return {place(){const p=pl.P(get());for(const el of [c,hit]){el.setAttribute('cx',p[0]);el.setAttribute('cy',p[1]);}},
+          show(on){for(const el of [c,hit])el.setAttribute('visibility',on?'visible':'hidden');}};
+}
+
+/* 2. addition */
+(()=>{
+  const pl=plot(document.getElementById('addSvg'),{ox:80,oy:200,u:30,x0:-2,x1:9,y0:-2,y1:6});
+  let A=[4,1],B=[1,3],rev=false;
+  const inR=v=>v[0]>=pl.o.x0&&v[0]<=pl.o.x1&&v[1]>=pl.o.y0&&v[1]<=pl.o.y1;
+  const hA=handle(pl,C('a'),'A',()=>A,v=>{v=pl.clamp(v);if(inR(add(v,B))){A=v;draw();}});
+  const hS=handle(pl,C('res'),'A + B',()=>add(A,B),v=>{v=pl.clamp(v);B=sub(v,A);draw();});
+  const O=[0,0];
+  function draw(){
+    const g=pl.g;clear(g);const S=add(A,B),P=pl.P;
+    if(rev){arrow(g,P(O),P(B),C('vn'),{dash:'5 5',op:.5,w:2.5});arrow(g,P(B),P(S),C('a'),{dash:'5 5',op:.5,w:2.5});}
+    else arrow(g,P(O),P(B),C('vn'),{dash:'4 5',op:.35,w:2.5});
+    arrow(g,P(O),P(S),C('res'),{w:3.5});
+    arrow(g,P(O),P(A),C('a'));
+    arrow(g,P(A),P(S),C('vn'));
+    sideLabel(g,P(O),P(A),'A',C('a'),14);
+    sideLabel(g,P(A),P(S),'B',C('vn'),14);
+    sideLabel(g,P(O),P(S),'A + B',C('res'),-18);
+    if(!rev)sideLabel(g,P(O),P(B),'B',C('vn'),-12);
+    hA.place();hS.place();
+    document.getElementById('addEq').innerHTML=`<span class="c-a">A ${pt(A)}</span><br>+ <span class="c-vn">B ${pt(B)}</span><br>= A + B ${pt(S)}`;
+    document.getElementById('addSub').textContent=`가로 ${fmt(A[0])} + ${fmt(B[0])} = ${fmt(S[0])}, 세로 ${fmt(A[1])} + ${fmt(B[1])} = ${fmt(S[1])}`;
+  }
+  const btn=document.getElementById('addRev');
+  btn.addEventListener('click',()=>{rev=!rev;btn.setAttribute('aria-pressed',rev);draw();});
+  draw();
+})();
+
+/* 3. subtraction */
+(()=>{
+  const pl=plot(document.getElementById('subSvg'),{ox:80,oy:200,u:30,x0:-2,x1:9,y0:-2,y1:6});
+  let V=[6,4],n=[1,3],moved=false;
+  const hV=handle(pl,C('vel'),'Vel',()=>V,v=>{V=pl.clamp(v);draw();});
+  const hN=handle(pl,C('vn'),'vn',()=>n,v=>{n=pl.clamp(v);draw();});
+  const O=[0,0];
+  function draw(){
+    const g=pl.g;clear(g);const T=sub(V,n),P=pl.P;
+    if(moved){arrow(g,P(O),P(T),C('vt'),{dash:'5 5',op:.6,w:2.5});sideLabel(g,P(O),P(T),'vt (옮긴 것)',C('vt'),16);}
+    arrow(g,P(O),P(V),C('vel'),{w:3.5});
+    arrow(g,P(O),P(n),C('vn'));
+    arrow(g,P(n),P(V),C('vt'));
+    sideLabel(g,P(O),P(V),'Vel',C('vel'),16);
+    sideLabel(g,P(O),P(n),'vn',C('vn'),-14);
+    sideLabel(g,P(n),P(V),'vt',C('vt'),-14);
+    hV.place();hN.place();
+    document.getElementById('subEq').innerHTML=`<span class="c-vel">Vel ${pt(V)}</span><br>− <span class="c-vn">vn ${pt(n)}</span><br>= <span class="c-vt">vt ${pt(T)}</span>`;
+    document.getElementById('subSub').textContent=`가로 ${fmt(V[0])} − ${fmt(n[0])} = ${fmt(T[0])}, 세로 ${fmt(V[1])} − ${fmt(n[1])} = ${fmt(T[1])}`;
+  }
+  const btn=document.getElementById('subMove');
+  btn.addEventListener('click',()=>{moved=!moved;btn.setAttribute('aria-pressed',moved);draw();});
+  draw();
+})();
+
+/* 4. multiply */
+(()=>{
+  const pl=plot(document.getElementById('mulSvg'),{ox:160,oy:132,u:28,x0:-5,x1:7,y0:-3,y1:4});
+  const v=[2,1],kIn=document.getElementById('mulK'),O=[0,0];
+  function draw(){
+    const k=+kIn.value,g=pl.g,P=pl.P,r=mul(v,k);clear(g);
+    arrow(g,P(O),P(r),C('vn'),{w:4});
+    arrow(g,P(O),P(v),C('res'),{dash:'4 4',op:.55,w:2});
+    label(g,[P(v)[0]+8,P(v)[1]-14],'v',C('res'),'start');
+    if(Math.abs(k)>0.05)label(g,[P(r)[0]+(k>=0?10:-10),P(r)[1]+(k>=0?-14:16)],`v × ${fmt(k)}`,C('vn'),k>=0?'start':'end');
+    document.getElementById('mulKv').textContent=fmt(k);
+    document.getElementById('mulEq').innerHTML=`v ${pt(v)} × ${fmt(k)}<br>= <span class="c-vn">${pt(r)}</span>`;
+    const say=k<0?`방향이 뒤집힘. 길이는 ${fmt(-k)}배`:k===0?'길이 0. 화살표가 사라짐':k<1?`같은 방향, 길이 ${Math.round(k*100)}%로 짧아짐`:k===1?'그대로':`같은 방향, 길이 ${fmt(k)}배로 길어짐`;
+    document.getElementById('mulSub').textContent=say;
+  }
+  kIn.addEventListener('input',draw);
+  document.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click',()=>{kIn.value=b.dataset.k;draw();}));
+  draw();
+})();
+
+/* 5. unit arrow x number = ruler */
+(()=>{
+  const pl=plot(document.getElementById('rulSvg'),{ox:160,oy:150,u:30,x0:-4,x1:4,y0:-4,y1:4});
+  const N=[0.6,0.8],dIn=document.getElementById('rulD'),O=[0,0],P=pl.P;
+  let useVel=false,V=[1,-3.5];
+  // ruler: dotted line along N with a tick per unit
+  const rg=E('g',{},pl.g.parentNode);pl.g.parentNode.insertBefore(rg,pl.g);
+  const a=P(mul(N,-4.6)),b=P(mul(N,4.6));
+  E('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1],style:`stroke:${C('n')};stroke-width:1.5;stroke-dasharray:2 4;opacity:.7`},rg);
+  for(let i=-4;i<=4;i++){const c=P(mul(N,i)),px=-N[1]*30*0.12,py=-N[0]*30*0.12;
+    E('line',{x1:c[0]-px*1.6,y1:c[1]-py*1.6,x2:c[0]+px*1.6,y2:c[1]+py*1.6,style:`stroke:${C('n')};stroke-width:1.5;opacity:.7`},rg);
+    if(i!==0){const t=E('text',{x:c[0]+N[1]*30*0.42,y:c[1]+N[0]*30*0.42+3,class:'tick','text-anchor':'middle'},rg);t.textContent=fmt(i);}}
+  const hV=handle(pl,C('vel'),'Vel',()=>V,v=>{V=pl.clamp(v);draw();},0.5);
+  function draw(){
+    const g=pl.g;clear(g);
+    const d=useVel?V[0]*N[0]+V[1]*N[1]:+dIn.value;
+    if(useVel)dIn.value=d.toFixed(1);
+    const vn=mul(N,d);
+    if(useVel){
+      E('line',{x1:P(V)[0],y1:P(V)[1],x2:P(vn)[0],y2:P(vn)[1],style:`stroke:${C('muted')};stroke-width:1.5;stroke-dasharray:3 4`},g);
+      arrow(g,P(O),P(V),C('vel'),{w:3});
+      label(g,[P(V)[0]+(V[0]>=0?12:-12),P(V)[1]+(V[1]<0?14:-14)],'Vel',C('vel'),V[0]>=0?'start':'end');
+      arrow(g,P(vn),P(V),C('vt'),{w:2.5});
+      sideLabel(g,P(vn),P(V),'vt',C('vt'),-14);
+    }
+    arrow(g,P(O),P(vn),C('vn'),{w:4});
+    arrow(g,P(O),P(N),C('n'),{w:3,head:9});
+    label(g,[P(N)[0]-22,P(N)[1]-6],'N',C('n'));
+    if(Math.abs(d)>0.4)label(g,[P(vn)[0]+(d>0?14:-14),P(vn)[1]+(d>0?-8:10)],useVel?'vn':`N × ${fmt(d)}`,C('vn'),d>0?'start':'end');
+    hV.show(useVel);hV.place();
+    document.getElementById('rulDv').textContent=fmt(d);
+    dIn.disabled=useVel;
+    document.getElementById('rulEq').innerHTML=useVel
+      ?`dot(Vel, N) = ${fmt(d)}<br><span class="c-vn">vn = ${fmt(d)} × N</span><br>= <span class="c-vn">${pt(vn)}</span>`
+      :`<span class="c-n">N (0.6, 0.8)</span> × ${fmt(d)}<br>= <span class="c-vn">${pt(vn)}</span>`;
+    document.getElementById('rulSub').textContent=useVel
+      ?(d<0?`그림자가 N 반대쪽에 ${fmt(-d)} 눈금. vn도 반대쪽으로 ${fmt(-d)}`:`그림자가 N 쪽에 ${fmt(d)} 눈금. vn도 N 쪽으로 ${fmt(d)}`)
+      :`N은 길이 1이라 결과 길이가 곱한 숫자와 같음: ${fmt(Math.abs(d))}`;
+  }
+  dIn.addEventListener('input',draw);
+  const btn=document.getElementById('rulVel');
+  btn.addEventListener('click',()=>{useVel=!useVel;btn.setAttribute('aria-pressed',useVel);draw();});
+  draw();
+})();
+
+/* 6. PaperAero in three panels, real example numbers (1px = 1cm/s) */
+(()=>{
+  const O=[110,50],P=v=>[O[0]+v[0],O[1]-v[1]];
+  const t=Math.PI/6,N=[Math.sin(t),Math.cos(t)],Vel=[0,-150];
+  const d=Vel[0]*N[0]+Vel[1]*N[1],vn=mul(N,d),vt=sub(Vel,vn),vn2=mul(vn,0.3),vt2=mul(vt,0.9),out=add(vn2,vt2);
+  function base(id){const s=document.getElementById(id);
+    const pd=[Math.cos(t),-Math.sin(t)];const a=P(mul(pd,-75)),b=P(mul(pd,75));
+    E('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1],style:`stroke:${C('muted')};stroke-width:5;stroke-linecap:round;opacity:.35`},s);
+    arrow(s,P([0,0]),P(mul(N,38)),C('n'),{w:2.5,head:8});
+    label(s,[P(mul(N,38))[0]+12,P(mul(N,38))[1]+2],'N',C('n'),'start');
+    return s;}
+  let s=base('p1');
+  arrow(s,P([0,0]),P(Vel),C('vel'),{w:3});
+  arrow(s,P([0,0]),P(vn),C('vn'));
+  arrow(s,P(vn),P(Vel),C('vt'));
+  label(s,[P(Vel)[0]+10,P(Vel)[1]-34],'Vel',C('vel'),'start');
+  sideLabel(s,P([0,0]),P(vn),'vn',C('vn'),-14);
+  sideLabel(s,P(vn),P(Vel),'vt',C('vt'),12);
+  s=base('p2');
+  arrow(s,P([0,0]),P(vn),C('vn'),{dash:'4 4',op:.35,w:2});
+  arrow(s,P([0,0]),P(vt),C('vt'),{dash:'4 4',op:.35,w:2});
+  arrow(s,P([0,0]),P(vn2),C('vn'));
+  arrow(s,P([0,0]),P(vt2),C('vt'));
+  label(s,[P(vn2)[0]-8,P(vn2)[1]+14],'vn × 0.3',C('vn'),'end');
+  label(s,[P(vt2)[0]-6,P(vt2)[1]+22],'vt × 0.9',C('vt'),'middle');
+  label(s,[P(vn)[0]+4,P(vn)[1]+16],'원래 vn',C('muted'),'middle');
+  s=base('p3');
+  arrow(s,P([0,0]),P(Vel),C('vel'),{dash:'4 4',op:.45,w:2});
+  label(s,[P(Vel)[0]+8,P(Vel)[1]-10],'원래 Vel',C('muted'),'start');
+  arrow(s,P([0,0]),P(vn2),C('vn'));
+  arrow(s,P(vn2),P(out),C('vt'));
+  arrow(s,P([0,0]),P(out),C('res'),{w:3.5});
+  sideLabel(s,P(vn2),P(out),'vt × 0.9',C('vt'),16);
+  label(s,[P(out)[0]+8,P(out)[1]+12],'OutVel',C('res'),'start');
+})();
+</script>
