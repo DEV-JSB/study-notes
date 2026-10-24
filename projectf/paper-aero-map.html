@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>PaperAero 한 장 지도</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: same reading column as the other study notes; one map at the top, then one card per block (sentence, picture, code, line table, how-far, experiment) */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4; --floor:#e9edf3;
+  --vel:#7d8590; --vn:#d2552a; --vt:#178a66; --n:#6a5acd; --res:#1b2230; --spin:#b0428a; --box:#8a8f98;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642; --floor:#202833;
+  --vel:#8f98a6; --vn:#f08a5d; --vt:#4cc79c; --n:#a99cf5; --res:#e4e8ee; --spin:#e57ec0; --box:#7a8290; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642; --floor:#202833;
+  --vel:#8f98a6; --vn:#f08a5d; --vt:#4cc79c; --n:#a99cf5; --res:#e4e8ee; --spin:#e57ec0; --box:#7a8290; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+main{max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:48px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:20px;font-weight:500;margin:0;text-wrap:balance}
+h3{font-size:16px;font-weight:500;margin:0}
+p{margin:0;max-width:68ch}
+a{color:var(--n)}
+section{display:flex;flex-direction:column;gap:14px}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.def{border-left:3px solid var(--n);padding:4px 0 4px 16px;font-size:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:16px}
+.blockhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.num{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;font-family:var(--mono);font-weight:500;color:var(--panel)}
+.tag{font-size:12px;padding:2px 10px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.t-bb{color:var(--muted)} .t-ok{color:var(--vt)} .t-left{color:var(--spin)}
+.one{font-size:18px}
+.figs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:640px){.figs{grid-template-columns:minmax(0,1fr)}}
+figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+figcaption{font-size:14px;color:var(--muted)}
+svg{width:100%;height:auto;display:block}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+td:first-child{white-space:nowrap}
+code{font-family:var(--mono);font-size:.9em}
+pre{font-family:var(--mono);font-size:13.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0;overflow-x:auto;line-height:1.65}
+.c-n{color:var(--n)} .c-vn{color:var(--vn)} .c-vt{color:var(--vt)} .c-vel{color:var(--vel)} .c-spin{color:var(--spin)} .c-mu{color:var(--muted)}
+ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.note{font-size:14px;color:var(--muted)}
+.howfar{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;font-size:15px}
+.howfar b{font-weight:500}
+/* svg text */
+.lb{font-family:var(--mono);font-size:14px;font-weight:500;paint-order:stroke;stroke:var(--panel);stroke-width:4px;stroke-linejoin:round}
+.sm{font-family:var(--sans);font-size:12.5px;fill:var(--muted)}
+.bx{font-family:var(--sans);font-size:14px;font-weight:500}
+.bxs{font-family:var(--sans);font-size:12px}
+</style>
+
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">ProjectF · 종이 회고 · 2026-10-24</span>
+  <h1>PaperAero 한 장 지도</h1>
+  <p class="lead">종이가 종이처럼 떨어지게 만드는 모듈 하나를 21줄이 아니라 4덩어리로 읽습니다. 덩어리마다 한 문장, 그림, 코드, 줄별 뜻, 어디까지 알아야 하는지, 직접 해 볼 실험을 붙였습니다.</p>
+</header>
+
+<section>
+  <p class="def">매 프레임 종이 한 장마다: <b>어느 쪽을 보나</b> 구하고 → <b>공기가 속도를 깎고</b> → <b>얼마나 돌지</b> 정하고 → <b>그만큼 돌린다.</b></p>
+</section>
+
+<!-- overview -->
+<section>
+  <h2>한눈에 보기</h2>
+  <div class="tbl" style="overflow-x:auto">
+  <svg viewBox="0 0 760 300" role="img" aria-label="PaperAero 네 덩어리의 흐름: 입력이 들어와 방향 구하기, 공기저항, 회전 속도, 돌리기를 거쳐 출력으로 나간다" style="min-width:600px">
+    <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+    <text class="sm" x="20" y="22">들어오는 값 (Map Get)</text>
+    <text class="bxs" x="95" y="48" text-anchor="middle" style="fill:var(--fg)">Q 회전값</text>
+    <text class="bxs" x="280" y="48" text-anchor="middle" style="fill:var(--fg)">Vel 속도</text>
+    <text class="bxs" x="465" y="48" text-anchor="middle" style="fill:var(--fg)">AngVel · Landed</text>
+    <text class="bxs" x="650" y="48" text-anchor="middle" style="fill:var(--fg)">DeltaTime</text>
+    <line x1="95" y1="56" x2="95" y2="96" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+    <line x1="280" y1="56" x2="280" y2="96" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+    <line x1="465" y1="56" x2="465" y2="96" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+    <line x1="650" y1="56" x2="650" y2="96" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+
+    <rect x="20" y="100" width="150" height="74" rx="10" fill="var(--panel)" stroke="var(--box)" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text class="bx" x="95" y="130" text-anchor="middle" style="fill:var(--fg)">① 방향 구하기</text>
+    <text class="bxs" x="95" y="152" text-anchor="middle" style="fill:var(--muted)">Q → N</text>
+    <rect x="205" y="100" width="150" height="74" rx="10" fill="var(--panel)" stroke="var(--vt)" stroke-width="1.5"/>
+    <text class="bx" x="280" y="130" text-anchor="middle" style="fill:var(--fg)">② 공기저항</text>
+    <text class="bxs" x="280" y="152" text-anchor="middle" style="fill:var(--muted)">Vel → OutVel</text>
+    <rect x="390" y="100" width="150" height="74" rx="10" fill="var(--panel)" stroke="var(--spin)" stroke-width="1.5"/>
+    <text class="bx" x="465" y="130" text-anchor="middle" style="fill:var(--fg)">③ 회전 속도</text>
+    <text class="bxs" x="465" y="152" text-anchor="middle" style="fill:var(--muted)">AngVel → OutAngVel</text>
+    <rect x="575" y="100" width="150" height="74" rx="10" fill="var(--panel)" stroke="var(--box)" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text class="bx" x="650" y="130" text-anchor="middle" style="fill:var(--fg)">④ 돌리기</text>
+    <text class="bxs" x="650" y="152" text-anchor="middle" style="fill:var(--muted)">OutAngVel → OutQuat</text>
+
+    <line x1="172" y1="137" x2="201" y2="137" stroke="var(--n)" stroke-width="1.5" marker-end="url(#ah)"/>
+    <line x1="357" y1="137" x2="386" y2="137" stroke="var(--n)" stroke-width="1.5" marker-end="url(#ah)"/>
+    <line x1="542" y1="137" x2="571" y2="137" stroke="var(--spin)" stroke-width="1.5" marker-end="url(#ah)"/>
+    <text class="sm" x="186" y="196" text-anchor="middle" style="fill:var(--n)">N을 ②③이 같이 씀</text>
+
+    <line x1="95" y1="178" x2="95" y2="236" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+    <line x1="280" y1="178" x2="280" y2="236" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+    <line x1="465" y1="178" x2="465" y2="236" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+    <line x1="650" y1="178" x2="650" y2="236" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ah)"/>
+    <text class="bxs" x="95" y="256" text-anchor="middle" style="fill:var(--fg)">PaperNormal</text>
+    <text class="bxs" x="280" y="256" text-anchor="middle" style="fill:var(--fg)">Velocity</text>
+    <text class="bxs" x="465" y="256" text-anchor="middle" style="fill:var(--fg)">AngVel</text>
+    <text class="bxs" x="650" y="256" text-anchor="middle" style="fill:var(--fg)">MeshOrientation</text>
+    <text class="sm" x="20" y="286">나가는 값 (Map Set) → 아래의 PaperSim이 중력·이동·바닥 감지를 한 뒤 다음 프레임으로</text>
+  </svg>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>덩어리</th><th>한 문장</th><th>이해해야 하나</th></tr></thead>
+    <tbody>
+      <tr><td>① 방향 구하기</td><td>회전값으로 종이 면이 보는 방향 N을 구한다</td><td><span class="tag t-bb">블랙박스 OK</span></td></tr>
+      <tr><td>② 공기저항</td><td>속도를 뚫는 쪽 / 비탈 쪽으로 쪼개서 따로 깎고 다시 붙인다</td><td><span class="tag t-ok">이해함</span></td></tr>
+      <tr><td>③ 회전 속도</td><td>공중이면 바람이 비트는 만큼 돌고, 바닥이면 평평한 쪽으로 넘어간다</td><td><span class="tag t-left">torque 한 줄 남음</span></td></tr>
+      <tr><td>④ 돌리기</td><td>정한 회전 속도만큼 이번 프레임 종이를 돌린다</td><td><span class="tag t-bb">블랙박스 OK</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- block 1 -->
+<section class="card" aria-labelledby="b1">
+  <div class="blockhead"><span class="num" style="background:var(--box)">1</span><h2 id="b1">방향 구하기</h2><span class="tag t-bb">블랙박스 OK</span></div>
+  <p class="one">회전값 Q를 써서, 원래 위(0,0,1)를 보던 종이가 <b>지금 어느 쪽을 보는지</b>(N) 구한다.</p>
+  <div class="figs">
+    <figure>
+      <svg viewBox="0 0 300 200" role="img" aria-label="위를 가리키던 화살표가 종이와 함께 기울어 N이 된 그림">
+        <defs><marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+        <line x1="59.4" y1="172.3" x2="240.6" y2="87.7" stroke="var(--line)" stroke-width="7" stroke-linecap="round"/>
+        <line x1="150" y1="130" x2="150" y2="58" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#a1)"/>
+        <line x1="150" y1="130" x2="120.4" y2="66.6" stroke="var(--n)" stroke-width="3" marker-end="url(#a1)"/>
+        <text class="lb" x="158" y="56" style="fill:var(--muted)">up</text>
+        <text class="lb" x="104" y="58" text-anchor="end" style="fill:var(--n)">N</text>
+        <text class="sm" x="246" y="84">종이 (Q만큼 돌아 있음)</text>
+      </svg>
+      <figcaption>점선 up = 돌기 전 방향, 보라 N = 돌고 난 뒤 방향</figcaption>
+    </figure>
+    <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+<pre><span class="c-mu">// 3-1: 법선</span>
+float3 up = float3(0, 0, 1);
+float3 t  = 2.0f * cross(Q.xyz, up);
+N = up + Q.w * t + cross(Q.xyz, t);</pre>
+      <p class="note">세 줄 전체가 "벡터 up을 쿼터니언 Q로 돌린다"는 공식 하나입니다. HLSL에 함수가 없어서 손으로 풀어 쓴 것뿐입니다.</p>
+    </div>
+  </div>
+  <div class="howfar">
+    <b>알아야 할 것</b><span>"회전값으로 종이가 보는 방향을 구했다." 이 한 줄이면 충분합니다.</span>
+    <b>몰라도 되는 것</b><span><code>t = 2 * cross(…)</code>가 왜 이런 모양인지.</span>
+    <b>UE C++에선</b><span><code>Q.GetUpVector()</code> 또는 <code>Q.RotateVector(FVector::UpVector)</code> 한 줄.</span>
+    <b>Unity에선</b><span><code>transform.up</code> 또는 <code>q * Vector3.up</code>.</span>
+  </div>
+</section>
+
+<!-- block 2 -->
+<section class="card" aria-labelledby="b2">
+  <div class="blockhead"><span class="num" style="background:var(--vt)">2</span><h2 id="b2">공기저항</h2><span class="tag t-ok">이해함</span></div>
+  <p class="one">속도를 <span class="c-vn">면을 뚫는 쪽</span>과 <span class="c-vt">면을 따라가는 쪽</span>으로 쪼개고, 뚫는 쪽은 많이 비탈 쪽은 조금 깎은 뒤 다시 이어 붙인다. 그래서 종이가 비스듬히 미끄러진다.</p>
+  <div class="figs">
+    <figure>
+      <svg viewBox="0 0 400 280" role="img" aria-label="아래로 떨어지는 속도 Vel을 면을 뚫는 vn과 면을 따라가는 vt로 쪼갠 그림">
+        <defs><marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+        <line x1="70.4" y1="42.5" x2="269.6" y2="157.5" stroke="var(--line)" stroke-width="7" stroke-linecap="round"/>
+        <line x1="170" y1="100" x2="197.5" y2="52.4" stroke="var(--n)" stroke-width="2.5" marker-end="url(#a2)"/>
+        <line x1="170" y1="100" x2="170" y2="250" stroke="var(--vel)" stroke-width="3" marker-end="url(#a2)"/>
+        <line x1="170" y1="100" x2="105.05" y2="212.5" stroke="var(--vn)" stroke-width="3.5" marker-end="url(#a2)"/>
+        <line x1="105.05" y1="212.5" x2="170" y2="250" stroke="var(--vt)" stroke-width="3.5" marker-end="url(#a2)"/>
+        <text class="lb" x="204" y="50" style="fill:var(--n)">N</text>
+        <text class="lb" x="180" y="200" style="fill:var(--vel)">Vel</text>
+        <text class="lb" x="120" y="165" text-anchor="end" style="fill:var(--vn)">vn</text>
+        <text class="lb" x="126" y="256" text-anchor="end" style="fill:var(--vt)">vt</text>
+      </svg>
+      <figcaption>쪼개기: <span class="c-vn">vn</span>(뚫는 쪽) + <span class="c-vt">vt</span>(비탈 쪽) = <span class="c-vel">Vel</span></figcaption>
+    </figure>
+    <figure>
+      <svg viewBox="0 0 400 280" role="img" aria-label="vn은 30퍼센트만, vt는 90퍼센트를 남기고 이어 붙인 결과 OutVel이 비탈 쪽으로 꺾인 그림">
+        <defs><marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+        <line x1="70.4" y1="42.5" x2="269.6" y2="157.5" stroke="var(--line)" stroke-width="7" stroke-linecap="round"/>
+        <line x1="170" y1="100" x2="170" y2="250" stroke="var(--vel)" stroke-width="2" stroke-dasharray="5 4" opacity=".5" marker-end="url(#a3)"/>
+        <line x1="170" y1="100" x2="150.5" y2="133.75" stroke="var(--vn)" stroke-width="3.5" marker-end="url(#a3)"/>
+        <line x1="150.5" y1="133.75" x2="208.97" y2="167.5" stroke="var(--vt)" stroke-width="3.5" marker-end="url(#a3)"/>
+        <line x1="170" y1="100" x2="208.97" y2="167.5" stroke="var(--res)" stroke-width="3.5" marker-end="url(#a3)"/>
+        <text class="lb" x="144" y="120" text-anchor="end" style="fill:var(--vn)">vn × keepN</text>
+        <text class="lb" x="150" y="170" text-anchor="end" style="fill:var(--vt)">vt × keepT</text>
+        <text class="lb" x="216" y="182" style="fill:var(--res)">OutVel</text>
+        <text class="lb" x="180" y="240" style="fill:var(--vel);opacity:.7">원래 Vel</text>
+      </svg>
+      <figcaption>따로 깎고 이어 붙이기: 비율이 달라서 방향이 비탈 쪽으로 꺾임 (예시 keepN 30%, keepT 90%)</figcaption>
+    </figure>
+  </div>
+<pre><span class="c-mu">// 3-2: 판 공기저항</span>
+<span class="c-vn">float3 vn = dot(Vel, N) * N;</span>
+<span class="c-vt">float3 vt = Vel - vn;</span>
+float keepN = max(0.0f, 1.0f - NormalDrag * DeltaTime);
+float keepT = max(0.0f, 1.0f - PlaneDrag  * DeltaTime);
+OutVel = vn * keepN + vt * keepT;</pre>
+  <div class="tbl"><table>
+    <thead><tr><th>줄</th><th>하는 일</th><th>연산</th></tr></thead>
+    <tbody>
+      <tr><td><code>dot(Vel, N)</code></td><td>Vel이 N 쪽으로 몇 cm/s인가 (그림자 길이, 숫자 하나)</td><td>그림자 (내적)</td></tr>
+      <tr><td><code>… * N</code></td><td>그 숫자를 N 방향 화살표로 = <span class="c-vn">vn</span></td><td>늘이고 줄이기</td></tr>
+      <tr><td><code>Vel - vn</code></td><td>남은 조각 = <span class="c-vt">vt</span>, 면과 나란함</td><td>떼어내기</td></tr>
+      <tr><td><code>max(0, 1 - Drag * dt)</code></td><td>이번 프레임에 남길 비율. 음수가 되어 속도가 뒤집히는 것만 막음</td><td>숫자 계산</td></tr>
+      <tr><td><code>vn*keepN + vt*keepT</code></td><td>따로 깎은 두 조각을 다시 이어 붙임</td><td>늘이고 줄이기 → 이어 붙이기</td></tr>
+    </tbody>
+  </table></div>
+  <div class="howfar">
+    <b>알아야 할 것</b><span>이 다섯 줄 전부. 경사면 미끄러짐, 벽 타고 미끄러지기, 마찰에서 그대로 다시 나옵니다 (연습 3번).</span>
+    <b>더 보기</b><span><a href="https://dev-jsb.github.io/study-notes/projectf/paper-drag.html">판 공기저항 노트</a>, <a href="https://dev-jsb.github.io/study-notes/game-math/vector-ops.html">벡터 더하기·빼기·곱하기</a></span>
+  </div>
+</section>
+
+<!-- block 3 -->
+<section class="card" aria-labelledby="b3">
+  <div class="blockhead"><span class="num" style="background:var(--spin)">3</span><h2 id="b3">회전 속도</h2><span class="tag t-left">torque 한 줄 남음</span></div>
+  <p class="one">종이가 <b>얼마나 빨리, 어느 축으로 돌지</b>(회전 속도)를 정한다. 공중이면 바람이 비트는 만큼 돌고, 바닥이면 평평한 쪽으로 넘어간다.</p>
+<pre><span class="c-mu">// 3-3: 공중 — 바람이 비트는 힘</span>
+float3 v = Vel * 0.01f;
+<span class="c-spin">float3 torque = dot(N, v) * cross(N, v) * FlipStrength;</span>
+float keepSpin = max(0.0f, 1.0f - SpinDrag * DeltaTime);
+
+<span class="c-mu">// 3-4: 바닥 — 평평한 쪽으로 넘어가기</span>
+float air = 1.0f - Landed;
+float3 flatN = float3(0.0f, 0.0f, step(0.0f, N.z) * 2.0f - 1.0f);
+float3 settle = cross(N, flatN) * SettleSpeed;
+
+<span class="c-mu">// 둘 중 하나 고르기</span>
+OutAngVel = (AngVel + torque * DeltaTime) * keepSpin * air + settle * Landed;</pre>
+
+  <h3>먼저 알아 둘 것: 회전 속도는 "축 화살표"</h3>
+  <p>회전 속도(<code>AngVel</code>)도 화살표 하나입니다. <b>화살표 방향 = 도는 축</b>, <b>화살표 길이 = 도는 빠르기</b>. 위치에 속도가 있듯 회전에는 회전 속도가 있고, ④가 매 프레임 그만큼 돌려 줍니다. 그래서 ③은 회전값을 직접 건드리지 않고 <b>회전 속도만 정합니다.</b></p>
+
+  <h3>공중: 바람이 종이를 비튼다</h3>
+  <div class="figs">
+    <figure>
+      <svg viewBox="0 0 300 240" role="img" aria-label="기울어 떨어지는 종이에 아래에서 바람이 들이쳐 종이가 시계 방향으로 비틀리는 그림">
+        <defs><marker id="a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+        <line x1="72" y1="155" x2="228" y2="65" stroke="var(--line)" stroke-width="7" stroke-linecap="round"/>
+        <line x1="150" y1="110" x2="117.5" y2="53.7" stroke="var(--n)" stroke-width="2.5" marker-end="url(#a4)"/>
+        <line x1="150" y1="110" x2="112" y2="196" stroke="var(--vel)" stroke-width="2.5" marker-end="url(#a4)"/>
+        <line x1="62" y1="226" x2="84" y2="178" stroke="var(--vt)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#a4)"/>
+        <line x1="182" y1="226" x2="196" y2="168" stroke="var(--vt)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#a4)"/>
+        <circle cx="150" cy="110" r="8" fill="none" stroke="var(--spin)" stroke-width="2"/>
+        <circle cx="150" cy="110" r="2.2" fill="var(--spin)"/>
+        <path d="M236 58 Q262 82 248 112" fill="none" stroke="var(--spin)" stroke-width="2" marker-end="url(#a4)"/>
+        <text class="lb" x="104" y="50" text-anchor="end" style="fill:var(--n)">N</text>
+        <text class="lb" x="100" y="212" text-anchor="end" style="fill:var(--vel)">v</text>
+        <text class="sm" x="200" y="236">바람 (−v)</text>
+      </svg>
+      <figcaption>종이가 <span class="c-vel">v</span> 쪽으로 가면 공기는 반대로 들이칩니다. 종이는 그 바람을 <b>정면으로 받는 쪽</b>으로 비틀립니다. 경첩 축(<span class="c-spin">⊙</span>)은 <code>cross(N, v)</code></figcaption>
+    </figure>
+    <figure>
+      <svg viewBox="0 0 300 240" role="img" aria-label="기울기별 비트는 세기 그래프. 0도와 90도에서 0, 45도에서 가장 크다">
+        <line x1="40" y1="160" x2="280" y2="160" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="40" y1="40" x2="40" y2="160" stroke="var(--line)" stroke-width="1.5"/>
+        <polyline fill="none" stroke="var(--spin)" stroke-width="2.5" points="40,160 66.7,119 93.3,82.8 120,56.1 146.7,41.8 173.3,41.8 200,56.1 226.7,82.8 253.3,119 280,160"/>
+        <circle cx="160" cy="40" r="4" fill="var(--spin)"/>
+        <circle cx="40" cy="160" r="4" fill="var(--spin)"/>
+        <text class="sm" x="40" y="180" text-anchor="middle">0°</text>
+        <text class="sm" x="160" y="180" text-anchor="middle">45°</text>
+        <text class="sm" x="280" y="180" text-anchor="middle">90°</text>
+        <text class="sm" x="160" y="30" text-anchor="middle">가장 셈</text>
+        <text class="sm" x="48" y="146">평평하면 0</text>
+        <text class="sm" x="160" y="204" text-anchor="middle">바람과 종이 면 사이 기울기</text>
+        <text class="sm" x="160" y="222" text-anchor="middle">세로축: 비트는 세기</text>
+      </svg>
+      <figcaption><code>dot</code>(정면으로 얼마나 받나) × <code>cross</code>의 길이(얼마나 기울었나). 둘 다 커야 셉니다. 그래서 <b>딱 평평하게 떨어지는 종이는 안 펄럭입니다</b> (남은 숙제의 이유)</figcaption>
+    </figure>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>줄</th><th>하는 일</th><th>연산</th></tr></thead>
+    <tbody>
+      <tr><td><code>v = Vel * 0.01</code></td><td>cm/s를 m/s로. 숫자가 너무 커지지 않게 줄여 둔 것</td><td>늘이고 줄이기</td></tr>
+      <tr><td><code>dot(N, v)</code></td><td>바람을 <b>얼마나 정면으로</b> 받나. 모서리로 가르면 0</td><td>그림자 (내적)</td></tr>
+      <tr><td><code>cross(N, v)</code></td><td><b>어느 경첩 축</b>으로 비틀리나. 길이는 기울어진 정도</td><td>경첩 축 (외적)</td></tr>
+      <tr><td><code>* FlipStrength</code></td><td>비트는 세기 조절</td><td>늘이고 줄이기</td></tr>
+      <tr><td><code>AngVel + torque * dt</code></td><td>지금 회전 속도에 이번 프레임 비틀림을 더함</td><td>이어 붙이기</td></tr>
+      <tr><td><code>* keepSpin</code></td><td>회전에 거는 브레이크(SpinDrag). 없으면 영원히 돎</td><td>늘이고 줄이기</td></tr>
+    </tbody>
+  </table></div>
+  <h3>왜 왔다 갔다(지그재그) 하나</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>순서</th><th>일어나는 일</th><th>담당</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>종이가 기울어 있으면 비탈 쪽으로 미끄러진다</td><td>②</td></tr>
+      <tr><td>2</td><td>미끄러지면 움직이는 방향(v)이 바뀌고, 바람 방향도 바뀐다</td><td>②</td></tr>
+      <tr><td>3</td><td>종이는 새 바람을 정면으로 받으려고 돈다</td><td>③ torque</td></tr>
+      <tr><td>4</td><td>회전 속도가 남아 있어서 <b>지나쳐</b> 반대로 기운다</td><td>③ AngVel이 이어짐</td></tr>
+      <tr><td>5</td><td>반대쪽으로 미끄러진다 → 1로. SpinDrag가 조금씩 잦아들게 함</td><td>② ③</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">줄 하나가 펄럭임을 만드는 게 아니라, ②와 ③이 매 프레임 서로 주고받는 고리가 펄럭임을 만듭니다.</p>
+
+  <h3>바닥: 평평한 쪽으로 넘어간다</h3>
+  <div class="figs">
+    <figure>
+      <svg viewBox="0 0 360 250" role="img" aria-label="바닥에 착지한 종이가 경첩 축을 중심으로 점점 평평해지는 그림">
+        <defs><marker id="a5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+        <rect x="40" y="152" width="300" height="60" fill="var(--floor)"/>
+        <line x1="40" y1="152" x2="340" y2="152" stroke="var(--muted)" stroke-width="1.5"/>
+        <line x1="93.4" y1="200" x2="266.6" y2="100" stroke="var(--box)" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+        <line x1="86.3" y1="184.9" x2="273.7" y2="115.1" stroke="var(--box)" stroke-width="5" stroke-linecap="round" opacity=".4"/>
+        <line x1="82.8" y1="173.7" x2="277.2" y2="126.3" stroke="var(--box)" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+        <line x1="80.6" y1="160.8" x2="279.4" y2="139.2" stroke="var(--box)" stroke-width="5" stroke-linecap="round" opacity=".75"/>
+        <line x1="80" y1="152.1" x2="280" y2="147.9" stroke="var(--fg)" stroke-width="5" stroke-linecap="round"/>
+        <line x1="180" y1="150" x2="145" y2="89.4" stroke="var(--n)" stroke-width="2.5" marker-end="url(#a5)"/>
+        <line x1="180" y1="150" x2="180" y2="80" stroke="var(--vt)" stroke-width="2.5" marker-end="url(#a5)"/>
+        <circle cx="180" cy="150" r="8" fill="none" stroke="var(--spin)" stroke-width="2"/>
+        <circle cx="180" cy="150" r="2.2" fill="var(--spin)"/>
+        <path d="M280 86 Q306 110 294 140" fill="none" stroke="var(--spin)" stroke-width="2" marker-end="url(#a5)"/>
+        <text class="lb" x="132" y="84" text-anchor="end" style="fill:var(--n)">N</text>
+        <text class="lb" x="188" y="76" style="fill:var(--vt)">flatN</text>
+        <text class="sm" x="50" y="230">바닥 (넘어가는 동안 절반이 살짝 묻힘 → 다듬기 후보)</text>
+      </svg>
+      <figcaption>30°로 착지 → 0.05초 20° → 0.1초 14° → 0.2초 6° → 0.4초 1° (SettleSpeed 8). 처음엔 빠르고 끝에선 느림</figcaption>
+    </figure>
+    <div class="tbl" style="min-width:0"><table>
+      <thead><tr><th>줄</th><th>하는 일</th></tr></thead>
+      <tbody>
+        <tr><td><code>air = 1 - Landed</code></td><td>공중 1, 바닥 0</td></tr>
+        <tr><td><code>step(0, N.z)*2 - 1</code></td><td>위를 보면 +1, 뒤집혀 있으면 −1. 가까운 쪽으로 눕힘</td></tr>
+        <tr><td><code>cross(N, flatN)</code></td><td>N을 flatN 쪽으로 넘어뜨릴 <b>경첩 축</b>. 많이 기울수록 길어 빨리 돌고, 거의 누우면 짧아져 멈춤</td></tr>
+        <tr><td><code>* SettleSpeed</code></td><td>넘어가는 빠르기</td></tr>
+        <tr><td><code>… * air + settle * Landed</code></td><td>0이나 1을 곱해 <b>둘 중 하나만</b> 남김. <code>if</code> 대신</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="howfar">
+    <b>알아야 할 것</b><span>회전 속도 = 축 화살표. 공중/바닥에 따라 넣는 회전 속도만 바꿔 끼운다. 0/1 곱해서 고르기. <code>cross</code>는 "경첩 축, 순서 바꾸면 반대".</span>
+    <b>말로 설명할 수 있으면 됨</b><span><code>torque = dot × cross</code>: "얼마나 정면으로 받나 × 어느 축으로 비틀리나". 성분 계산은 몰라도 됩니다.</span>
+    <b>Unity에선</b><span><code>rb.angularVelocity = Vector3.Cross(transform.up, Vector3.up) * strength;</code> — 넘어진 물체 일으키기와 같은 수법</span>
+  </div>
+</section>
+
+<!-- block 4 -->
+<section class="card" aria-labelledby="b4">
+  <div class="blockhead"><span class="num" style="background:var(--box)">4</span><h2 id="b4">돌리기</h2><span class="tag t-bb">블랙박스 OK</span></div>
+  <p class="one">③에서 정한 회전 속도만큼, <b>이번 프레임 시간(DeltaTime)어치</b> 종이를 돌린다.</p>
+  <div class="figs">
+    <figure>
+      <svg viewBox="0 0 300 200" role="img" aria-label="이번 프레임 전 종이에서 회전 속도 곱하기 DeltaTime만큼 돌아간 종이">
+        <defs><marker id="a6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+        <line x1="72" y1="155" x2="228" y2="65" stroke="var(--box)" stroke-width="5" stroke-linecap="round" opacity=".35"/>
+        <line x1="64.4" y1="137.8" x2="235.6" y2="82.2" stroke="var(--fg)" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="150" cy="110" r="8" fill="none" stroke="var(--spin)" stroke-width="2"/>
+        <circle cx="150" cy="110" r="2.2" fill="var(--spin)"/>
+        <path d="M236 56 Q252 64 248 80" fill="none" stroke="var(--spin)" stroke-width="2" marker-end="url(#a6)"/>
+        <text class="sm" x="228" y="44" text-anchor="end">Q (전)</text>
+        <text class="sm" x="246" y="100">OutQuat (후)</text>
+        <text class="sm" x="150" y="186" text-anchor="middle">돈 각도 = 회전 속도의 길이 × DeltaTime</text>
+      </svg>
+      <figcaption>60fps면 한 프레임에 아주 조금씩. 이게 매 프레임 쌓여서 펄럭이고, 눕습니다</figcaption>
+    </figure>
+    <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+<pre><span class="c-mu">// 회전값에 누적</span>
+float3 dq  = Q.w * OutAngVel + cross(OutAngVel, Q.xyz);
+float  dqw = -dot(OutAngVel, Q.xyz);
+OutQuat = normalize(Q + 0.5f * DeltaTime * float4(dq, dqw));</pre>
+      <p class="note">위치에서 <code>Pos += Vel * dt</code>를 하듯, 회전에서 "회전값 += 회전 속도 × dt"를 하는 것입니다. 쿼터니언이라 모양이 복잡할 뿐입니다. <code>normalize</code>는 계산 오차로 회전값이 찌그러지지 않게 크기를 1로 맞추는 줄.</p>
+    </div>
+  </div>
+  <div class="howfar">
+    <b>알아야 할 것</b><span>"회전 속도만큼 이번 프레임 분 돌린다." <code>Vel → Pos</code>와 같은 구조라는 것.</span>
+    <b>몰라도 되는 것</b><span><code>0.5</code>와 <code>dq</code>, <code>dqw</code>가 왜 이런 모양인지.</span>
+    <b>UE C++에선</b><span><code>FQuat Delta(축, 각도); NewQ = Delta * Q;</code></span>
+    <b>Unity에선</b><span><code>q = Quaternion.AngleAxis(각도, 축) * q;</code></span>
+  </div>
+</section>
+
+<!-- whole thing in UE C++ -->
+<section>
+  <h2>같은 일을 UE C++로 쓰면</h2>
+  <p>HLSL이라 낯선 부분이 UE C++ 함수로 바뀌면 어떻게 읽히는지 보는 용도입니다. ①과 ④가 한두 줄로 줄어듭니다. 연습 프로젝트에서 짜게 될 모양에 가깝습니다.</p>
+<pre><span class="c-mu">// 개념용 · 컴파일 확인 안 함</span>
+<span class="c-mu">// ① 방향 구하기</span>
+const FVector N = Q.GetUpVector();
+
+<span class="c-mu">// ② 공기저항</span>
+const FVector Vn = FVector::DotProduct(Vel, N) * N;
+const FVector Vt = Vel - Vn;
+const float KeepN = FMath::Max(0.f, 1.f - NormalDrag * DeltaTime);
+const float KeepT = FMath::Max(0.f, 1.f - PlaneDrag  * DeltaTime);
+OutVel = Vn * KeepN + Vt * KeepT;
+
+<span class="c-mu">// ③ 회전 속도</span>
+if (bLanded)
+{
+    const FVector FlatN(0.f, 0.f, N.Z >= 0.f ? 1.f : -1.f);
+    OutAngVel = FVector::CrossProduct(N, FlatN) * SettleSpeed;
+}
+else
+{
+    const FVector V = Vel * 0.01f;
+    const FVector Torque = FVector::DotProduct(N, V) * FVector::CrossProduct(N, V) * FlipStrength;
+    const float KeepSpin = FMath::Max(0.f, 1.f - SpinDrag * DeltaTime);
+    OutAngVel = (AngVel + Torque * DeltaTime) * KeepSpin;
+}
+
+<span class="c-mu">// ④ 돌리기</span>
+const float Speed = OutAngVel.Size();
+if (Speed > KINDA_SMALL_NUMBER)
+{
+    const FQuat Delta(OutAngVel / Speed, Speed * DeltaTime);   <span class="c-mu">// 축, 각도(라디안)</span>
+    OutQuat = (Delta * Q).GetNormalized();
+}</pre>
+  <p class="note">C++에서는 <code>if</code>를 그냥 쓰면 됩니다. HLSL에서 <code>air</code>, <code>Landed</code>를 곱했던 건 Niagara CPU에서 <code>if</code> 안 벡터 대입이 안 되기 때문이었습니다.</p>
+</section>
+
+<!-- pins and values -->
+<section>
+  <h2>핀과 값</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Custom HLSL 쪽</th><th>핀 (자료형)</th><th>연결</th></tr></thead>
+    <tbody>
+      <tr><td>왼쪽(입력)</td><td><code>Q</code> (Quat)</td><td>← PARTICLES <code>MeshOrientation</code></td></tr>
+      <tr><td>왼쪽(입력)</td><td><code>Vel</code> (Vector)</td><td>← PARTICLES <code>Velocity</code></td></tr>
+      <tr><td>왼쪽(입력)</td><td><code>AngVel</code> (Vector)</td><td>← PARTICLES <code>AngVel</code></td></tr>
+      <tr><td>왼쪽(입력)</td><td><code>Landed</code> (float)</td><td>← PARTICLES <code>Landed</code> (PaperSim이 씀)</td></tr>
+      <tr><td>왼쪽(입력)</td><td><code>DeltaTime</code> (float)</td><td>← ENGINE <code>DeltaTime</code></td></tr>
+      <tr><td>왼쪽(입력)</td><td><code>NormalDrag</code>, <code>PlaneDrag</code>, <code>FlipStrength</code>, <code>SpinDrag</code>, <code>SettleSpeed</code> (float)</td><td>← INPUT (스택 Details에서 값 입력)</td></tr>
+      <tr><td>오른쪽(출력)</td><td><code>N</code> (Vector)</td><td>→ PARTICLES <code>PaperNormal</code></td></tr>
+      <tr><td>오른쪽(출력)</td><td><code>OutVel</code> (Vector)</td><td>→ PARTICLES <code>Velocity</code></td></tr>
+      <tr><td>오른쪽(출력)</td><td><code>OutAngVel</code> (Vector)</td><td>→ PARTICLES <code>AngVel</code></td></tr>
+      <tr><td>오른쪽(출력)</td><td><code>OutQuat</code> (Quat)</td><td>→ PARTICLES <code>MeshOrientation</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="tbl"><table>
+    <thead><tr><th>INPUT</th><th>지금</th><th>덩어리</th><th>키우면</th></tr></thead>
+    <tbody>
+      <tr><td><code>NormalDrag</code></td><td>8</td><td>②</td><td>더 둥둥, 옆으로 더 미끄러짐</td></tr>
+      <tr><td><code>PlaneDrag</code></td><td>0.5</td><td>②</td><td>덜 미끄러짐</td></tr>
+      <tr><td><code>FlipStrength</code></td><td>30</td><td>③ 공중</td><td>더 세게 흔들림</td></tr>
+      <tr><td><code>SpinDrag</code></td><td>3</td><td>③ 공중</td><td>흔들림이 빨리 잦아듦</td></tr>
+      <tr><td><code>SettleSpeed</code></td><td>8</td><td>③ 바닥</td><td>빨리 눕기 (60 넘으면 떨림 위험)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- experiments -->
+<section>
+  <h2>이해가 안 될 때: 돌려 보기</h2>
+  <p>지금까지 "아, 이거구나" 했던 순간은 전부 직접 돌려 봤을 때였습니다. 한 번에 하나만 바꾸고, 보고 나면 원래 값으로 돌려 둡니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>바꿀 것</th><th>보일 것</th><th>알게 되는 것</th></tr></thead>
+    <tbody>
+      <tr><td>NormalDrag 0 → 50</td><td>0: 돌멩이처럼 뚝 / 50: 기울어진 대로 퍼지며 둥둥</td><td>② 뚫는 쪽 브레이크</td></tr>
+      <tr><td>PlaneDrag 0 (FlipStrength도 0)</td><td>한 방향으로 점점 빨라짐</td><td>② 비탈 쪽 브레이크가 속력 한계를 만든다</td></tr>
+      <tr><td>FlipStrength 0</td><td>기울어진 채 한쪽으로만 미끄러짐, 안 흔들림</td><td>③ torque가 흔들림을 만든다</td></tr>
+      <tr><td>FlipStrength 150</td><td>팽글팽글 과하게 뒤집힘</td><td>③ 비트는 세기</td></tr>
+      <tr><td>SpinDrag 0 / 20</td><td>0: 계속 돎 / 20: 금방 잠잠</td><td>③ 회전 브레이크</td></tr>
+      <tr><td>PaperSpawnInit의 TiltDeg를 0~0으로</td><td>평평하게 떨어지면 안 흔들림</td><td>③ 위 그래프의 "평평하면 0"</td></tr>
+      <tr><td>SettleSpeed 0 / 50</td><td>0: 비스듬히 박힘 / 50: 닿자마자 납작</td><td>③ 바닥 쪽</td></tr>
+      <tr><td><code>cross(N, flatN)</code> → <code>cross(flatN, N)</code></td><td>바닥에서 눕지 않고 <b>세워지는 쪽</b>으로 넘어감</td><td>외적은 순서를 바꾸면 축이 반대</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- how far -->
+<section>
+  <h2>어디까지 알면 되나</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>층</th><th>범위</th><th>이 지도에서</th></tr></thead>
+    <tbody>
+      <tr><td>1층 · 직접 쓸 수 있어야</td><td>속도 쪼개기, 감쇠 비율, 0/1 곱해서 고르기, "회전 속도 = 축 화살표"</td><td>② 전체, ③의 바닥 쪽과 고르기</td></tr>
+      <tr><td>2층 · 말로 설명</td><td>외적 = 경첩 축(순서 바꾸면 반대), torque = 정면 정도 × 비틀리는 축, 지그재그 고리</td><td>③의 <code>torque</code>, <code>settle</code></td></tr>
+      <tr><td>3층 · 블랙박스</td><td>쿼터니언으로 방향 구하기, 회전 누적 공식</td><td>①, ④</td></tr>
+    </tbody>
+  </table></div>
+  <p>2층은 연습 프로젝트 2번(맞은 방향: 외적의 부호)과 4번(포탑 회전: 외적 + 쿼터니언)을 C++로 짜 보면서 손에 붙입니다. 그 뒤에 이 지도를 다시 보면 ③이 훨씬 쉽게 읽힐 겁니다.</p>
+</section>
+</main>
