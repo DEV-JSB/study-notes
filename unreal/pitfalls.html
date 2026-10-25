@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>언리얼 함정 모음</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: symptom index first (that is how you arrive here), then one card per pitfall: symptom, wrong guess, cause, fix */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --ok:#178a66; --bad:#d23b3b; --info:#2f6fd0; --warn:#d2552a;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;padding-inline:16px;padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0;text-wrap:balance}
+h3{font-size:13px;font-weight:500;letter-spacing:.06em;color:var(--muted);margin:8px 0 0;font-family:var(--mono)}
+p{margin:0;max-width:68ch}
+a{color:var(--info)}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px}
+.grid{display:grid;grid-template-columns:96px minmax(0,1fr);gap:6px 14px;font-size:15px}
+.grid dt{color:var(--muted);font-size:13px;padding-top:2px}
+.grid dd{margin:0}
+@media (max-width:520px){.grid{grid-template-columns:minmax(0,1fr)}.grid dt{padding-top:6px}}
+.src{font-size:12px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+.grid dd,.grid dt{min-width:0}
+pre{font-family:var(--mono);font-size:13.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0;overflow-x:auto;line-height:1.6}
+.bad{color:var(--bad)} .ok{color:var(--ok)} .mut{color:var(--muted)} .inf{color:var(--info)}
+svg{width:100%;height:auto;display:block}
+ul{margin:0;padding-left:20px}
+.tag{font-family:var(--mono);font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 6px}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">Unreal · UE 5.4 · 겪을 때마다 한 줄씩</span>
+  <h1>언리얼 함정 모음</h1>
+  <p class="lead">처음 떠오르는 건 정답이 아니라 <b>증상</b>이라서, 증상으로 찾을 수 있게 모았습니다. 카드마다 증상 → 처음에 의심한 것 → 진짜 원인 → 해결 순서예요.</p>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:10px">
+  <h2>증상으로 찾기</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>이런 일이 생기면</th><th>여기부터</th></tr></thead>
+    <tbody>
+      <tr><td>컴파일도 되고 함수도 맞는데 이벤트 함수가 안 불린다</td><td><a href="#adddynamic">생성자에서 AddDynamic</a></td></tr>
+      <tr><td>헤더에 추가한 UPROPERTY가 Details에 안 보인다</td><td><a href="#livecoding">헤더 변경과 Live Coding</a></td></tr>
+      <tr><td>Details에서 값을 바꿔도 반영이 안 된다</td><td><a href="#ctor-order">생성자는 Details 값보다 먼저 돈다</a></td></tr>
+      <tr><td>액터가 도는데 방향 벡터는 안 돈다</td><td><a href="#static-vec">FVector::ForwardVector는 상수</a></td></tr>
+      <tr><td>각도 판정이 항상 true / 엉뚱한 쪽을 잡는다</td><td><a href="#units">도·라디안·cos 섞기</a></td></tr>
+      <tr><td>Overlap 이벤트가 안 일어난다</td><td><a href="#collision">충돌 반응은 약한 쪽</a></td></tr>
+      <tr><td>Collision Presets에 만든 채널이 없다</td><td><a href="#collision">Preset ≠ Object Channel</a></td></tr>
+      <tr><td>델리게이트에 연결할 함수의 매개변수를 모르겠다</td><td><a href="#params">~Params 매크로 읽기</a></td></tr>
+      <tr><td><code>No viable operator=</code> 긴 에러</td><td><a href="#parent-ptr">부모 포인터 → 자식 변수</a></td></tr>
+      <tr><td><code>Cannot resolve symbol 'override'</code></td><td><a href="#override">override 위치</a></td></tr>
+      <tr><td>UE_LOG가 컴파일 안 되거나 글자가 깨진다</td><td><a href="#uelog">TEXT() 괄호와 *</a></td></tr>
+      <tr><td>에셋이 LFS로 들어가는지 모르겠다</td><td><a href="#lfs">.gitattributes 확인</a></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- 1 -->
+<article class="card" id="adddynamic">
+  <h2>생성자에서 <code>AddDynamic</code> → 조용히 안 불림</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>Overlap 함수 내용도 맞고 컴파일도 되는데, 타겟이 들어와도 로그가 안 뜬다</dd>
+    <dt>처음 의심</dt><dd><span class="mut">헤더를 Live Coding으로 반영해서 → 풀 빌드로 실험 → 그래도 안 됨 → 기각</span></dd>
+    <dt>원인</dt><dd>이벤트와 함수를 잇는 <code>AddDynamic</code>을 <b>생성자</b>에서 했다. 연결 정보가 BP 에셋(<code>BP_Turret.uasset</code>)에 같이 저장되고, 레벨에 놓인 터렛에서는 제대로 안 살아났다 (엔진 내부의 정확한 단계는 확실치 않음)</dd>
+    <dt>해결</dt><dd><code>BeginPlay</code>로 한 줄 옮김 → 바로 로그가 떴다</dd>
+  </dl>
+  <svg viewBox="0 0 640 150" role="img" aria-label="겹침 발생, 이벤트 연결, 함수 내용 세 칸 중 가운데 연결에서 끊김">
+    <rect x="10" y="40" width="170" height="64" rx="10" fill="none" stroke="var(--ok)" stroke-width="2"/>
+    <text x="95" y="68" text-anchor="middle" fill="var(--fg)" font-size="14">① 겹침이 일어나나</text>
+    <text x="95" y="90" text-anchor="middle" fill="var(--ok)" font-size="13">✓ 엔진</text>
+    <rect x="235" y="40" width="170" height="64" rx="10" fill="none" stroke="var(--bad)" stroke-width="2.5"/>
+    <text x="320" y="68" text-anchor="middle" fill="var(--fg)" font-size="14">② 내 함수에 연결됐나</text>
+    <text x="320" y="90" text-anchor="middle" fill="var(--bad)" font-size="13">✗ 생성자 AddDynamic</text>
+    <rect x="460" y="40" width="170" height="64" rx="10" fill="none" stroke="var(--ok)" stroke-width="2"/>
+    <text x="545" y="68" text-anchor="middle" fill="var(--fg)" font-size="14">③ 함수 내용</text>
+    <text x="545" y="90" text-anchor="middle" fill="var(--ok)" font-size="13">✓ 로그 코드</text>
+    <line x1="180" y1="72" x2="232" y2="72" stroke="var(--muted)" stroke-width="2"/>
+    <line x1="405" y1="72" x2="430" y2="72" stroke="var(--muted)" stroke-width="2"/>
+    <line x1="438" y1="64" x2="452" y2="80" stroke="var(--bad)" stroke-width="2.5"/>
+    <line x1="452" y1="64" x2="438" y2="80" stroke="var(--bad)" stroke-width="2.5"/>
+    <text x="320" y="136" text-anchor="middle" fill="var(--muted)" font-size="12">함수가 맞는 것(③)과 함수가 불리는 것(②)은 별개</text>
+  </svg>
+  <pre><span class="bad">// ✗ 생성자</span>
+ATurret::ATurret() { ... DetectSphere->OnComponentBeginOverlap.AddDynamic(this, &amp;ATurret::OnSphereTriggerEnter); }
+
+<span class="ok">// ✓ BeginPlay</span>
+void ATurret::BeginPlay()
+{
+	Super::BeginPlay();
+	DetectSphere->OnComponentBeginOverlap.AddDynamic(this, &amp;ATurret::OnSphereTriggerEnter);
+	DetectSphere->OnComponentEndOverlap.AddDynamic(this, &amp;ATurret::OnSphereTriggerExit);
+}</pre>
+  <p><b>찾은 방법</b>: 가설 하나에 실험 하나. 한 번에 여러 개를 고쳤다면 무엇이 원인인지 몰랐다. 막히면 양쪽(타겟 BP의 Event ActorBeginOverlap → Print String)에서 동시에 관찰해 ①과 ②를 가를 수도 있다.</p>
+  <p class="src">커뮤니티 표준 · 2026-10-25 레이더 터렛 <span class="tag">BeginPlay / PostInitializeComponents</span></p>
+</article>
+
+<!-- 2 -->
+<article class="card" id="livecoding">
+  <h2>헤더 변경과 Live Coding</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>헤더에 <code>UPROPERTY</code>를 추가했는데 Details에 안 보인다. Output Log에 <code>Live coding failed</code>, <code>data type changes may cause...</code></dd>
+    <dt>원인</dt><dd>마지막 진짜 빌드(<code>UnrealEditor-GameMathLab.dll</code>)보다 헤더가 나중에 바뀌었고, 반영은 Live Coding 패치(<code>patch_N.exe</code>)로만 됐다</dd>
+    <dt>해결</dt><dd>에디터를 끄고 IDE에서 Development Editor / Win64 빌드 → <code>.dll</code> 시간이 방금인지 확인</dd>
+  </dl>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>말</th><th>출처</th></tr></thead>
+    <tbody>
+      <tr><td>UE5 Live Coding은 <b>재인스턴싱</b>이 켜져 있으면 새 함수·변수 같은 큰 변경도 반영하려고 한다. 꺼져 있으면 예측 불가, 대개 크래시</td><td>Epic 공식 문서</td></tr>
+      <tr><td>그래도 헤더(UPROPERTY / UFUNCTION / 새 클래스)를 바꾸면 끄고 빌드하는 게 <b>안전하다</b></td><td>커뮤니티 표준 (규칙 아님)</td></tr>
+      <tr><td><code>.cpp</code> 함수 안쪽, <code>.cpp</code>의 <code>#include</code> 추가는 Live Coding으로 충분</td><td>커뮤니티 표준</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><b>스스로 확인하는 법</b>: 안 될 때는 Output Log를 위로 올려 빨강(Error)·노랑(Warning)부터. <code>Binaries/Win64</code>의 <code>.dll</code>과 <code>patch_N.exe</code> 시간을 소스 파일 시간과 비교.</p>
+  <p class="src">"헤더 바꾸면 무조건 재시작"은 과장이었다. "확실해?"라고 물어서 Epic 문서로 바로잡음</p>
+</article>
+
+<!-- 3 -->
+<article class="card" id="ctor-order">
+  <h2>생성자는 Details 값보다 먼저 돈다</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>Details에서 <code>DetectRadius</code>를 바꿔도 구 크기가 그대로. <code>DetectDeg</code>를 바꿔도 판정 기준이 그대로</dd>
+    <dt>처음 의심</dt><dd><span class="mut">"생성자라서 float이 아직 초기화 안 됐다" → 아님. <code>float X = 90.f;</code>는 생성자 본문보다 먼저 들어간다</span></dd>
+    <dt>원인</dt><dd>늦게 오는 건 <b>Details에서 바꾼 값</b>이다</dd>
+    <dt>해결</dt><dd>Details 값을 쓰는 계산은 <code>OnConstruction</code>(에디터에서 값 바꿀 때마다) 또는 <code>BeginPlay</code>(게임 시작 때 한 번)</dd>
+  </dl>
+  <svg viewBox="0 0 640 170" role="img" aria-label="시간 순서: C++ 기본값, 생성자, Details 값 덮어쓰기, OnConstruction, BeginPlay">
+    <line x1="30" y1="60" x2="620" y2="60" stroke="var(--line)" stroke-width="3"/>
+    <g font-size="13" text-anchor="middle">
+      <circle cx="70" cy="60" r="8" fill="var(--muted)"/><text x="70" y="36" fill="var(--fg)">① C++ 기본값</text><text x="70" y="90" fill="var(--muted)">= 90.f</text>
+      <circle cx="190" cy="60" r="8" fill="var(--bad)"/><text x="190" y="36" fill="var(--bad)">② 생성자</text><text x="190" y="90" fill="var(--bad)">여기서 쓰면 90으로 굳음</text>
+      <circle cx="330" cy="60" r="8" fill="var(--info)"/><text x="330" y="36" fill="var(--info)">③ Details 값</text><text x="330" y="90" fill="var(--info)">= 1000 덮어씀</text>
+      <circle cx="450" cy="60" r="8" fill="var(--ok)"/><text x="450" y="36" fill="var(--ok)">④ OnConstruction</text><text x="450" y="90" fill="var(--ok)">1000을 봄</text>
+      <circle cx="570" cy="60" r="8" fill="var(--ok)"/><text x="570" y="36" fill="var(--ok)">⑤ BeginPlay</text><text x="570" y="90" fill="var(--ok)">1000을 봄</text>
+    </g>
+    <text x="320" y="140" text-anchor="middle" fill="var(--muted)" font-size="12">생성자 = 클래스의 기본 모습(설계도)을 만드는 곳. 레벨의 이 터렛 하나의 값은 그 뒤에 들어온다</text>
+  </svg>
+  <ul>
+    <li><code>InitSphereRadius</code>는 생성자 전용, 그 외엔 <code>SetSphereRadius</code> (겹침 상태까지 갱신)</li>
+    <li>값은 한 곳에서만: 탐지 거리는 <code>DetectRadius</code> 하나, 구는 그걸 따라가기만</li>
+  </ul>
+  <p class="src">Epic 공식 (OnConstruction = C++ Construction Script) · <code>DetectRadius</code>에서 배우고 <code>DetectCos</code>에서 또 만남</p>
+</article>
+
+<!-- 4 -->
+<article class="card" id="static-vec">
+  <h2><code>FVector::ForwardVector</code>는 언제나 (1, 0, 0)</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>터렛은 도는데 원뿔 판정 방향은 한쪽에 고정</dd>
+    <dt>원인</dt><dd><code>GetTransform().GetLocation().ForwardVector</code> — <code>ForwardVector</code>는 <b>static 상수</b>. C++은 static 멤버를 아무 벡터 뒤에 <code>.</code>으로 붙여도 컴파일되고, 앞의 값과 상관없이 월드 X축이 나온다</dd>
+    <dt>해결</dt><dd><code>GetActorForwardVector()</code> / <code>GetActorRightVector()</code> / <code>GetActorUpVector()</code></dd>
+  </dl>
+  <svg viewBox="0 0 640 160" role="img" aria-label="터렛이 회전해도 FVector ForwardVector 화살표는 그대로, GetActorForwardVector는 같이 회전">
+    <g>
+      <circle cx="140" cy="80" r="44" fill="none" stroke="var(--line)" stroke-dasharray="4 4"/>
+      <circle cx="140" cy="80" r="8" fill="var(--panel)" stroke="var(--fg)" stroke-width="2"/>
+      <line x1="140" y1="80" x2="210" y2="80" stroke="var(--bad)" stroke-width="4"/>
+      <text x="140" y="150" text-anchor="middle" fill="var(--bad)" font-size="13">FVector::ForwardVector — 늘 →</text>
+    </g>
+    <g>
+      <circle cx="470" cy="80" r="44" fill="none" stroke="var(--line)" stroke-dasharray="4 4"/>
+      <circle cx="470" cy="80" r="8" fill="var(--panel)" stroke="var(--fg)" stroke-width="2"/>
+      <line x1="470" y1="80" x2="520" y2="30" stroke="var(--ok)" stroke-width="4"/>
+      <path d="M 512 68 A 44 44 0 0 0 503 47" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
+      <text x="470" y="150" text-anchor="middle" fill="var(--ok)" font-size="13">GetActorForwardVector() — 터렛과 같이 돎</text>
+    </g>
+  </svg>
+  <p class="src">Epic 공식 · 같은 함정: <code>FVector::RightVector</code>(월드) vs <code>GetActorRightVector()</code>(터렛)</p>
+</article>
+
+<!-- 5 -->
+<article class="card" id="units">
+  <h2>도·라디안·cos 섞기</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>원뿔 판정이 정면·옆·뒤 전부 true, 또는 정면은 못 잡고 옆을 잡음</dd>
+    <dt>원인</dt><dd>내적 결과(cos 값, -1~1)를 도(45)와 비교 / cos 값을 라디안인 줄 알고 <code>RadiansToDegrees</code> / <code>DegreesToRadians</code>까지만 하고 Cos 빠뜨림 / 부등호 반대 / <code>Abs</code>로 뒤쪽을 앞쪽으로 바꿈</dd>
+    <dt>해결</dt><dd><code>DetectCos = FMath::Cos(FMath::DegreesToRadians(DetectDeg));</code> 후 <code>DetectCos &lt;= Result</code></dd>
+  </dl>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>함수</th><th>받는 단위</th></tr></thead>
+    <tbody>
+      <tr><td><code>FMath::Cos</code>, <code>FMath::Acos</code> 결과, <code>FQuat(Axis, Angle)</code></td><td>라디안</td></tr>
+      <tr><td><code>V.RotateAngleAxis(AngleDeg, Axis)</code>, <code>FRotator(Pitch, Yaw, Roll)</code></td><td>도</td></tr>
+      <tr><td><code>FVector::DotProduct</code> 결과 (길이 1끼리)</td><td>각도 아님. cos 값</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><b>잡는 법</b>: 손 계산 검증. 정면 1, 옆 0, 뒤 -1을 넣어 따라가기. 값은 두세 개 — 45°에서는 라디안 0.785와 cos 0.707이 우연히 비슷해서 버그가 숨는다. 처음 쓰는 함수는 매개변수 이름(<code>AngleDeg</code>)부터 확인. 자세한 그림은 <a href="../game-math/radar-cone.html">레이더 원뿔 판정</a>.</p>
+</article>
+
+<!-- 6 -->
+<article class="card" id="collision">
+  <h2>충돌: Preset ≠ Object Channel, 반응은 약한 쪽</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>새로 만든 채널 <code>Target</code>이 Collision Presets 목록에 없다</dd>
+    <dt>원인</dt><dd>Preset은 "설정 묶음". Object Channel은 "나는 어떤 종류인가". Presets를 <b>Custom...</b>으로 바꾸면 나오는 <b>Object Type</b> 칸에 있다</dd>
+  </dl>
+  <svg viewBox="0 0 640 140" role="img" aria-label="구는 Target에 Overlap, 큐브는 WorldDynamic에 Block, 둘 중 약한 Overlap으로 결정">
+    <rect x="10" y="20" width="250" height="74" rx="10" fill="none" stroke="var(--info)" stroke-width="2"/>
+    <text x="135" y="46" text-anchor="middle" fill="var(--fg)" font-size="14">탐지 구 (WorldDynamic)</text>
+    <text x="135" y="72" text-anchor="middle" fill="var(--info)" font-size="13">→ Target: Overlap</text>
+    <rect x="380" y="20" width="250" height="74" rx="10" fill="none" stroke="var(--info)" stroke-width="2"/>
+    <text x="505" y="46" text-anchor="middle" fill="var(--fg)" font-size="14">타겟 큐브 (Target)</text>
+    <text x="505" y="72" text-anchor="middle" fill="var(--info)" font-size="13">→ WorldDynamic: Block</text>
+    <text x="320" y="62" text-anchor="middle" fill="var(--ok)" font-size="15" font-weight="500">= Overlap</text>
+    <text x="320" y="124" text-anchor="middle" fill="var(--muted)" font-size="12">Ignore &lt; Overlap &lt; Block — 둘 중 약한 쪽. 한쪽이라도 Ignore면 아무 일도 없다</text>
+  </svg>
+  <ul>
+    <li>Overlap은 양쪽 다 <b>Generate Overlap Events</b>가 켜져 있어야 한다</li>
+    <li>이벤트는 <b>게임이 돌 때만</b> 일어난다. Play 전에 에디터에서 옮기면 안 일어남. Play 중 <b>F8</b>로 빠져나와 옮기면 일어남</li>
+    <li>C++에서는 채널을 번호로 부른다(<code>ECC_GameTraceChannel1</code>). 번호는 <code>Config/DefaultEngine.ini</code>의 <code>Name="Target"</code> 줄. <code>#define ECC_Target ECC_GameTraceChannel1</code>로 이름 붙이기. <code>DefaultEngine.ini</code>는 커밋 필수</li>
+  </ul>
+  <p class="src">Epic 공식</p>
+</article>
+
+<!-- 7 -->
+<article class="card" id="params">
+  <h2>델리게이트 매개변수: <code>~Params</code> 매크로 읽기</h2>
+  <p>함수 이름(<code>OnComponentEndOverlap</code>)에서 F12 → 선언 매크로로.</p>
+  <pre>DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_<span class="ok">FourParams</span>(
+    <span class="mut">FComponentEndOverlapSignature,   // 이름표: 델리게이트 자료형</span>
+    <span class="mut">UPrimitiveComponent,             // 이름표: 가진 클래스</span>
+    <span class="mut">OnComponentEndOverlap,           // 이름표: 변수 이름</span>
+    <span class="inf">UPrimitiveComponent*, OverlappedComponent,</span>   // 쌍 1
+    <span class="inf">AActor*,              OtherActor,</span>            // 쌍 2
+    <span class="inf">UPrimitiveComponent*, OtherComp,</span>             // 쌍 3
+    <span class="inf">int32,                OtherBodyIndex</span>         // 쌍 4
+);
+
+<span class="ok">void OnSphereTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* Other, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);</span></pre>
+  <ul>
+    <li><b><code>FourParams</code> = (자료형, 이름) 쌍 4개.</b> Begin은 <code>SixParams</code>라 <code>bool bFromSweep</code>, <code>const FHitResult&amp; SweepResult</code>가 더 있음</li>
+    <li>자료형과 순서는 정확히, 이름은 자유. 함수에는 <code>UFUNCTION()</code></li>
+    <li><code>SPARSE</code>가 붙은 건 이름표 3개, 일반 <code>DECLARE_DYNAMIC_MULTICAST_DELEGATE_~Params</code>는 이름표 1개</li>
+  </ul>
+  <p class="src">Epic 공식 · 모든 델리게이트(OnComponentHit, OnClicked …)에 같은 방법</p>
+</article>
+
+<!-- 8 -->
+<article class="card" id="parent-ptr">
+  <h2>부모 포인터 → 자식 변수: <code>No viable operator=</code></h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>긴 에러: <code>No viable operator= matches arguments of type TObjectPtr&lt;USphereComponent&gt; and UShapeComponent*</code></dd>
+    <dt>원인</dt><dd>자동완성이 <code>CreateDefaultSubobject&lt;UShapeComponent&gt;</code>를 골랐다. <code>CreateDefaultSubobject&lt;T&gt;</code>는 <code>T*</code>를 돌려주고, 부모(Shape)를 자식(Sphere) 변수에 그냥 못 넣는다</dd>
+    <dt>읽는 법</dt><dd>첫 줄만: "왼쪽(변수)에 오른쪽(값)을 넣을 방법이 없다" → 양쪽 자료형 비교. <code>Candidates considered</code> 이하는 처음엔 건너뛰기</dd>
+  </dl>
+  <pre>UPrimitiveComponent
+  └─ UShapeComponent        ← 부모: 구일 수도, 박스일 수도
+       ├─ USphereComponent  ← 자식
+       ├─ UBoxComponent
+       └─ UCapsuleComponent</pre>
+  <p class="src">유니티에서 <code>Collider</code>를 캐스트 없이 <code>SphereCollider</code> 변수에 넣으려는 것과 같은 에러</p>
+</article>
+
+<!-- 9 -->
+<article class="card" id="override">
+  <h2><code>override</code>는 뒤에 (C# 습관)</h2>
+  <pre><span class="bad">override void OnConstruction(const FTransform&amp; Transform);           // C# 모양 → Cannot resolve symbol</span>
+<span class="ok">virtual void OnConstruction(const FTransform&amp; Transform) override;   // C++</span></pre>
+  <ul>
+    <li>같은 헤더의 <code>virtual void BeginPlay() override;</code>가 정답 모양. 헷갈리면 엔진이 만들어 준 코드를 따라 하기</li>
+    <li><code>.cpp</code> 정의에는 <code>virtual</code>/<code>override</code>를 안 붙이고, 본문 첫 줄에 <code>Super::OnConstruction(Transform);</code></li>
+  </ul>
+</article>
+
+<!-- 10 -->
+<article class="card" id="uelog">
+  <h2><code>UE_LOG</code>: <code>TEXT()</code>는 글자만, <code>FString</code>엔 <code>*</code></h2>
+  <pre><span class="bad">UE_LOG(LogTemp, Warning, TEXT("Enter(%s)", Other-&gt;GetName()));</span>
+<span class="ok">UE_LOG(LogTemp, Warning, TEXT("Enter(%s)"), *Other-&gt;GetName());</span></pre>
+  <ul>
+    <li><code>TEXT()</code>는 따옴표 글자 하나만 감싸는 매크로. 값은 <code>UE_LOG</code>의 다음 인자</li>
+    <li><code>%s</code>는 <code>TCHAR*</code>를 받는다. <code>FString</code> 앞의 <code>*</code> = 안의 글자 배열 꺼내기 (곱하기 아님)</li>
+    <li>화면에 띄우기: <code>if (GEngine) { GEngine-&gt;AddOnScreenDebugMessage(키, 초, 색, 문자열); }</code> + <code>#include "Engine/Engine.h"</code>. 키 -1 = 쌓임, 양수 = 같은 줄 덮어쓰기(매 프레임 값)</li>
+    <li>쓰는 헤더는 직접 include (IWYU). 우연히 되는 건 나중에 갑자기 깨진다</li>
+  </ul>
+  <p class="src">Epic 공식</p>
+</article>
+
+<!-- 11 -->
+<article class="card" id="lfs">
+  <h2><code>.gitattributes</code>에 LFS 규칙이 없었다</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>겉으로는 없음. 그대로 커밋했으면 <code>.uasset</code>/<code>.umap</code>이 일반 git에 들어가 레포가 무거워짐</dd>
+    <dt>원인</dt><dd>GitHub가 만든 기본 <code>.gitattributes</code>(<code>* text=auto</code>)만 있었다</dd>
+    <dt>해결</dt><dd><code>*.uasset filter=lfs diff=lfs merge=lfs -text</code> 등 추가 + 레포에서 <code>git lfs install</code>(push 훅 설치)</dd>
+  </dl>
+  <pre>git check-attr filter -- Content/TurretLevel/BP_Turret.uasset   # → filter: lfs 이면 OK
+git lfs status                                                 # add 후, 커밋 전에
+git lfs ls-files                                               # 커밋 후</pre>
+  <p class="src"><code>.gitattributes</code>는 에셋보다 먼저(같은 커밋이면 OK) 들어가야 한다</p>
+</article>
+
+<!-- 12 -->
+<article class="card">
+  <h2>작은 것들</h2>
+  <ul>
+    <li><b>Pawn vs Actor</b>: Pawn = Controller(Player <b>또는 AI</b>)가 조종할 수 있는 것. 조종할 필요 없는 터렛·타겟은 Actor. 블루프린트 부모는 편집기 오른쪽 위 <code>Parent class:</code></li>
+    <li><b><code>FRotator</code> 순서</b>: (Pitch, <b>Yaw</b>, Roll). 수평 회전은 두 번째 칸. <code>DeltaTime</code> 곱하기 잊지 않기</li>
+    <li><b>Yaw / Pitch / Roll</b>: Z(위) / Y(오른쪽) / X(앞)이 경첩</li>
+    <li><b>Yaw 표시</b>: 180 다음에 -180으로 튄다. 버그 아님</li>
+    <li><b>지역 변수도 PascalCase</b>: <code>result</code> ✗ → <code>Result</code> (Epic 코딩 표준)</li>
+    <li><b>bool은 <code>b</code> 접두사</b>: <code>bHasLostLock</code></li>
+    <li><b>UPROPERTY엔 초기값</b>: <code>float RotateSpeedDeg = 90.f;</code></li>
+    <li><b>남의 액터 기억하기</b>: <code>TSet&lt;TWeakObjectPtr&lt;AActor&gt;&gt;</code> — 사라지면 자동 무효, 꺼낼 때 <code>IsValid()</code></li>
+    <li><b>C++ 클래스 생성</b>: 이름에 <code>A</code>를 빼고 입력 (<code>Turret</code> → <code>ATurret</code>). 이름은 나중에 바꾸기 번거롭다</li>
+    <li><b>파일이 없다는 include 에러</b>: 철자(<code>Shpere</code>) → 폴더 → 모듈 순서로</li>
+  </ul>
+</article>
+
+<section>
+  <h2 style="margin-bottom:8px">더 보기</h2>
+  <ul>
+    <li><a href="../game-math/radar-cone.html">레이더 원뿔 판정</a> — 내적 판정을 직접 돌려 보기</li>
+    <li><a href="https://github.com/DEV-JSB/study-notes/blob/main/gamemathlab/devlog/2026-10-25-GameMathLab.md">2026-10-25 개발 일지</a> — 이 함정들을 겪은 날</li>
+  </ul>
+</section>
+</main>
+</body>
+</html>

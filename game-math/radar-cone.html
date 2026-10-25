@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>레이더 원뿔 판정</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: single reading column; one live radar lab first, then the static explanations it relies on */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --fwd:#178a66; --plus:#d23b3b; --minus:#2f6fd0; --tgt:#8a5cd0; --hit:#d2552a; --shadow:#178a66;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#4cc79c; --plus:#f07070; --minus:#6aa3f0; --tgt:#b48cf0; --hit:#f08a5d; --shadow:#4cc79c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#4cc79c; --plus:#f07070; --minus:#6aa3f0; --tgt:#b48cf0; --hit:#f08a5d; --shadow:#4cc79c; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;padding-inline:16px;padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0 0 8px;text-wrap:balance}
+p{margin:0;max-width:65ch}
+a{color:var(--fwd)}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.def{border-left:3px solid var(--shadow);padding:4px 0 4px 16px;font-size:18px}
+.lab{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctrl label{font-size:14px;color:var(--muted)}
+.ctrl input[type=range]{flex:1;min-width:160px;accent-color:var(--plus)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;padding:4px 12px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--minus);outline-offset:2px}
+.stage{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:640px){.stage{grid-template-columns:minmax(0,1fr)}}
+svg{width:100%;height:auto;display:block}
+#radar{touch-action:none;cursor:crosshair}
+.read{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:4px;font-size:14px}
+.row span:first-child{color:var(--muted)}
+.verdict{font-size:22px;font-weight:500}
+.sub{font-size:14px;color:var(--muted)}
+.pipe{display:grid;grid-template-columns:repeat(5,auto);align-items:center;justify-content:start;gap:8px;overflow-x:auto}
+.box{border:1px solid var(--line);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:2px;min-width:92px}
+.box b{font-family:var(--mono);font-size:20px;font-weight:500}
+.box small{color:var(--muted);font-size:12px}
+.arrow{color:var(--muted);font-size:13px;text-align:center}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+td.num{white-space:nowrap}
+.yes{color:var(--fwd);font-weight:500}
+.no{color:var(--muted)}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0;overflow-x:auto;line-height:1.6}
+ul{margin:0;padding-left:20px}
+.warn{border:1px solid var(--hit);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">GameMathLab · 과정 1 · 레이더 터렛 · 2026-10-25</span>
+  <h1>레이더 원뿔 판정: 그림자가 기준보다 길면 안이다</h1>
+  <p class="lead">제자리에서 도는 터렛이 "타겟이 내 앞 원뿔 안에 있나"를 내적 하나로 판단하는 방법. 위에서 내려다본 레이더를 직접 돌리고 타겟을 끌어 보면서 <code>CheckFireTarget</code>이 하는 일을 숫자로 확인합니다.</p>
+</header>
+
+<section>
+  <p class="def">타겟 방향과 터렛 정면을 둘 다 길이 1로 맞춰 내적한 값(그림자 길이)이 <code>cos(반폭)</code>보다 크거나 같으면 원뿔 안.</p>
+</section>
+
+<section class="lab" aria-labelledby="l1">
+  <h2 id="l1">실험 · 위에서 본 레이더</h2>
+  <p class="sub">보라색 타겟을 끌어서 옮겨 보세요. 화면 오른쪽이 언리얼 +X(정면 시작), 아래가 +Y입니다. 언리얼 Top 뷰와 같은 방향으로 그렸습니다.</p>
+  <div class="ctrl">
+    <label for="half">반폭 <code>DetectDeg</code></label>
+    <input type="range" id="half" min="5" max="90" step="1" value="45">
+    <span id="halfOut" class="num" style="min-width:44px">45°</span>
+  </div>
+  <div class="btns">
+    <button id="play">정지</button>
+    <button data-t="0">정면에 놓기</button>
+    <button data-t="40">40° 옆</button>
+    <button data-t="90">바로 옆</button>
+    <button data-t="180">바로 뒤</button>
+    <button id="far">구 밖으로</button>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--fwd)"></i>정면 (초록)</span>
+    <span><i style="background:var(--plus)"></i>+DetectDeg (빨강)</span>
+    <span><i style="background:var(--minus)"></i>-DetectDeg (파랑)</span>
+    <span><i style="background:var(--line)"></i>탐지 구</span>
+  </div>
+  <div class="stage">
+    <svg id="radar" viewBox="0 0 400 400" role="img" aria-label="위에서 본 터렛. 탐지 구 원, 회전하는 원뿔, 끌어서 옮길 수 있는 타겟">
+      <circle cx="200" cy="200" r="160" fill="none" stroke="var(--line)" stroke-width="2" stroke-dasharray="5 5"/>
+      <path id="wedge" d="" fill="var(--fwd)" fill-opacity=".08" stroke="none"/>
+      <line id="toT" x1="200" y1="200" x2="200" y2="200" stroke="var(--tgt)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <line id="minus" x1="200" y1="200" x2="200" y2="200" stroke="var(--minus)" stroke-width="2.5"/>
+      <line id="plus" x1="200" y1="200" x2="200" y2="200" stroke="var(--plus)" stroke-width="2.5"/>
+      <line id="fwd" x1="200" y1="200" x2="200" y2="200" stroke="var(--fwd)" stroke-width="4"/>
+      <circle cx="200" cy="200" r="9" fill="var(--panel)" stroke="var(--fg)" stroke-width="2"/>
+      <circle id="tgt" cx="300" cy="260" r="11" fill="var(--tgt)" stroke="var(--panel)" stroke-width="2"/>
+      <text x="12" y="390" fill="var(--muted)" font-size="12">점선 원 = 탐지 구 (DetectRadius)</text>
+    </svg>
+    <div class="read">
+      <div class="verdict" id="verdict">—</div>
+      <div class="row"><span>구 안? (거리)</span><span class="num" id="rDist">—</span></div>
+      <div class="row"><span>정규화한 타겟 방향</span><span class="num" id="rDir">—</span></div>
+      <div class="row"><span>터렛 정면</span><span class="num" id="rFwd">—</span></div>
+      <div class="row"><span><code>Result</code> (내적)</span><span class="num" id="rDot">—</span></div>
+      <div class="row"><span><code>DetectCos</code> (기준)</span><span class="num" id="rCos">—</span></div>
+      <div class="row"><span>사이 각도 (참고)</span><span class="num" id="rAng">—</span></div>
+      <div class="row"><span>들어온 순간 횟수</span><span class="num" id="rEnter">0</span></div>
+      <svg id="meter" viewBox="0 0 320 70" role="img" aria-label="-1부터 1까지 눈금 위에 지금 내적값 막대와 기준선">
+        <line x1="20" y1="34" x2="300" y2="34" stroke="var(--line)" stroke-width="10" stroke-linecap="round"/>
+        <rect id="mBar" x="20" y="29" width="0" height="10" rx="3" fill="var(--shadow)"/>
+        <line id="mTh" x1="0" y1="18" x2="0" y2="50" stroke="var(--plus)" stroke-width="2.5"/>
+        <text x="20" y="66" fill="var(--muted)" font-size="11" text-anchor="middle">-1 뒤</text>
+        <text x="160" y="66" fill="var(--muted)" font-size="11" text-anchor="middle">0 옆</text>
+        <text x="300" y="66" fill="var(--muted)" font-size="11" text-anchor="middle">1 정면</text>
+        <text id="mThLbl" x="0" y="13" fill="var(--plus)" font-size="11" text-anchor="middle">기준</text>
+      </svg>
+      <p class="sub">초록 막대(그림자)가 빨간 기준선을 넘으면 원뿔 안입니다. "들어온 순간"은 밖 → 안으로 바뀐 프레임만 셉니다. 나중에 미사일을 한 발만 쏘는 자리예요.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="l2">
+  <h2 id="l2">도 → 라디안 → cos: 기준값 만들기</h2>
+  <p>슬라이더의 반폭이 실제로 어떻게 기준값이 되는지 따라가 봅니다. <code>BeginPlay</code>의 한 줄이에요.</p>
+  <pre>DetectCos = FMath::Cos(FMath::DegreesToRadians(DetectDeg));</pre>
+  <div class="pipe" style="margin-top:12px" aria-live="polite">
+    <div class="box"><small>DetectDeg (도)</small><b id="pDeg">45°</b></div>
+    <div class="arrow">DegreesToRadians<br>단위만 바꿈</div>
+    <div class="box"><small>라디안</small><b id="pRad">0.785</b></div>
+    <div class="arrow">Cos<br>그림자 길이로</div>
+    <div class="box"><small>DetectCos</small><b id="pCos">0.707</b></div>
+  </div>
+  <div class="tbl" style="margin-top:14px">
+  <table>
+    <thead><tr><th>무엇</th><th>정체</th><th>학교 수학</th></tr></thead>
+    <tbody>
+      <tr><td>도 ↔ 라디안</td><td>같은 각도의 두 단위 (cm와 inch처럼). <code>FMath::Cos</code>가 라디안만 받아서 바꿀 뿐</td><td>고등 수학Ⅰ 호도법</td></tr>
+      <tr><td>cos</td><td>각도가 <b>아니라</b> 그림자 길이(비율). -1 ~ 1</td><td>중3 삼각비</td></tr>
+      <tr><td>내적 (길이 1끼리)</td><td>두 화살표 사이의 그림자 길이 = cos θ. 안에서 cos를 부르지 않고 곱하고 더하기만 함</td><td>—</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="warn" style="margin-top:14px">
+    <b>45°의 함정</b>
+    <p>45°에서는 라디안(0.785)과 cos(0.707)가 우연히 비슷해서, cos를 빼먹어도 대충 맞아 보입니다. 반폭을 60°로 올려 보세요. 라디안 1.047, cos 0.5. 검증할 땐 값을 두세 개 넣어 봐야 해요.</p>
+  </div>
+</section>
+
+<section aria-labelledby="l3">
+  <h2 id="l3">손 계산 검증 (desk check)</h2>
+  <p>실행하기 전에 판정식 <code>DetectCos &lt;= Result</code>에 값을 넣어 따라가 보는 표입니다. 오늘 <code>CheckFireTarget</code>의 버그 세 개를 전부 이걸로 잡았어요.</p>
+  <div class="tbl" style="margin-top:10px">
+  <table>
+    <thead><tr><th>타겟과 정면 사이</th><th>Result (cos)</th><th>반폭 45° (기준 0.707)</th><th>반폭 60° (기준 0.5)</th></tr></thead>
+    <tbody>
+      <tr><td>0° 정면</td><td class="num">1.000</td><td class="yes">안</td><td class="yes">안</td></tr>
+      <tr><td>40°</td><td class="num">0.766</td><td class="yes">안</td><td class="yes">안</td></tr>
+      <tr><td>50°</td><td class="num">0.643</td><td class="no">밖</td><td class="yes">안</td></tr>
+      <tr><td>60°</td><td class="num">0.500</td><td class="no">밖</td><td class="yes">안 (경계)</td></tr>
+      <tr><td>90° 옆</td><td class="num">0.000</td><td class="no">밖</td><td class="no">밖</td></tr>
+      <tr><td>180° 뒤</td><td class="num">-1.000</td><td class="no">밖</td><td class="no">밖</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:8px">각도가 작을수록(정면일수록) cos는 커집니다. 그래서 "안"은 기준보다 <b>크거나 같다</b>예요. 부등호가 헷갈리면 정면(1)을 넣어 true가 나오는지만 보면 됩니다.</p>
+</section>
+
+<section aria-labelledby="l4">
+  <h2 id="l4">왜 왼쪽 50°와 오른쪽 50°가 같은 판정인가</h2>
+  <svg viewBox="0 0 400 220" role="img" aria-label="정면에서 왼쪽 50도와 오른쪽 50도에 있는 두 타겟이 같은 길이의 그림자를 정면 축에 떨어뜨림">
+    <line x1="60" y1="110" x2="360" y2="110" stroke="var(--fwd)" stroke-width="3"/>
+    <text x="330" y="102" fill="var(--fwd)" font-size="13">정면</text>
+    <circle cx="60" cy="110" r="7" fill="var(--panel)" stroke="var(--fg)" stroke-width="2"/>
+    <line x1="60" y1="110" x2="189" y2="17" stroke="var(--tgt)" stroke-width="2.5"/>
+    <line x1="60" y1="110" x2="189" y2="203" stroke="var(--tgt)" stroke-width="2.5"/>
+    <circle cx="189" cy="17" r="8" fill="var(--tgt)"/>
+    <circle cx="189" cy="203" r="8" fill="var(--tgt)"/>
+    <line x1="189" y1="17" x2="189" y2="203" stroke="var(--muted)" stroke-dasharray="4 4"/>
+    <rect x="60" y="105" width="129" height="10" rx="2" fill="var(--shadow)" opacity=".85"/>
+    <text x="200" y="22" fill="var(--tgt)" font-size="13">-50° (한쪽)</text>
+    <text x="200" y="208" fill="var(--tgt)" font-size="13">+50° (반대쪽)</text>
+    <text x="80" y="140" fill="var(--shadow)" font-size="13">두 타겟 모두 그림자 0.643</text>
+  </svg>
+  <ul style="margin-top:10px">
+    <li>cos(-50°) = cos(50°). 내적은 <b>얼마나 벌어졌나</b>만 알고 <b>어느 쪽으로</b> 벌어졌는지는 모릅니다.</li>
+    <li>높이(Z)를 지우지 않았으니 위·아래·대각선 50°도 같은 값. 실제 3D 판정 범위는 정면 축을 둘러싼 <b>동그란 원뿔</b>이에요. 이 페이지의 그림은 그 원뿔을 위에서 자른 단면입니다.</li>
+    <li>왼쪽인지 오른쪽인지 알려면 <b>외적</b>이 필요합니다. 과정 1의 연습 2(맞은 방향 표시)와 미사일이 어느 쪽으로 꺾을지 정할 때 다시 나와요.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="l5">
+  <h2 id="l5">경계선 그리기: 정면을 돌린다</h2>
+  <pre>const FVector PlusEdge  = Forward.RotateAngleAxis( DetectDeg, FVector::UpVector);
+const FVector MinusEdge = Forward.RotateAngleAxis(-DetectDeg, FVector::UpVector);
+DrawDebugLine(GetWorld(), Start, Start + PlusEdge * DetectRadius, FColor::Red, false, -1.f, 0, 2.f);</pre>
+  <div class="tbl" style="margin-top:12px">
+  <table>
+    <thead><tr><th>경계</th><th>회전</th><th>경첩(축)</th></tr></thead>
+    <tbody>
+      <tr><td>좌우</td><td>Yaw (도리도리)</td><td>위 Z — 이 터렛은 Yaw로만 돌아서 <code>FVector::UpVector</code>로 충분</td></tr>
+      <tr><td>위아래</td><td>Pitch (끄덕끄덕)</td><td><b>터렛의</b> 오른쪽 — <code>GetActorRightVector()</code>. <code>FVector::RightVector</code>는 월드 상수라 터렛과 같이 안 돎</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul style="margin-top:10px">
+    <li><code>RotateAngleAxis</code>는 <b>도(°)</b>를 받고 <b>새 벡터</b>를 돌려줍니다. 길이와 원본은 그대로예요. <code>FQuat(Axis, Angle)</code>은 라디안이니 섞지 않기.</li>
+    <li>위 실험 그림에서는 빨강(+)이 화면 아래(+Y) 쪽으로 돕니다. 실제 에디터에서 빨강이 터렛의 왼쪽인지 오른쪽인지는 <b>직접 보고 확인한 뒤</b> <code>LeftEdge</code>/<code>RightEdge</code>로 이름을 바꾸세요. 언리얼은 왼손 좌표계라 교과서 그림과 반대로 보일 수 있어요.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="l6">
+  <h2 id="l6">코드 한 줄씩: 무슨 벡터 연산인가</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>CheckFireTarget</th><th>하는 일</th><th>연산</th></tr></thead>
+    <tbody>
+      <tr><td><code>TargetPos - GetActorLocation()</code></td><td>터렛에서 타겟으로 가는 화살표. 도착점 − 출발점</td><td>떼어내기</td></tr>
+      <tr><td><code>.GetSafeNormal()</code></td><td>길이를 1로. 거리 정보를 떼고 방향만</td><td>늘이고 줄이기</td></tr>
+      <tr><td><code>FVector::DotProduct(Dir, Forward)</code></td><td>그림자 길이 = cos θ</td><td>그림자 (내적)</td></tr>
+      <tr><td><code>DetectCos &lt;= Result</code></td><td>기준 그림자보다 길면 안</td><td>비교</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:8px">빠뜨리기 쉬운 것: <code>FVector::ForwardVector</code>는 언제나 (1, 0, 0)인 상수입니다. 도는 터렛의 정면은 <code>GetActorForwardVector()</code>.</p>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="dot-product.html">내적은 그림자 길이다</a> — 그림자를 직접 돌려 보는 기초 노트</li>
+    <li><a href="vector-ops.html">벡터 더하기·빼기·곱하기</a> — 떼어내기, 늘이고 줄이기</li>
+    <li><a href="../unreal/pitfalls.html">언리얼 함정 모음</a> — 오늘 막힌 곳들</li>
+    <li><a href="https://github.com/DEV-JSB/study-notes/blob/main/gamemathlab/devlog/2026-10-25-GameMathLab.md">2026-10-25 개발 일지</a></li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  const CX = 200, CY = 200, R = 160, RADIUS_CM = 1000;
+  const $ = id => document.getElementById(id);
+  const svg = $('radar');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let yaw = 0;              // 터렛 Yaw (도). 0 = 화면 오른쪽 = 언리얼 +X
+  let half = 45;            // DetectDeg
+  let playing = !reduce;
+  const speed = 45;         // RotateSpeedDeg (초당 도)
+  let tx = CX + 120 * Math.cos(30 * Math.PI / 180);
+  let ty = CY + 120 * Math.sin(30 * Math.PI / 180);
+  let wasDetected = false, enterCount = 0, last = performance.now();
+
+  const rad = d => d * Math.PI / 180;
+  const pt = (angDeg, len) => [CX + len * Math.cos(rad(angDeg)), CY + len * Math.sin(rad(angDeg))];
+  const setLine = (el, p) => { el.setAttribute('x2', p[0].toFixed(1)); el.setAttribute('y2', p[1].toFixed(1)); };
+  const f = (v, n = 3) => (Math.abs(v) < 0.0005 ? 0 : v).toFixed(n);
+
+  function render(){
+    // 원뿔 단면
+    const a = pt(yaw - half, R), b = pt(yaw + half, R);
+    const large = half * 2 > 180 ? 1 : 0;
+    $('wedge').setAttribute('d', `M${CX},${CY} L${a[0].toFixed(1)},${a[1].toFixed(1)} A${R},${R} 0 ${large} 1 ${b[0].toFixed(1)},${b[1].toFixed(1)} Z`);
+    setLine($('fwd'), pt(yaw, R));
+    setLine($('plus'), pt(yaw + half, R));
+    setLine($('minus'), pt(yaw - half, R));
+
+    // CheckFireTarget 그대로
+    const dx = tx - CX, dy = ty - CY;
+    const dist = Math.hypot(dx, dy);
+    const dir = dist > 0 ? [dx / dist, dy / dist] : [0, 0];          // GetSafeNormal
+    const fwd = [Math.cos(rad(yaw)), Math.sin(rad(yaw))];               // GetActorForwardVector
+    const result = dir[0] * fwd[0] + dir[1] * fwd[1];                   // DotProduct
+    const detectCos = Math.cos(rad(half));                              // Cos(DegreesToRadians(DetectDeg))
+    const inSphere = dist <= R;
+    const inCone = detectCos <= result;
+    const detected = inSphere && inCone;
+
+    if (detected && !wasDetected) { enterCount++; }
+    wasDetected = detected;
+
+    const tgt = $('tgt');
+    tgt.setAttribute('cx', tx.toFixed(1)); tgt.setAttribute('cy', ty.toFixed(1));
+    tgt.setAttribute('fill', detected ? 'var(--hit)' : 'var(--tgt)');
+    tgt.setAttribute('r', detected ? 13 : 11);
+    setLine($('toT'), [tx, ty]);
+    $('wedge').setAttribute('fill-opacity', detected ? '.18' : '.08');
+
+    $('verdict').textContent = detected ? '탐지됨' : (inSphere ? '구 안, 원뿔 밖' : '구 밖');
+    $('verdict').style.color = detected ? 'var(--hit)' : 'var(--muted)';
+    $('rDist').textContent = `${Math.round(dist / R * RADIUS_CM)} / ${RADIUS_CM}cm ${inSphere ? '✓' : '✗'}`;
+    $('rDir').textContent = `(${f(dir[0], 2)}, ${f(dir[1], 2)})`;
+    $('rFwd').textContent = `(${f(fwd[0], 2)}, ${f(fwd[1], 2)})`;
+    $('rDot').textContent = f(result);
+    $('rCos').textContent = f(detectCos);
+    $('rAng').textContent = `${Math.round(Math.acos(Math.max(-1, Math.min(1, result))) * 180 / Math.PI)}°`;
+    $('rEnter').textContent = enterCount;
+
+    const mx = v => 20 + (v + 1) / 2 * 280;
+    $('mBar').setAttribute('width', (mx(result) - 20).toFixed(1));
+    $('mBar').setAttribute('fill', inCone ? 'var(--hit)' : 'var(--shadow)');
+    const th = mx(detectCos).toFixed(1);
+    $('mTh').setAttribute('x1', th); $('mTh').setAttribute('x2', th);
+    $('mThLbl').setAttribute('x', th);
+    $('mThLbl').textContent = `기준 ${f(detectCos, 2)}`;
+
+    $('pDeg').textContent = `${half}°`;
+    $('pRad').textContent = f(rad(half));
+    $('pCos').textContent = f(detectCos);
+  }
+
+  function frame(now){
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (playing) { yaw = (yaw + speed * dt) % 360; }
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  $('half').addEventListener('input', e => { half = +e.target.value; $('halfOut').textContent = half + '°'; render(); });
+  const playBtn = $('play');
+  const syncPlay = () => { playBtn.textContent = playing ? '정지' : '회전'; };
+  playBtn.addEventListener('click', () => { playing = !playing; syncPlay(); });
+  syncPlay();
+  document.querySelectorAll('button[data-t]').forEach(b => b.addEventListener('click', () => {
+    const p = pt(yaw + Number(b.dataset.t), 120); tx = p[0]; ty = p[1];
+    playing = false; syncPlay(); render();
+  }));
+  $('far').addEventListener('click', () => { const p = pt(yaw, 185); tx = p[0]; ty = p[1]; playing = false; syncPlay(); render(); });
+
+  let dragging = false;
+  function toSvg(e){
+    const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+    const q = p.matrixTransform(svg.getScreenCTM().inverse());
+    return [Math.max(8, Math.min(392, q.x)), Math.max(8, Math.min(392, q.y))];
+  }
+  svg.addEventListener('pointerdown', e => { dragging = true; svg.setPointerCapture(e.pointerId); [tx, ty] = toSvg(e); render(); });
+  svg.addEventListener('pointermove', e => { if (dragging) { [tx, ty] = toSvg(e); render(); } });
+  const stop = () => { dragging = false; };
+  svg.addEventListener('pointerup', stop); svg.addEventListener('pointercancel', stop);
+
+  render();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
