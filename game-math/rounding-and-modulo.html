@@ -65,6 +65,13 @@ ul{margin:0;padding-left:20px}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
 .src{font-size:13px;color:var(--muted)}
+.slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.slot{border:1px solid var(--line);border-radius:8px;padding:10px 6px;text-align:center;font-size:15px}
+.slot small{display:block;color:var(--muted);font-family:var(--mono);font-size:12px}
+.slot.cur{border:2px solid var(--pt);padding:9px 5px}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:640px){.pair{grid-template-columns:minmax(0,1fr)}}
+.pair p{font-size:14px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -237,7 +244,7 @@ ul{margin:0;padding-left:20px}
       <tr><td>Python · Lua</td><td class="num">5</td><td>몫이 floor → <code>%</code>는 모듈로 (modulo)</td></tr>
     </tbody>
   </table></div>
-  <p>그래서 "<code>%</code>는 mod 연산자"라는 말은 C++에서는 정확하지 않아요. C++의 <code>%</code>는 <b style="font-weight:500">나머지(remainder)</b>이고, 시계 쪽이 <b style="font-weight:500">모듈로(modulo)</b>입니다.</p>
+  <p>그래서 "<code>%</code>는 mod 연산자"라는 말은 C++에서는 정확하지 않아요. C++의 <code>%</code>는 <b style="font-weight:500">나머지(remainder)</b>이고, 시계 쪽이 <b style="font-weight:500">모듈로(modulo)</b>입니다. 모듈로가 정확히 무엇인지는 4절에서 다뤄요.</p>
 
   <h3>④ 공식으로 쓰면: 두 이야기는 하나다</h3>
   <p>위 표의 두 줄을 일반 공식으로 쓰면 이렇게 됩니다.</p>
@@ -251,7 +258,78 @@ ul{margin:0;padding-left:20px}
 </section>
 
 <section>
-  <h2>4. 함수 대조표: 언리얼 C++ · Unity C#</h2>
+  <h2>4. 모듈로란: 리스트를 둥글게 말기</h2>
+  <p class="def">모듈로(modulo)는 "칸이 N개인 시계에서 몇 번 칸에 도착하나"를 묻는 계산입니다. 답은 칸 번호라서 항상 0 ~ N-1이에요.</p>
+  <p>이름은 라틴어 <i>modulus</i>(척도, 단위)에서 왔어요. <code>a mod N</code>은 "N을 단위로 재면 a는 몇 번 칸인가"라고 읽습니다. (수학 표준 용어)</p>
+
+  <h3>나머지와 모듈로는 묻는 게 다르다</h3>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>나머지 (remainder)</th><th>모듈로 (modulo)</th></tr></thead>
+    <tbody>
+      <tr><td>질문</td><td>나누고 <b style="font-weight:500">얼마가 남았나</b></td><td>시계에서 <b style="font-weight:500">몇 번 칸인가</b></td></tr>
+      <tr><td>먼저 정하는 것</td><td>몫</td><td>칸 번호</td></tr>
+      <tr><td>답의 범위</td><td>음수도 나올 수 있음</td><td>항상 0 ~ N-1</td></tr>
+      <tr><td>C++ · C#</td><td><code>a % N</code></td><td><code>((a % N) + N) % N</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>양수에서는 두 답이 똑같아서 구분할 일이 없어요. 음수에서만 갈립니다(3절).</p>
+
+  <h3>리스트에 쓰면: 끝과 처음을 이어 붙인다</h3>
+  <p>무기 4개짜리 리스트(<code>Num = 4</code>)를 생각해 볼게요. 리스트를 펼쳐 두면 4번부터는 범위 밖(OutOfRange)이에요. 모듈로는 이 리스트를 <b style="font-weight:500">둥글게 말아서</b> 4번 자리에 다시 0번이 오게 만듭니다.</p>
+<pre>펼친 리스트:  [0]권총 [1]소총 [2]샷건 [3]저격총 |  4   5   6   7   8 …  ← 범위 밖
+둥글게 말면:                                  → 0   1   2   3   0 …  ← 다시 0~3 칸으로</pre>
+  <p>그래서 순환이 원하는 동작(마지막 무기 다음은 첫 무기)이라면, 모듈로는 <b style="font-weight:500">인덱스가 범위를 벗어나지 않게 보장하는 도구</b>입니다.</p>
+
+  <h3>if 버전과 모듈로 버전</h3>
+  <div class="pair">
+    <div>
+<pre>// if 버전
+CurrentIndex = CurrentIndex + 1;
+if (CurrentIndex >= Num)
+{
+    CurrentIndex = 0;
+}</pre>
+      <p>딱 1칸 넘친 경우만 처리해요. 넘치면 무조건 0으로 보냅니다.</p>
+    </div>
+    <div>
+<pre>// 모듈로 버전
+CurrentIndex = (CurrentIndex + 1) % Num;</pre>
+      <p>몇 칸을 넘치든 시계를 돌려 맞는 칸으로 보내요.</p>
+    </div>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>상황 (Num = 4)</th><th>if 버전</th><th>모듈로 버전</th></tr></thead>
+    <tbody>
+      <tr><td>3번에서 +1</td><td class="num">4 ≥ 4 → 0 ✓</td><td class="num">4 % 4 = 0 ✓</td></tr>
+      <tr><td>3번에서 +6 (휠을 빠르게 굴림)</td><td class="num bad">9 ≥ 4 → 0 ✗</td><td class="num">9 % 4 = 1 ✓</td></tr>
+      <tr><td>0번에서 -1 (이전 무기)</td><td class="num bad">-1 → 범위 밖 ✗</td><td class="num bad">-1 % 4 = -1 → 범위 밖 ✗</td></tr>
+    </tbody>
+  </table></div>
+  <p>한 칸씩만 넘긴다면 if 버전도 충분히 맞아요(취향 · 바꿔도 됨). 모듈로의 진짜 강점은 <b style="font-weight:500">몇 칸을 뛰어도 한 줄로 맞는 칸을 준다</b>는 점이에요. 그리고 거꾸로 갈 때는 둘 다 깨지니까 3절의 시계 공식 <code>((i - 1) % Num + Num) % Num</code>을 써야 합니다.</p>
+</section>
+
+<section class="lab" aria-labelledby="l3">
+  <h2 id="l3">실험 3 · 무기 슬롯 넘기기</h2>
+  <p class="sub">무기 4개(Num = 4). 지금 무기(노란 테두리)에서 버튼만큼 이동해요. 같은 이동을 세 가지 방식으로 계산해서 비교합니다. 이동이 끝나면 지금 무기는 시계 공식의 답으로 옮겨 가요.</p>
+  <div class="slots" id="slots"></div>
+  <div class="btns">
+    <button data-step="1">+1 (다음)</button>
+    <button data-step="3">+3</button>
+    <button data-step="6">+6 (빠르게)</button>
+    <button data-step="-1">-1 (이전)</button>
+    <button id="reset3">3번으로</button>
+  </div>
+  <div class="read">
+    <div class="row"><span>이동</span><span class="num" id="sMove">버튼을 눌러 보세요</span></div>
+    <div class="row" id="sIfRow"><span>if 버전</span><span class="num" id="sIf">—</span></div>
+    <div class="row" id="sPctRow"><span><code>(i + 이동) % Num</code></span><span class="num" id="sPct">—</span></div>
+    <div class="row"><span>시계 공식 <code>((i + 이동) % Num + Num) % Num</code></span><span class="num" id="sClk">—</span></div>
+  </div>
+  <p class="sub">3번에서 +1은 셋 다 맞아요. +6을 누르면 if 버전이, 0번에서 -1을 누르면 if와 <code>%</code>가 둘 다 틀립니다.</p>
+</section>
+
+<section>
+  <h2>5. 함수 대조표: 언리얼 C++ · Unity C#</h2>
   <div class="tbl"><table>
     <thead><tr><th>하고 싶은 것</th><th>언리얼 C++</th><th>Unity C#</th></tr></thead>
     <tbody>
@@ -276,7 +354,7 @@ ul{margin:0;padding-left:20px}
 </section>
 
 <section>
-  <h2>5. 게임에서 어디에 쓰나</h2>
+  <h2>6. 게임에서 어디에 쓰나</h2>
   <div class="tbl"><table>
     <thead><tr><th>쓰는 곳</th><th>식</th><th>왜</th></tr></thead>
     <tbody>
@@ -291,7 +369,7 @@ ul{margin:0;padding-left:20px}
 </section>
 
 <section>
-  <h2>6. 수학에서의 위치</h2>
+  <h2>7. 수학에서의 위치</h2>
   <ul>
     <li>반올림·올림·버림(어림하기): <b style="font-weight:500">초등 4~5학년</b>. 한국 교과에선 초5 "수의 범위와 어림하기"</li>
     <li>나머지가 있는 나눗셈: <b style="font-weight:500">초등 3학년</b></li>
@@ -301,7 +379,7 @@ ul{margin:0;padding-left:20px}
 </section>
 
 <section>
-  <h2>7. 직접 해 볼 것</h2>
+  <h2>8. 직접 해 볼 것</h2>
   <p>GameMathLab에서 X = -30, CellSize = 100으로 <code>(int32)(X / CellSize)</code>와 <code>FMath::FloorToInt(X / CellSize)</code>를 각각 <code>UE_LOG</code>로 찍어 보세요. 값이 갈라지는 걸 눈으로 보면 3절이 손에 붙습니다.</p>
 </section>
 </main>
@@ -393,6 +471,40 @@ ul{margin:0;padding-left:20px}
   ns.addEventListener('input', drawClock); as.addEventListener('input', drawClock);
   document.querySelectorAll('[data-n]').forEach(b => b.addEventListener('click', () => { ns.value = b.dataset.n; as.value = b.dataset.a; drawClock(); }));
   drawClock();
+})();
+</script>
+<script>
+(() => {
+  // weapon slot lab: compare if-version, raw %, and clock formula for the same move
+  const Weapons = ['권총', '소총', '샷건', '저격총'], Num = Weapons.length;
+  let cur = 3;
+  const slots = document.getElementById('slots');
+  const label = i => (i >= 0 && i < Num) ? `${i} (${Weapons[i]})` : `${i} → 범위 밖!`;
+  function render() {
+    slots.replaceChildren(...Weapons.map((w, i) => {
+      const d = document.createElement('div');
+      d.className = 'slot' + (i === cur ? ' cur' : '');
+      d.innerHTML = `<small>[${i}]</small>${w}`;
+      return d;
+    }));
+  }
+  function move(step) {
+    const raw = cur + step;
+    const ifv = raw >= Num ? 0 : raw;
+    const pct = raw % Num;
+    const clk = ((raw % Num) + Num) % Num;
+    document.getElementById('sMove').textContent = `${cur} ${step >= 0 ? '+' : '−'} ${Math.abs(step)} = ${raw}`;
+    document.getElementById('sIf').textContent = (raw >= Num ? `${raw} ≥ ${Num} 이라 0 → ` : '') + label(ifv) + (ifv === clk ? ' ✓' : ' ✗');
+    document.getElementById('sPct').textContent = `${raw} % ${Num} = ` + label(pct) + (pct === clk ? ' ✓' : ' ✗');
+    document.getElementById('sClk').textContent = label(clk);
+    document.getElementById('sIfRow').classList.toggle('diff', ifv !== clk);
+    document.getElementById('sPctRow').classList.toggle('diff', pct !== clk);
+    cur = clk;
+    render();
+  }
+  document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => move(+b.dataset.step)));
+  document.getElementById('reset3').addEventListener('click', () => { cur = 3; render(); });
+  render();
 })();
 </script>
 </body>
