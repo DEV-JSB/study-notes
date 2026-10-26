@@ -1,0 +1,92 @@
+# 어림수와 나머지 (Floor · Ceil · Round · %)
+
+> 2026-10-26 · Udemy 게임 수학 강의 정리
+
+**🎛 직접 돌려보는 그림:** https://dev-jsb.github.io/study-notes/game-math/rounding-and-modulo.html
+(원본 HTML: 같은 폴더의 `rounding-and-modulo.html`)
+
+## 1. 기호: ㄴ자와 ㄱ자
+
+| 기호 | 이름 | 모양 | 뜻 |
+|---|---|---|---|
+| `⌊x⌋` | 내림 (floor, 바닥) | 아래에 가로선이 있는 ㄴ 모양 | x보다 작거나 같은 정수 중 가장 큰 것. 수직선 **왼쪽**으로 |
+| `⌈x⌉` | 올림 (ceiling, 천장) | 위에 가로선이 있는 ㄱ 모양 | x보다 크거나 같은 정수 중 가장 작은 것. 수직선 **오른쪽**으로 |
+
+- "왼쪽/오른쪽"은 0 쪽이 아니라 수직선 방향이에요. 그래서 `⌊-2.5⌋ = -3`
+
+## 2. 값으로 비교하기: 음수와 .5에서 갈라진다
+
+| x | floor | ceil | UE RoundToInt | Unity RoundToInt | (int)x |
+|---|---|---|---|---|---|
+| 2.3 | 2 | 3 | 2 | 2 | 2 |
+| 2.5 | 2 | 3 | **3** | **2** | 2 |
+| 0.5 | 0 | 1 | **1** | **0** | 0 |
+| -2.3 | -3 | -2 | -2 | -2 | -2 |
+| -2.5 | -3 | -2 | -2 | -2 | -2 |
+| -2.7 | **-3** | -2 | -3 | -3 | **-2** |
+
+- **(int) 캐스팅은 floor가 아니에요.** 소수점을 떼어내 0 쪽으로 갑니다. 양수에서만 floor와 같아요. (C++·C# 언어 표준)
+- 반올림은 .5를 어디로 보내는지가 엔진·언어마다 달라요.
+  - UE `FMath::RoundToInt` = `FloorToInt(F + 0.5f)`라서 .5는 늘 큰 쪽으로 가요. (Epic 공식: 엔진 소스 `GenericPlatformMath.h:309`)
+  - Unity `Mathf.Round`·`Mathf.RoundToInt`, C# `Math.Round`는 .5를 짝수 쪽으로 보내요. 2.5 → 2, 3.5 → 4 (은행가 반올림, banker's rounding). (Unity·.NET 공식 문서)
+  - C++ `std::round`는 0에서 먼 쪽으로 보내요. -2.5 → -3. (C++ 표준)
+
+## 3. 나머지는 시계 돌리기
+
+- 칸이 N개인 시계에서 0부터 a칸을 돌면, **몇 바퀴(몫)는 버리고 도착한 칸이 나머지**예요.
+- 5 % 4: 한 바퀴(4칸)를 돌고 1칸 더 가서 **1**
+- -1 % 4: 시계로는 거꾸로 1칸이라 **3**인데, **C++·C#의 `%`는 -1**을 줘요. (C++·C# 언어 표준)
+
+## 4. 두 이야기는 하나다
+
+```
+시계 나머지 (수학)   = a − N × ⌊a / N⌋        몫을 floor (왼쪽)로
+% 연산자 (C++·C#)   = a − N × (int)(a / N)    몫을 버림 (0 쪽)으로
+
+a = -1, N = 4
+  floor:  ⌊-0.25⌋ = -1      →  -1 − 4 × (-1) =  3   ← 시계
+  버림:   (int)(-0.25) = 0  →  -1 − 4 × 0   = -1   ← % 연산자
+```
+
+- 2절의 "(int)는 floor가 아니다"와 "음수 나머지 함정"은 **같은 원인**이에요. 양수에서는 둘이 같아서 문제가 안 보여요.
+
+## 5. 함수 대조표: 언리얼 C++ · Unity C#
+
+| 하고 싶은 것 | 언리얼 C++ | Unity C# |
+|---|---|---|
+| 내림 → 정수 | `FMath::FloorToInt(X)` | `Mathf.FloorToInt(x)` |
+| 내림 → 실수 그대로 | `FMath::Floor(X)` | `Mathf.Floor(x)` |
+| 올림 → 정수 | `FMath::CeilToInt(X)` | `Mathf.CeilToInt(x)` |
+| 올림 → 실수 그대로 | `FMath::CeilToFloat(X)` | `Mathf.Ceil(x)` |
+| 반올림 (기본) | `FMath::RoundToInt(X)` (.5 → 큰 쪽) | `Mathf.RoundToInt(x)` (.5 → 짝수) |
+| .5를 0에서 먼 쪽으로 | `FMath::RoundHalfFromZero(X)` | `(float)Math.Round(x, MidpointRounding.AwayFromZero)` |
+| .5를 짝수 쪽으로 | `FMath::RoundHalfToEven(X)` | `Mathf.Round(x)` (기본이 이것) |
+| 버림 (0 쪽) | `FMath::TruncToInt(X)` 또는 `(int32)X` | `(int)x` |
+| 정수 나머지 | `A % B` (부호는 A를 따름) | `a % b` (부호는 a를 따름) |
+| 실수 나머지 | `FMath::Fmod(A, B)` (float에 %를 쓰면 컴파일 에러) | `a % b` (C#은 float에도 가능) |
+| 항상 0 ~ N-1 (시계) | `((A % N) + N) % N` | 정수: `((a % n) + n) % n` / 실수: `Mathf.Repeat(t, length)` |
+
+- 출처: 언리얼 쪽은 UE 5.4 엔진 소스 `GenericPlatformMath.h`, `UnrealMathUtility.h`에서 확인했어요(Epic 공식). Unity 쪽은 Unity 스크립팅 API와 .NET 문서 기준이에요(Unity·.NET 공식). `((a % n) + n) % n`은 관용구예요(커뮤니티 표준).
+- ⚠️ **`FMath::Wrap`은 인덱스용이 아니에요.** Min과 Max를 둘 다 포함하고 같은 점으로 봐요(각도의 -180°와 180°처럼). `Wrap(4, 0, 4)`는 4를 그대로 돌려줘서, 칸이 4개인 배열이면 범위를 벗어나요. (Epic 공식: `UnrealMathUtility.h:608` 구현)
+
+## 6. 게임에서 어디에 쓰나
+
+| 쓰는 곳 | 식 | 왜 |
+|---|---|---|
+| 월드 좌표 → 격자 칸 번호 | `FloorToInt(X / CellSize)` | X = -30, 칸 크기 100이면 floor는 -1(맞음), `(int)`는 0(틀림). 0 근처 칸만 두 배로 커지는 버그가 생겨요 |
+| 필요한 개수 | `CeilToInt(23 / 10.f)` = 3 | 총알 23발, 탄창 10발이면 탄창 3개. 페이지 수도 같은 식 |
+| 화면 표시·스냅 | `RoundToInt` | HP 99.6 → 100 |
+| 무기 슬롯 다음 / 이전 | `(i + 1) % N` / `(i - 1 + N) % N` | 마지막 다음은 처음. 이전 쪽은 음수 함정 때문에 `+ N` |
+| 체크무늬·짝홀 | `(X + Y) % 2` | 좌표가 음수면 -1이 나올 수 있어서 `!= 0`으로 비교 |
+| N프레임마다 한 번 | `FrameCount % N == 0` | 무거운 검사를 매 프레임 하지 않기 |
+
+## 7. 수학에서의 위치
+
+- 반올림·올림·버림(어림하기): 초등 4~5학년 (초5 "수의 범위와 어림하기")
+- 나머지가 있는 나눗셈: 초등 3학년
+- `⌊x⌋`: 한국 고등 수학 문제에서는 가우스 기호 `[x]`로 나와요. 정식 교과 단원인지는 확실치 않아요
+- 시계 산수(모듈러 산술, modular arithmetic): 학교 교과 밖이고 대학 이산수학·정수론 범위예요
+
+## 8. 직접 해 볼 것
+
+- GameMathLab에서 X = -30, CellSize = 100으로 `(int32)(X / CellSize)`와 `FMath::FloorToInt(X / CellSize)`를 각각 `UE_LOG`로 찍어 보세요. 값이 갈라지는 걸 눈으로 확인하기

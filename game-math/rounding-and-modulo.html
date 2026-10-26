@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>어림수와 나머지</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: single reading column; number-line lab, then clock lab, then the link between them, then UE/Unity reference */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --floor:#6a4fc8; --ceil:#178a66; --pt:#c98a12; --hit:#d2552a; --lap:#98a2b2;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --floor:#a994f0; --ceil:#4cc79c; --pt:#f0b84c; --hit:#f08a5d; --lap:#5d6676; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --floor:#a994f0; --ceil:#4cc79c; --pt:#f0b84c; --hit:#f08a5d; --lap:#5d6676; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;padding-inline:16px;padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0 0 8px;text-wrap:balance}
+p{margin:0;max-width:65ch}
+a{color:var(--ceil)}
+section{display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted)}
+.lead{color:var(--muted)}
+.def{border-left:3px solid var(--ceil);padding:4px 0 4px 16px;font-size:18px}
+.lab{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctrl label{font-size:14px;color:var(--muted);min-width:64px}
+.ctrl input[type=range]{flex:1;min-width:160px;accent-color:var(--pt)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;padding:4px 12px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--floor);outline-offset:2px}
+svg{width:100%;height:auto;display:block}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:640px){.stage{grid-template-columns:minmax(0,1fr)}}
+.read{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:4px;font-size:14px}
+.row span:first-child{color:var(--muted)}
+.row.diff span:last-child{color:var(--hit);font-weight:500}
+.sub{font-size:14px;color:var(--muted)}
+.glyphs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.glyph{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:4px}
+.glyph b{font-family:var(--mono);font-size:34px;font-weight:500;line-height:1.2}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+td.num{white-space:nowrap}
+.bad{color:var(--hit);font-weight:500}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0;overflow-x:auto;line-height:1.6}
+ul{margin:0;padding-left:20px}
+.warn{border:1px solid var(--hit);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+.src{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">game-math · Udemy 강의 정리 · 2026-10-26</span>
+  <h1>어림수와 나머지: 수직선의 왼쪽·오른쪽, 그리고 시계</h1>
+  <p class="lead">내림(floor), 올림(ceil), 반올림(round)은 수직선 위에서 어느 정수로 가는지의 문제이고, 나머지(%)는 시계를 몇 칸 돌았는지의 문제입니다. 두 이야기는 사실 하나로 이어져 있고, 음수에서 함정이 생깁니다. 언리얼 C++과 Unity C# 함수를 나란히 정리했어요.</p>
+</header>
+
+<section>
+  <h2>1. 기호: ㄴ자와 ㄱ자</h2>
+  <div class="glyphs">
+    <div class="glyph"><b>⌊x⌋</b><span>내림 · floor (바닥)</span><span class="sub">가로선이 아래에 있는 ㄴ 모양. x보다 작거나 같은 정수 중 가장 큰 것 → 수직선 <b style="font-size:inherit;font-family:inherit;color:var(--floor)">왼쪽</b>으로</span></div>
+    <div class="glyph"><b>⌈x⌉</b><span>올림 · ceiling (천장)</span><span class="sub">가로선이 위에 있는 ㄱ 모양. x보다 크거나 같은 정수 중 가장 작은 것 → 수직선 <b style="font-size:inherit;font-family:inherit;color:var(--ceil)">오른쪽</b>으로</span></div>
+  </div>
+  <p class="def">"왼쪽/오른쪽"은 0 쪽이 아니라 수직선 방향입니다. 그래서 <code>⌊-2.5⌋ = -3</code>.</p>
+</section>
+
+<section class="lab" aria-labelledby="l1">
+  <h2 id="l1">실험 1 · 수직선 위의 어림수</h2>
+  <p class="sub">슬라이더로 x를 옮겨 보세요. 오른쪽 표에서 다른 값과 갈라지는 줄은 주황색으로 표시됩니다.</p>
+  <div class="ctrl">
+    <label for="xs">x</label>
+    <input type="range" id="xs" min="-35" max="35" step="1" value="25">
+    <span id="xOut" class="num" style="min-width:44px">2.5</span>
+  </div>
+  <div class="btns">
+    <button data-x="25">2.5</button>
+    <button data-x="-25">-2.5</button>
+    <button data-x="-27">-2.7</button>
+    <button data-x="5">0.5</button>
+    <button data-x="35">3.5</button>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--floor)"></i>floor (왼쪽)</span>
+    <span><i style="background:var(--ceil)"></i>ceil (오른쪽)</span>
+    <span><i style="background:var(--pt)"></i>x</span>
+  </div>
+  <svg id="nl" viewBox="0 0 640 120" role="img" aria-label="-4부터 4까지 수직선. x 점과 floor, ceil 쪽 화살표">
+    <line x1="20" y1="70" x2="620" y2="70" stroke="var(--muted)" stroke-width="1.5"/>
+    <g id="ticks"></g>
+    <line id="aF" x1="0" y1="48" x2="0" y2="48" stroke="var(--floor)" stroke-width="3" stroke-linecap="round"/>
+    <line id="aC" x1="0" y1="48" x2="0" y2="48" stroke="var(--ceil)" stroke-width="3" stroke-linecap="round"/>
+    <circle id="dF" cx="0" cy="70" r="6" fill="var(--floor)"/>
+    <circle id="dC" cx="0" cy="70" r="6" fill="var(--ceil)"/>
+    <circle id="dX" cx="0" cy="70" r="7" fill="var(--pt)" stroke="var(--panel)" stroke-width="2"/>
+    <text id="tF" x="0" y="34" fill="var(--floor)" font-size="13" text-anchor="end"></text>
+    <text id="tC" x="0" y="34" fill="var(--ceil)" font-size="13" text-anchor="start"></text>
+  </svg>
+  <div class="read">
+    <div class="row" id="rF"><span><code>⌊x⌋</code> floor</span><span class="num">—</span></div>
+    <div class="row" id="rC"><span><code>⌈x⌉</code> ceil</span><span class="num">—</span></div>
+    <div class="row" id="rU"><span>UE <code>FMath::RoundToInt</code> (.5 → 큰 쪽)</span><span class="num">—</span></div>
+    <div class="row" id="rY"><span>Unity <code>Mathf.RoundToInt</code> (.5 → 짝수)</span><span class="num">—</span></div>
+    <div class="row" id="rT"><span><code>(int)x</code> 버림 (0 쪽)</span><span class="num">—</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>2. 값으로 비교하기: 음수와 .5에서 갈라진다</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>x</th><th>floor</th><th>ceil</th><th>UE RoundToInt</th><th>Unity RoundToInt</th><th>(int)x</th></tr></thead>
+    <tbody>
+      <tr><td class="num">2.3</td><td class="num">2</td><td class="num">3</td><td class="num">2</td><td class="num">2</td><td class="num">2</td></tr>
+      <tr><td class="num">2.5</td><td class="num">2</td><td class="num">3</td><td class="num bad">3</td><td class="num bad">2</td><td class="num">2</td></tr>
+      <tr><td class="num">0.5</td><td class="num">0</td><td class="num">1</td><td class="num bad">1</td><td class="num bad">0</td><td class="num">0</td></tr>
+      <tr><td class="num">-2.3</td><td class="num">-3</td><td class="num">-2</td><td class="num">-2</td><td class="num">-2</td><td class="num">-2</td></tr>
+      <tr><td class="num">-2.5</td><td class="num">-3</td><td class="num">-2</td><td class="num">-2</td><td class="num">-2</td><td class="num">-2</td></tr>
+      <tr><td class="num">-2.7</td><td class="num bad">-3</td><td class="num">-2</td><td class="num">-3</td><td class="num">-3</td><td class="num bad">-2</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><b style="font-weight:500">(int) 캐스팅은 floor가 아닙니다.</b> 소수점을 떼어내 0 쪽으로 갑니다. 양수에서만 floor와 같아요. (C++·C# 언어 표준)</li>
+    <li>-2.5는 UE와 Unity가 우연히 같습니다. UE는 큰 쪽(-2), Unity는 짝수 쪽(-2)이라서요. -3.5를 넣어 보면 UE는 -3, Unity는 -4로 갈라집니다.</li>
+  </ul>
+  <div class="warn">
+    <b style="font-weight:500">반올림은 언어마다 다르다: .5를 어디로 보내나</b>
+    <ul>
+      <li>UE <code>FMath::RoundToInt</code>: <code>FloorToInt(F + 0.5f)</code>라서 .5는 언제나 <b style="font-weight:500">큰 쪽(오른쪽)</b>으로 갑니다. (Epic 공식: 엔진 소스 <code>GenericPlatformMath.h</code> 309줄에서 직접 확인)</li>
+      <li>Unity <code>Mathf.Round</code>, <code>Mathf.RoundToInt</code>, C# <code>Math.Round</code>: .5는 <b style="font-weight:500">짝수 쪽</b>으로 갑니다. 2.5 → 2, 3.5 → 4 (은행가 반올림, banker's rounding). (Unity·.NET 공식 문서)</li>
+      <li>C++ <code>std::round</code>: 0에서 먼 쪽으로 갑니다. -2.5 → -3. (C++ 표준)</li>
+    </ul>
+    <p class="sub">TBH(Unity)에서 쓰던 감각 그대로 언리얼 코드를 짜면 0.5, 2.5 같은 경계값에서 1씩 어긋납니다.</p>
+  </div>
+</section>
+
+<section class="lab" aria-labelledby="l2">
+  <h2 id="l2">실험 2 · 나머지는 시계 돌리기</h2>
+  <p class="sub">칸이 N개인 시계에서 0부터 a칸 이동합니다(음수면 거꾸로). 점선은 버려지는 바퀴(몫)이고, 주황색이 마지막 남은 칸(나머지)입니다.</p>
+  <div class="ctrl">
+    <label for="ns">칸 수 N</label>
+    <input type="range" id="ns" min="2" max="12" step="1" value="4">
+    <span id="nOut" class="num" style="min-width:44px">4</span>
+  </div>
+  <div class="ctrl">
+    <label for="as">이동 a</label>
+    <input type="range" id="as" min="-12" max="20" step="1" value="5">
+    <span id="aOut" class="num" style="min-width:44px">5</span>
+  </div>
+  <div class="btns">
+    <button data-n="4" data-a="5">5 % 4</button>
+    <button data-n="4" data-a="7">7 % 4</button>
+    <button data-n="4" data-a="8">8 % 4</button>
+    <button data-n="4" data-a="-1">-1 % 4</button>
+    <button data-n="12" data-a="15">15시 → 12시간 시계</button>
+  </div>
+  <div class="stage">
+    <svg id="clock" viewBox="0 0 440 440" role="img" aria-label="N칸 시계. 0에서 a칸 이동한 경로와 도착 칸">
+      <defs><marker id="hd" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1L8 5L1 9Z" fill="var(--hit)"/></marker></defs>
+      <circle cx="220" cy="220" r="110" fill="none" stroke="var(--line)" stroke-width="2"/>
+      <g id="path"></g>
+      <g id="dots"></g>
+    </svg>
+    <div class="read">
+      <div class="row"><span>시계로 본 나머지 (수학)</span><span class="num" id="cMod">—</span></div>
+      <div class="row"><span>바퀴 수 <code>⌊a / N⌋</code></span><span class="num" id="cLap">—</span></div>
+      <div class="row" id="cRemRow"><span>C++ · C# <code>a % N</code></span><span class="num" id="cRem">—</span></div>
+      <div class="row"><span>시계처럼 고친 식 <code>((a % N) + N) % N</code></span><span class="num" id="cFix">—</span></div>
+      <pre id="cEq" style="font-size:13px">—</pre>
+      <p class="sub">a를 음수로 내려 보세요. 시계는 거꾸로 돌아 양수 칸에 도착하는데, <code>%</code> 연산자는 음수를 돌려줍니다.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>3. 두 이야기는 하나다: 나머지 = 바퀴 수를 floor로 셀 때</h2>
+  <p>나눗셈을 <code>a = 몫 × N + 나머지</code>로 쪼갤 때, <b style="font-weight:500">몫을 어떻게 정수로 만드느냐</b>에 따라 나머지가 달라집니다.</p>
+<pre>시계 나머지 (수학)   = a − N × ⌊a / N⌋        몫을 floor (왼쪽)로
+% 연산자 (C++·C#)   = a − N × (int)(a / N)    몫을 버림 (0 쪽)으로
+
+예: a = -1, N = 4
+  floor:  ⌊-0.25⌋ = -1  →  -1 − 4 × (-1) =  3   ← 시계
+  버림:   (int)(-0.25) = 0  →  -1 − 4 × 0  = -1   ← % 연산자</pre>
+  <p>그래서 2절의 "<code>(int)</code>는 floor가 아니다"와 시계의 "음수 나머지 함정"은 <b style="font-weight:500">같은 원인</b>입니다. 양수에서는 floor와 버림이 같아서 둘 다 문제가 안 보이고, 음수에서만 갈라집니다. Unity <code>Mathf.Repeat</code>가 바로 floor 쪽 식으로 만들어져 있어요.</p>
+</section>
+
+<section>
+  <h2>4. 함수 대조표: 언리얼 C++ · Unity C#</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>하고 싶은 것</th><th>언리얼 C++</th><th>Unity C#</th></tr></thead>
+    <tbody>
+      <tr><td>내림 → 정수</td><td><code>FMath::FloorToInt(X)</code></td><td><code>Mathf.FloorToInt(x)</code></td></tr>
+      <tr><td>내림 → 실수 그대로</td><td><code>FMath::Floor(X)</code></td><td><code>Mathf.Floor(x)</code></td></tr>
+      <tr><td>올림 → 정수</td><td><code>FMath::CeilToInt(X)</code></td><td><code>Mathf.CeilToInt(x)</code></td></tr>
+      <tr><td>올림 → 실수 그대로</td><td><code>FMath::CeilToFloat(X)</code></td><td><code>Mathf.Ceil(x)</code></td></tr>
+      <tr><td>반올림 (기본)</td><td><code>FMath::RoundToInt(X)</code><br><span class="sub">.5 → 큰 쪽</span></td><td><code>Mathf.RoundToInt(x)</code><br><span class="sub">.5 → 짝수</span></td></tr>
+      <tr><td>.5를 0에서 먼 쪽으로</td><td><code>FMath::RoundHalfFromZero(X)</code></td><td><code>(float)Math.Round(x, MidpointRounding.AwayFromZero)</code></td></tr>
+      <tr><td>.5를 짝수 쪽으로</td><td><code>FMath::RoundHalfToEven(X)</code></td><td><code>Mathf.Round(x)</code> (기본이 이것)</td></tr>
+      <tr><td>버림 (0 쪽)</td><td><code>FMath::TruncToInt(X)</code> 또는 <code>(int32)X</code></td><td><code>(int)x</code></td></tr>
+      <tr><td>정수 나머지</td><td><code>A % B</code><br><span class="sub">부호는 A를 따름</span></td><td><code>a % b</code><br><span class="sub">부호는 a를 따름</span></td></tr>
+      <tr><td>실수 나머지</td><td><code>FMath::Fmod(A, B)</code><br><span class="sub">float에 % 쓰면 컴파일 에러</span></td><td><code>a % b</code><br><span class="sub">C#은 float에도 % 가능</span></td></tr>
+      <tr><td>항상 0 ~ N-1 (시계)</td><td><code>((A % N) + N) % N</code></td><td>정수: <code>((a % n) + n) % n</code><br>실수: <code>Mathf.Repeat(t, length)</code></td></tr>
+    </tbody>
+  </table></div>
+  <p class="src">출처: 언리얼 쪽은 UE 5.4 엔진 소스 <code>GenericPlatformMath.h</code>, <code>UnrealMathUtility.h</code>에서 이름과 동작을 확인했어요(Epic 공식). Unity 쪽은 Unity 스크립팅 API와 .NET 문서 기준입니다(Unity·.NET 공식). <code>((a % n) + n) % n</code>은 언어 기능이 아니라 관용구입니다(커뮤니티 표준).</p>
+  <div class="warn">
+    <b style="font-weight:500">함정: <code>FMath::Wrap</code>은 인덱스용이 아니다</b>
+    <p>이름만 보면 시계 함수 같지만, <code>Wrap(X, Min, Max)</code>는 Min과 Max를 <b style="font-weight:500">둘 다 포함하고 같은 점</b>으로 봅니다(각도에서 -180°와 180°처럼). 엔진 소스를 따라가 보면 <code>Wrap(4, 0, 4)</code>는 4를 그대로 돌려줍니다. 칸이 4개인 배열이라면 범위를 벗어난 값이에요. 배열 인덱스에는 <code>((A % N) + N) % N</code>을 쓰세요. (Epic 공식: <code>UnrealMathUtility.h</code> 608줄 구현에서 확인)</p>
+  </div>
+</section>
+
+<section>
+  <h2>5. 게임에서 어디에 쓰나</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>쓰는 곳</th><th>식</th><th>왜</th></tr></thead>
+    <tbody>
+      <tr><td>월드 좌표 → 격자 칸 번호</td><td><code>FloorToInt(X / CellSize)</code></td><td>칸 크기 100, X = -30이면 floor는 -1(맞음), <code>(int)</code>는 0(틀림). 0 근처 칸만 두 배로 커지는 버그가 생겨요</td></tr>
+      <tr><td>필요한 개수</td><td><code>CeilToInt(23 / 10.f)</code> = 3</td><td>총알 23발, 탄창 10발이면 탄창 3개. 인벤토리 페이지 수도 같은 식</td></tr>
+      <tr><td>화면 표시·스냅</td><td><code>RoundToInt</code></td><td>HP 99.6 → 100으로 보여 주기. 경계값(.5)이 중요하면 엔진별 규칙 확인</td></tr>
+      <tr><td>무기 슬롯 다음 / 이전</td><td><code>(i + 1) % N</code> / <code>(i - 1 + N) % N</code></td><td>마지막 다음은 처음. 이전 쪽은 음수 함정 때문에 <code>+ N</code></td></tr>
+      <tr><td>체크무늬·짝홀</td><td><code>(X + Y) % 2</code></td><td>격자 칸을 번갈아 칠하기. 좌표가 음수면 -1이 나올 수 있어 <code>!= 0</code>으로 비교</td></tr>
+      <tr><td>N프레임마다 한 번</td><td><code>FrameCount % N == 0</code></td><td>무거운 검사를 매 프레임 하지 않기</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>6. 수학에서의 위치</h2>
+  <ul>
+    <li>반올림·올림·버림(어림하기): <b style="font-weight:500">초등 4~5학년</b>. 한국 교과에선 초5 "수의 범위와 어림하기"</li>
+    <li>나머지가 있는 나눗셈: <b style="font-weight:500">초등 3학년</b></li>
+    <li><code>⌊x⌋</code> 기호: 한국 고등 수학 문제에서는 가우스 기호 <code>[x]</code>로 나옵니다. 정식 교과 단원인지는 확실치 않아요</li>
+    <li>시계 산수(모듈러 산술, modular arithmetic): 학교 교과 밖. <b style="font-weight:500">대학 이산수학·정수론</b>. 강의의 시계 그림이 이 분야의 표준 그림입니다</li>
+  </ul>
+</section>
+
+<section>
+  <h2>7. 직접 해 볼 것</h2>
+  <p>GameMathLab에서 X = -30, CellSize = 100으로 <code>(int32)(X / CellSize)</code>와 <code>FMath::FloorToInt(X / CellSize)</code>를 각각 <code>UE_LOG</code>로 찍어 보세요. 값이 갈라지는 걸 눈으로 보면 3절이 손에 붙습니다.</p>
+</section>
+</main>
+
+<script>
+(() => {
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const NS = 'http://www.w3.org/2000/svg';
+  const mk = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+
+  // number line: -4..4 mapped to 40..600
+  const X0 = 320, U = 70, px = v => X0 + v * U;
+  const ticks = document.getElementById('ticks');
+  for (let i = -4; i <= 4; i++) {
+    ticks.appendChild(mk('line', {x1: px(i), y1: 63, x2: px(i), y2: 77, stroke: 'var(--muted)', 'stroke-width': 1.5}));
+    const t = mk('text', {x: px(i), y: 100, 'text-anchor': 'middle', 'font-size': 13, fill: i === 0 ? 'var(--fg)' : 'var(--muted)'});
+    t.textContent = i; ticks.appendChild(t);
+  }
+  const fmt = v => (Object.is(v, -0) ? 0 : v).toString();
+  const ueRound = x => Math.floor(x + 0.5);
+  const unityRound = (x, tenths) => {
+    const f = Math.floor(x);
+    if (Math.abs(tenths) % 10 === 5) { return (f % 2 === 0) ? f : f + 1; }
+    return Math.round(x);
+  };
+  const xs = document.getElementById('xs');
+  const setRow = (id, v, diff) => { const r = document.getElementById(id); r.lastElementChild.textContent = fmt(v); r.classList.toggle('diff', diff); };
+  function drawLine() {
+    const tenths = +xs.value, x = tenths / 10;
+    document.getElementById('xOut').textContent = x.toFixed(1);
+    const f = Math.floor(x), c = Math.ceil(x), ue = ueRound(x), un = unityRound(x, tenths), tr = Math.trunc(x);
+    const set = (id, a) => { const e = document.getElementById(id); for (const k in a) e.setAttribute(k, a[k]); };
+    set('dX', {cx: px(x)}); set('dF', {cx: px(f)}); set('dC', {cx: px(c)});
+    set('aF', {x1: px(x), x2: px(f)}); set('aC', {x1: px(x), x2: px(c)});
+    const tF = document.getElementById('tF'), tC = document.getElementById('tC');
+    tF.setAttribute('x', Math.max(px(f), 90) - 2); tF.textContent = '⌊' + x.toFixed(1) + '⌋ = ' + fmt(f);
+    tC.setAttribute('x', Math.min(px(c), 550) + 2); tC.textContent = '⌈' + x.toFixed(1) + '⌉ = ' + fmt(c);
+    setRow('rF', f, false); setRow('rC', c, false);
+    setRow('rU', ue, ue !== un); setRow('rY', un, ue !== un);
+    setRow('rT', tr, tr !== f);
+  }
+  xs.addEventListener('input', drawLine);
+  document.querySelectorAll('[data-x]').forEach(b => b.addEventListener('click', () => { xs.value = b.dataset.x; drawLine(); }));
+  drawLine();
+
+  // clock
+  const CX = 220, CY = 220, R = 110;
+  const ns = document.getElementById('ns'), as = document.getElementById('as');
+  const ang = (k, N) => -Math.PI / 2 + (k / N) * 2 * Math.PI;
+  const pt = (k, N, r) => [CX + r * Math.cos(ang(k, N)), CY + r * Math.sin(ang(k, N))];
+  function drawClock() {
+    const N = +ns.value, a = +as.value;
+    document.getElementById('nOut').textContent = N;
+    document.getElementById('aOut').textContent = a;
+    const mod = ((a % N) + N) % N, lap = Math.floor(a / N), rem = a % N;
+    const pathG = document.getElementById('path'), dotsG = document.getElementById('dots');
+    pathG.replaceChildren(); dotsG.replaceChildren();
+    const steps = Math.abs(a), dir = Math.sign(a);
+    const fullSteps = steps - (dir >= 0 ? mod : (N - mod) % N);
+    const maxLap = Math.max(1, Math.ceil(steps / N));
+    const dr = Math.min(12, 80 / maxLap);
+    for (let s = 0; s < steps; s++) {
+      const k0 = dir * s, k1 = dir * (s + 1);
+      const r = R + 22 + Math.floor(s / N) * dr;
+      const [x0, y0] = pt(k0, N, r), [x1, y1] = pt(k1, N, r);
+      const last = s >= fullSteps;
+      const p = mk('path', {d: `M${x0} ${y0} A${r} ${r} 0 0 ${dir > 0 ? 1 : 0} ${x1} ${y1}`, fill: 'none',
+        stroke: last ? 'var(--hit)' : 'var(--lap)', 'stroke-width': last ? 3 : 1.5});
+      if (!last) p.setAttribute('stroke-dasharray', '4 4');
+      if (s === steps - 1) p.setAttribute('marker-end', 'url(#hd)');
+      pathG.appendChild(p);
+    }
+    for (let k = 0; k < N; k++) {
+      const [x, y] = pt(k, N, R), hit = k === mod;
+      dotsG.appendChild(mk('circle', {cx: x, cy: y, r: 15, fill: hit ? 'var(--hit)' : 'var(--panel)', stroke: hit ? 'var(--hit)' : 'var(--muted)', 'stroke-width': 1.5}));
+      const t = mk('text', {x, y: y + 5, 'text-anchor': 'middle', 'font-size': 14, 'font-family': 'var(--mono)', fill: hit ? 'var(--panel)' : 'var(--fg)'});
+      t.textContent = k; dotsG.appendChild(t);
+    }
+    const start = mk('text', {x: CX, y: CY + 5, 'text-anchor': 'middle', 'font-size': 13, fill: 'var(--muted)'});
+    start.textContent = '0에서 출발'; dotsG.appendChild(start);
+    document.getElementById('cMod').textContent = mod;
+    document.getElementById('cLap').textContent = fmt(lap);
+    document.getElementById('cRem').textContent = fmt(rem);
+    document.getElementById('cRemRow').classList.toggle('diff', rem !== mod);
+    document.getElementById('cFix').textContent = mod;
+    document.getElementById('cEq').textContent =
+      `${a} = ${N} × ${fmt(lap)} + ${mod}    (시계)\n${a} = ${N} × ${fmt(Math.trunc(a / N))} + ${fmt(rem)}    (% 연산자)`;
+  }
+  ns.addEventListener('input', drawClock); as.addEventListener('input', drawClock);
+  document.querySelectorAll('[data-n]').forEach(b => b.addEventListener('click', () => { ns.value = b.dataset.n; as.value = b.dataset.a; drawClock(); }));
+  drawClock();
+})();
+</script>
+</body>
+</html>
