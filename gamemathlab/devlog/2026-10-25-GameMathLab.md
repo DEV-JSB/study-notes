@@ -370,7 +370,6 @@ void ATurret::Tick(float DeltaTime)
 - 코드 정리: `OnConstruction`의 `InitSphereRadius` → `SetSphereRadius`, `DetectRadius` 기본값 90 → 1000, `DetectCos` 초기값 없음(+ private로), `Turret.cpp`의 쓰지 않는 `#include "Animation/AnimMontage.h"` 제거
 - **`.idea/.../workspace.xml`이 레포에 추적 중** — 개인 IDE 상태 파일. `git rm --cached` + `.gitignore`에 `.idea/`
 - 맵 위치 `Content/TurretLevel/` vs 규약 `Content/Maps/` — 어느 쪽으로 맞출지 미정
-- 오늘 2단계 변경분 미커밋 (`DefaultEngine.ini`의 Target 채널 꼭 포함)
 
 ## 다음에 할 것
 
@@ -393,4 +392,3 @@ void ATurret::Tick(float DeltaTime)
 - [ ] 네이밍 규약을 지켰다 — 대부분 OK(`DetectRadius`, `RotateSpeedDeg`, `bFromSweep`). 지역 변수 소문자는 고침, `DetectCos` 초기값 없음
 - [x] 눈 말고 값으로 확인했다 — 화면 Enter/Exit 로그, 손 계산 검증
 - [ ] Output Log에 새로 생긴 경고가 없다 — Live Coding 경고·실패가 쌓여 있었음
-- [ ] 저장 후 커밋했다 — 1단계는 커밋(`0714be0`), 2단계는 아직

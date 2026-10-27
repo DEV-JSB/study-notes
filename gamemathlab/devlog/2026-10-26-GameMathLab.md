@@ -135,7 +135,6 @@ void ATurret::Tick(float DeltaTime)
   - Play 중 `DetectDeg`를 바꾸면 선만 바뀌고 판정은 그대로 (`DetectCos`는 `BeginPlay`에서 한 번)
   - 코드 정리: `OnConstruction`의 `InitSphereRadius`(생성자 전용), `DetectRadius` 90 → 1000, `DetectCos` 초기값, 쓰지 않는 `#include "Animation/AnimMontage.h"`
   - 맵 위치 `Content/TurretLevel/` vs 규약 `Content/Maps/`
-- 오늘 변경분 미커밋 (`Missile.h/.cpp`, `BP_Missile`, `Turret.h/.cpp`, `BP_Turret`)
 
 ## 다음에 할 것
 
@@ -160,4 +159,3 @@ void ATurret::Tick(float DeltaTime)
 - [ ] 네이밍 규약을 지켰다 — `AMissile`, `BP_Missile`, `MissileClass` OK / 지역 변수 `actor` 소문자
 - [ ] 눈 말고 값으로 확인했다 — 원뿔 판정 화면 로그는 넣음. 높이 판정은 아직
 - [ ] Output Log에 새로 생긴 경고가 없다 — 확인 안 함
-- [ ] 저장 후 커밋했다 — 어제분은 커밋(`c7a852e`), 오늘분은 아직
