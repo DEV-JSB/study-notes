@@ -361,6 +361,7 @@ const float Angle = FMath::RadiansToDegrees(Radian);   // 도</pre>
     if (useMul) { s = angle * maxStep; pick = '곱하기 (버그)'; }   // 버그: Angle * (최대 × dt)
     else if (angle < maxStep) { s = angle; pick = '남은 각도'; }   // ④ Min
     else { s = maxStep; pick = '최대 회전'; }
+    if (axis === 0 && angle > 0.5) { s = 0; pick = '축 없음 → 안 돎'; }   // 정반대: 외적 (0,0,0)
     th += axis * s;                                             // ⑤ 축 방향으로 돌리기
     th = ((th % 360) + 540) % 360 - 180;
     const nfx = Math.cos(rad(th)), nfy = Math.sin(rad(th));     // ⑥ 돌고 난 앞 방향
