@@ -287,8 +287,6 @@ void AMissile::Tick(float DeltaTime)
 - **타겟이 없으면 `return`이라 공중 정지** — 의도인지 정하기 (보통은 직진 유지)
 - **`Config/DefaultEngine.ini`에 `[CoreRedirects]` 한 줄이 생김** — `TargetChaseRotateSpeed` → `TargetChaseRotateSpeedDeg` 이름 바꾸기 때 추가된 것으로 보임 (IDE 리팩터링이 넣은 것 같지만 확실치 않음). 이미 저장된 BP 값을 새 이름으로 이어 주는 설정
 - 어제에서 넘어온 것: 빨강 경계선 방향 확인, `DetectCos`가 Play 중 안 바뀜, `OnConstruction` 정리, 맵 위치 `Content/TurretLevel/` vs 규약 `Content/Maps/`
-- 오늘 변경분 미커밋 (`Missile.h/.cpp`, `BP_Missile`, `DefaultEngine.ini`, 레벨에 놓은 테스트 미사일)
-
 ## 다음에 할 것
 
 - 남은 각도 화면 로그로 값 확인 + 외적 순서 바꾸기 실험
@@ -316,4 +314,3 @@ void AMissile::Tick(float DeltaTime)
 - [x] 네이밍 규약을 지켰다 — `FMissileStage`, `FlyStages`, `CurrentSpeed`, `int32` 로 고침 / 남은 이름 정리 있음
 - [ ] 눈 말고 값으로 확인했다 — 직진·가속·유도 모두 눈으로 확인. 화면 값(속력, 남은 각도)으로 본 기록은 없음
 - [ ] Output Log에 새로 생긴 경고가 없다 — 확인 안 함
-- [ ] 저장 후 커밋했다 — 오늘분 아직
