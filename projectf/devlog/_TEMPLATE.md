@@ -44,4 +44,3 @@
 - [ ] 네이밍 규약을 지켰다 (PascalCase, bool은 `b` 접두사, 에셋 접두사 `NS_`/`SM_`/`M_`)
 - [ ] 눈 말고 값으로 확인했다 (Attribute Spreadsheet)
 - [ ] Output Log에 새로 생긴 경고가 없다
-- [ ] 저장(Ctrl+S / Save All) 후 커밋했다
