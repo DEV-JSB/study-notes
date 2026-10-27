@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>타겟 쪽으로 돌기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: single reading column; one live homing lab first, then axis (cross), amount (dot), per-frame cap (Min), code, engine table */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --fwd:#2f6fd0; --tgt:#178a66; --axis:#d2552a; --bad:#d23b3b; --trail:#8a8f98;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --tgt:#4cc79c; --axis:#f08a5d; --bad:#f07070; --trail:#7a8290; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --tgt:#4cc79c; --axis:#f08a5d; --bad:#f07070; --trail:#7a8290; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0 0 8px;text-wrap:balance}
+p{margin:0;max-width:65ch}
+a{color:var(--tgt)}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.def{border-left:3px solid var(--axis);padding:4px 0 4px 16px;font-size:18px}
+.lab{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctrl label{font-size:14px;color:var(--muted)}
+.ctrl input[type=range]{flex:1;min-width:140px;accent-color:var(--axis)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;padding:4px 12px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--fwd);outline-offset:2px}
+.toggles{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.toggles label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+.toggles input{margin-top:5px;accent-color:var(--bad)}
+.stage{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:640px){.stage{grid-template-columns:minmax(0,1fr)}}
+svg{width:100%;height:auto;display:block}
+#lab{touch-action:none;cursor:crosshair;background:var(--bg);border-radius:8px}
+.read{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:4px;font-size:14px}
+.row span:first-child{color:var(--muted)}
+.sub{font-size:14px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+td.num{white-space:nowrap}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0;overflow-x:auto;line-height:1.6}
+ul{margin:0;padding-left:20px}
+.warn{border:1px solid var(--axis);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+.figs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:640px){.figs{grid-template-columns:minmax(0,1fr)}}
+figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+figcaption{font-size:14px;color:var(--muted)}
+.ok{color:var(--tgt);font-weight:500}
+.ng{color:var(--bad);font-weight:500}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">GameMathLab · 과정 1 · 유도 미사일 · 2026-10-27</span>
+  <h1>타겟 쪽으로 돌기: 외적은 어느 쪽, 내적은 얼마나</h1>
+  <p class="lead">유도 미사일이 매 프레임 "어느 쪽으로, 몇 도" 돌지 정하는 방법. 위에서 내려다본 미사일을 직접 날려 보고, 오늘 실제로 겪은 버그 세 개를 스위치로 켜서 어떻게 망가지는지 봅니다.</p>
+</header>
+
+<section>
+  <p class="def">회전 하나 = <b>축 + 각도</b>. 축(어느 쪽으로)은 <b>외적</b>, 각도(얼마나)는 <b>내적</b>을 각도로 되돌려서 구하고, 이번 프레임에는 <b>남은 각도와 최대 회전 중 작은 쪽</b>만큼만 돈다.</p>
+</section>
+
+<section class="lab" aria-labelledby="l1">
+  <h2 id="l1">실험 · 위에서 본 유도 미사일</h2>
+  <p class="sub">초록 타겟을 끌어서 옮겨 보세요. 미사일은 위를 보고 출발해서 타겟 쪽으로 꺾습니다. 화면 오른쪽이 언리얼 +X, 아래가 +Y, 화면 밖(나를 향하는 쪽)이 +Z입니다.</p>
+  <div class="ctrl">
+    <label for="turn">최대 회전 <code>TargetChaseRotateSpeedDeg</code></label>
+    <input type="range" id="turn" min="30" max="720" step="10" value="180">
+    <span id="turnOut" class="num" style="min-width:58px">180°/s</span>
+  </div>
+  <div class="ctrl">
+    <label for="spd">속력</label>
+    <input type="range" id="spd" min="40" max="260" step="10" value="120">
+    <span id="spdOut" class="num" style="min-width:58px">120</span>
+  </div>
+  <div class="btns">
+    <button id="play">정지</button>
+    <button id="again">다시 쏘기</button>
+    <button id="behind">타겟을 바로 뒤에</button>
+  </div>
+  <div class="toggles">
+    <label><input type="checkbox" id="tSwap"><span>외적 순서 바꾸기 — <code>CrossProduct(ToTarget, Forward)</code> (오늘 숙제 실험)</span></label>
+    <label><input type="checkbox" id="tMul"><span><code>Min</code> 대신 곱하기 — <code>Angle * (최대 × dt)</code> (오늘 버그)</span></label>
+    <label><input type="checkbox" id="tSub"><span>빼기 순서 반대 — <code>나 − 타겟</code> (오늘 버그)</span></label>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--fwd)"></i>미사일 앞 방향</span>
+    <span><i style="background:var(--tgt)"></i>타겟 방향</span>
+    <span><i style="background:var(--axis)"></i>남은 각도</span>
+    <span><i style="background:var(--trail)"></i>지나온 길</span>
+  </div>
+  <div class="stage">
+    <svg id="lab" viewBox="0 0 400 320" role="img" aria-label="위에서 본 유도 미사일. 끌어서 옮길 수 있는 타겟, 미사일 앞 방향 화살표, 남은 각도 호, 회전 축 표시">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker>
+      </defs>
+      <polyline id="trail" points="" fill="none" stroke="var(--trail)" stroke-width="1.5" stroke-dasharray="2 4"/>
+      <line id="toT" x1="0" y1="0" x2="0" y2="0" stroke="var(--tgt)" stroke-width="1.5" stroke-dasharray="5 5"/>
+      <path id="arc" d="" fill="none" stroke="var(--axis)" stroke-width="3" stroke-linecap="round"/>
+      <line id="fwd" x1="0" y1="0" x2="0" y2="0" stroke="var(--fwd)" stroke-width="3" marker-end="url(#ah)"/>
+      <polygon id="ms" points="0,0" fill="var(--fg)"/>
+      <text id="axisMark" x="0" y="0" fill="var(--axis)" font-size="15" font-weight="500" text-anchor="middle">⊙</text>
+      <circle id="tgt" cx="300" cy="90" r="11" fill="var(--tgt)" stroke="var(--panel)" stroke-width="2"/>    </svg>
+    <div class="read">
+      <div class="row"><span>남은 각도 <code>Angle</code></span><span class="num" id="rAng">—</span></div>
+      <div class="row"><span>내적 <code>DotResult</code></span><span class="num" id="rDot">—</span></div>
+      <div class="row"><span>외적 Z (축)</span><span class="num" id="rCross">—</span></div>
+      <div class="row"><span>이번 프레임 최대 (최대 × dt)</span><span class="num" id="rMax">—</span></div>
+      <div class="row"><span>이번 프레임 실제 회전</span><span class="num" id="rStep">—</span></div>
+      <div class="row"><span><code>Min</code>이 고른 쪽</span><span class="num" id="rPick">—</span></div>
+      <div class="row"><span>명중</span><span class="num" id="rHit">0</span></div>
+      <p class="sub">해 볼 것: 최대 회전을 30으로 내리면 크게 돌다 놓치고, 720으로 올리면 거의 꺾여서 따라갑니다. 스위치를 하나씩 켜 보고 남은 각도가 어떻게 되는지 보세요.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="l2">
+  <h2 id="l2">회전 하나 = 축 + 각도</h2>
+  <p>유니티의 <code>Quaternion.AngleAxis(각도, 축)</code>을 떠올리면 됩니다. 회전을 만들려면 두 가지가 필요해요.</p>
+  <div class="tbl" style="margin-top:10px">
+  <table>
+    <thead><tr><th>필요한 것</th><th>무엇으로 구하나</th><th>언리얼</th><th>유니티</th></tr></thead>
+    <tbody>
+      <tr><td><b>어느 쪽으로</b> (축)</td><td>외적</td><td><code>FVector::CrossProduct(A, B)</code></td><td><code>Vector3.Cross(a, b)</code></td></tr>
+      <tr><td><b>얼마나</b> (각도)</td><td>내적 → 각도로 되돌리기</td><td><code>FMath::Acos(Clamp(Dot, -1, 1))</code></td><td><code>Vector3.Angle(a, b)</code></td></tr>
+      <tr><td>둘을 합쳐 돌리기</td><td></td><td><code>FQuat(축, 라디안)</code></td><td><code>Quaternion.AngleAxis(도, 축)</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:10px">내적만 있으면 "30° 차이 난다"까지는 알지만, <b>왼쪽으로 30°인지 오른쪽인지 위로인지</b>는 모릅니다(<a href="radar-cone.html">레이더 원뿔</a>에서 왼쪽 50°와 오른쪽 50°가 같은 값이었던 것). 그 "어느 쪽"을 외적이 정합니다.</p>
+  <p class="sub" style="margin-top:8px">작업자가 정리한 문장: "타겟 쪽을 보려면, 내가 보는 방향과 타겟으로의 방향을 외적해서 어느 쪽으로 돌지 알아내고, 내적으로 얼마나 돌지 구한다."</p>
+</section>
+
+<section aria-labelledby="l3">
+  <h2 id="l3">외적 = 고개를 돌릴 축</h2>
+  <p>내 고개(앞 방향)를 목표 쪽으로 돌린다고 생각해 보세요. 목표가 오른쪽이면 고개를 옆으로 돌리고(정수리를 꿰뚫는 위아래 축), 목표가 위면 고개를 듭니다(양쪽 귀를 잇는 좌우 축). 외적은 두 방향을 넣으면 그 축을 계산해 줍니다.</p>
+  <div class="figs" style="margin-top:12px">
+    <figure>
+      <svg viewBox="0 0 300 230" role="img" aria-label="앞 방향 1,0,0과 목표 0,1,0의 외적은 위 축 0,0,1">
+        <defs><marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+        <line x1="110" y1="160" x2="222" y2="160" stroke="var(--fwd)" stroke-width="3" marker-end="url(#ah2)"/>
+        <line x1="110" y1="160" x2="172" y2="210" stroke="var(--tgt)" stroke-width="2.5" marker-end="url(#ah2)"/>
+        <line x1="110" y1="160" x2="110" y2="48" stroke="var(--axis)" stroke-width="3" marker-end="url(#ah2)"/>
+        <path d="M175 160 Q166 182 148 188" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#ah2)"/>
+        <text x="186" y="150" fill="var(--fwd)" font-size="12">앞 (1,0,0)</text>
+        <text x="180" y="220" fill="var(--tgt)" font-size="12">목표 (0,1,0)</text>
+        <text x="120" y="56" fill="var(--axis)" font-size="12">축 (0,0,1)</text>
+      </svg>
+      <figcaption>목표가 오른쪽 → <b>위아래 축</b>. 고개를 옆으로 돌린다</figcaption>
+    </figure>
+    <figure>
+      <svg viewBox="0 0 300 230" role="img" aria-label="앞 방향 1,0,0과 목표 0,0,1의 외적은 좌우 축 0,-1,0">
+        <line x1="110" y1="160" x2="222" y2="160" stroke="var(--fwd)" stroke-width="3" marker-end="url(#ah2)"/>
+        <line x1="110" y1="160" x2="110" y2="50" stroke="var(--tgt)" stroke-width="2.5" marker-end="url(#ah2)"/>
+        <line x1="110" y1="160" x2="50" y2="112" stroke="var(--axis)" stroke-width="3" marker-end="url(#ah2)"/>
+        <path d="M170 160 Q166 120 122 106" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#ah2)"/>
+        <text x="186" y="150" fill="var(--fwd)" font-size="12">앞 (1,0,0)</text>
+        <text x="120" y="44" fill="var(--tgt)" font-size="12">목표 (0,0,1)</text>
+        <text x="8" y="100" fill="var(--axis)" font-size="12">축 (0,−1,0)</text>
+      </svg>
+      <figcaption>목표가 위 → <b>좌우 축</b>. 고개를 든다</figcaption>
+    </figure>
+  </div>
+  <p class="sub" style="margin-top:8px">점선은 도는 쪽. 숫자는 실제 <code>CrossProduct</code> 결과입니다. 외적으로 나온 축은 두 방향 모두에 <b>수직</b>이에요.</p>
+
+  <h2 style="margin-top:20px">축은 길이 1로 — 방향만 쓰려고</h2>
+  <p>외적 결과는 방향은 맞지만 길이가 제각각입니다. 두 방향이 많이 벌어질수록 깁니다.</p>
+  <div class="tbl" style="margin-top:10px">
+  <table>
+    <thead><tr><th>앞 방향</th><th>목표 방향</th><th>사이 각도</th><th>외적</th><th>길이</th></tr></thead>
+    <tbody>
+      <tr><td class="num">(1, 0, 0)</td><td class="num">(0, 1, 0)</td><td class="num">90°</td><td class="num">(0, 0, 1)</td><td class="num">1</td></tr>
+      <tr><td class="num">(1, 0, 0)</td><td class="num">(0.87, 0.5, 0)</td><td class="num">30°</td><td class="num">(0, 0, 0.5)</td><td class="num">0.5</td></tr>
+      <tr><td class="num">(1, 0, 0)</td><td class="num">(0.9998, 0.017, 0)</td><td class="num">1°</td><td class="num">(0, 0, 0.017)</td><td class="num">0.017</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:10px"><code>FQuat(축, 각도)</code>는 축이 길이 1이라고 믿고 계산합니다(Epic 공식). 얼마나는 각도가 따로 맡으니, 축에는 <code>.GetSafeNormal()</code>을 붙여 <b>방향만</b> 남깁니다. 유니티 <code>Quaternion.AngleAxis</code>는 안에서 정규화해 줘서 신경 쓸 일이 없었어요.</p>
+</section>
+
+<section aria-labelledby="l4">
+  <h2 id="l4">내적 → 각도: Acos 앞에는 Clamp</h2>
+  <p>길이 1끼리 내적하면 cos(사이 각도)가 나옵니다(<a href="dot-product.html">내적은 그림자 길이</a>). <code>Acos</code>는 그걸 거꾸로 각도로 되돌리는 함수예요. 결과는 <b>라디안</b>입니다.</p>
+  <div class="tbl" style="margin-top:10px">
+  <table>
+    <thead><tr><th>넣은 값</th><th><code>FMath::Acos</code></th><th>도</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1.0</td><td class="num">0</td><td class="num">0° (정면)</td></tr>
+      <tr><td class="num">0.0</td><td class="num">1.571</td><td class="num">90°</td></tr>
+      <tr><td class="num">−1.0</td><td class="num">3.142</td><td class="num">180° (정반대)</td></tr>
+      <tr><td class="num">1.0000001</td><td class="num ng">NaN</td><td>숫자가 아님</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="warn" style="margin-top:12px">
+    <b>NaN 함정</b>
+    <p>cos 값은 −1 ~ 1에만 있습니다. 그런데 컴퓨터 소수 오차로 1.0000001이 나올 수 있고, 하필 <b>유도가 잘 돼서 타겟을 거의 정면으로 볼 때</b> 그렇습니다. NaN이 회전에 들어가면 위치까지 NaN이 되어 미사일이 사라져요. <code>FMath::Acos</code>는 범위를 검사하지 않으니 부르기 전에 잘라 둡니다. 유니티 <code>Vector3.Angle</code>이 안에서 하는 일도 정확히 이것입니다.</p>
+  </div>
+  <pre style="margin-top:12px">const float DotResult = FMath::Clamp(FVector::DotProduct(ForwardVector, ToTarget), -1.f, 1.f);
+const float Radian = FMath::Acos(DotResult);           // 라디안
+const float Angle = FMath::RadiansToDegrees(Radian);   // 도</pre>
+</section>
+
+<section aria-labelledby="l5">
+  <h2 id="l5">이번 프레임 각도: 남은 것과 최대 중 작은 쪽</h2>
+  <p>60fps, 최대 회전 180°/s라면 한 프레임에 돌 수 있는 최대는 180 × 0.016 ≈ 2.9°입니다.</p>
+  <div class="tbl" style="margin-top:10px">
+  <table>
+    <thead><tr><th>남은 각도</th><th><code>Min(남은, 2.9)</code></th><th><code>남은 × 2.9</code> (오늘 버그)</th></tr></thead>
+    <tbody>
+      <tr><td class="num">60°</td><td class="num ok">2.9° 최대로</td><td class="num ng">174° 한 프레임에!</td></tr>
+      <tr><td class="num">10°</td><td class="num ok">2.9°</td><td class="num ng">29° (19° 지나침)</td></tr>
+      <tr><td class="num">1°</td><td class="num ok">1° 딱 정면에 멈춤</td><td class="num ng">2.9° (1.9° 지나침)</td></tr>
+      <tr><td class="num">0°</td><td class="num ok">0°</td><td class="num">0°</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:10px"><code>Min</code>이 없으면 남은 각도보다 더 돌아서 반대쪽으로 지나치고, 다음 프레임에 또 지나치며 좌우로 떨립니다. 그래서 <code>TargetChaseRotateSpeedDeg</code>의 뜻은 "<b>초당 최대 회전</b>"이 됩니다. 이 숫자 하나로 미사일 성격이 정해져요(작으면 피할 수 있고, 크면 못 피함).</p>
+
+  <h2 style="margin-top:20px">dt는 "초당 값"에만 곱한다</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>값</th><th>뜻</th><th>단위</th><th>dt</th></tr></thead>
+    <tbody>
+      <tr><td><code>TargetChaseRotateSpeedDeg</code></td><td>1초에 최대 몇 도</td><td>도/초</td><td class="ok">곱함 → 도</td></tr>
+      <tr><td><code>Angle</code></td><td>지금 남은 각도</td><td>도 (이미 양)</td><td>안 곱함</td></tr>
+      <tr><td><code>Min(...)</code> 결과</td><td>이번 프레임에 돌 각도</td><td>도</td><td>안 곱함 (또 곱하면 60배 느림)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:8px">단위로 확인: <code>Angle × (최대 × dt)</code> = 도 × 도 = 도². 각도가 아니라서 틀린 식이라는 게 바로 보입니다. 이동에서 "목적지까지 남은 거리에는 dt를 안 곱한다"와 같은 이유예요.</p>
+</section>
+
+<section aria-labelledby="l6">
+  <h2 id="l6">오늘 짠 코드, 여섯 단계로</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>단계</th><th>코드</th><th>연산</th></tr></thead>
+    <tbody>
+      <tr><td>① 타겟 방향</td><td><code>Target-&gt;GetActorLocation() - GetActorLocation()</code> → <code>Normalize()</code></td><td>떼어내기 (도착 − 출발) → 길이 1로</td></tr>
+      <tr><td>② 축</td><td><code>FVector::CrossProduct(ForwardVector, ToTarget).GetSafeNormal()</code></td><td>외적 → 길이 1로</td></tr>
+      <tr><td>③ 남은 각도</td><td><code>Clamp</code> → <code>Acos</code> → <code>RadiansToDegrees</code></td><td>그림자 (내적) → 각도</td></tr>
+      <tr><td>④ 이번 각도</td><td><code>FMath::Min(Angle, TargetChaseRotateSpeedDeg * DeltaTime)</code></td><td>작은 쪽 고르기</td></tr>
+      <tr><td>⑤ 돌리기</td><td><code>AddActorWorldRotation(FQuat(Rotate, FMath::DegreesToRadians(RotateSpeed)))</code></td><td>회전 (라디안)</td></tr>
+      <tr><td>⑥ 이동</td><td><code>GetActorForwardVector() * CurrentSpeed</code> → <code>AddActorWorldOffset(Velocity * DeltaTime)</code></td><td>돌고 난 앞 방향으로</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:8px">⑥에서 앞 방향을 <b>다시</b> 부르는 게 포인트입니다. ①에서 구해 둔 <code>ForwardVector</code>는 돌기 전 방향이라, 그걸 쓰면 매 프레임 한 박자 늦은 쪽으로 갑니다.</p>
+</section>
+
+<section aria-labelledby="l7">
+  <h2 id="l7">종이 코드에서 이미 본 것</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>미사일</th><th><a href="../projectf/paper-aero-map.html">PaperAero 지도</a></th></tr></thead>
+    <tbody>
+      <tr><td><code>CrossProduct(ForwardVector, ToTarget)</code> — 앞을 타겟 쪽으로 돌릴 축</td><td>③ 바닥 <code>cross(N, flatN)</code> — 종이 면을 평평한 쪽으로 넘어뜨릴 축</td></tr>
+      <tr><td><code>AddActorWorldRotation(FQuat(축, 각도))</code></td><td>④ 돌리기 (회전값 += 회전 속도 × dt)</td></tr>
+      <tr><td><code>CurrentSpeed += Acceleration * DeltaTime</code></td><td><code>PaperSim</code>의 <code>OutVel.z -= Gravity * DeltaTime</code> (중력 = 가속도)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:8px">종이가 "평평한 쪽으로 눕는" 것과 미사일이 "타겟 쪽으로 고개를 돌리는" 것은 같은 동작입니다. 앞 방향 자리에 종이 면 방향이, 타겟 방향 자리에 바닥 방향이 들어갔을 뿐이에요.</p>
+</section>
+
+<section aria-labelledby="l8">
+  <h2 id="l8">참고 — 이런 함수도 있다</h2>
+  <p class="sub">오늘 직접 쓰지는 않았지만 같은 일을 해 주는 함수들.</p>
+  <div class="tbl" style="margin-top:8px">
+  <table>
+    <thead><tr><th>언리얼</th><th>유니티</th><th>하는 일</th></tr></thead>
+    <tbody>
+      <tr><td><code>FMath::FInterpConstantTo(Current, Target, DeltaTime, InterpSpeed)</code></td><td><code>Mathf.MoveTowards</code></td><td>숫자 하나를 초당 일정 속도로 목표까지, 지나치지 않게. 오늘 짠 <code>Min(남은 양, 최대 × dt)</code>와 같은 일</td></tr>
+      <tr><td>—</td><td><code>Quaternion.RotateTowards</code>, <code>Vector3.RotateTowards</code></td><td>회전을 초당 최대 각도로 목표 쪽으로. 오늘 손으로 짠 유도 회전과 같은 일</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section aria-labelledby="l9">
+  <h2 id="l9">함정 모음</h2>
+  <ul>
+    <li><b>빼기 순서</b>: 화살표는 <b>도착 − 출발</b>. <code>나 − 타겟</code>이면 미사일이 도망갑니다 (위 실험 스위치 3).</li>
+    <li><b>외적 순서</b>: 순서를 바꾸면 축이 반대. 미사일이 타겟에서 고개를 돌립니다 (스위치 1). 남은 각도가 줄지 않고 180° 쪽으로 커지는 걸 확인하세요.</li>
+    <li><b>Acos NaN</b>: 내적을 −1~1로 Clamp한 뒤 넣기.</li>
+    <li><b>축 길이</b>: <code>FQuat</code>에 넣기 전 <code>.GetSafeNormal()</code>.</li>
+    <li><b>라디안</b>: <code>Acos</code>는 라디안을 돌려주고, <code>FQuat</code>은 라디안을 받습니다. 바꿔야 하는 건 도로 적은 회전 속도 쪽이에요. 이름에 <code>Deg</code>/<code>Rad</code>를 붙이면 덜 헷갈립니다.</li>
+    <li><b>정반대 타겟</b>: 타겟이 정확히 바로 뒤면 두 방향이 일직선이라 외적이 (0,0,0)입니다. 축이 없어서 영영 안 돌 수 있어요 ("타겟을 바로 뒤에" 버튼). 실제 게임은 이때 아무 축이나 하나 골라 돌리곤 합니다.</li>
+    <li><b>dt</b>: 초당 값에만 곱합니다. 남은 각도나 <code>Min</code> 결과에는 곱하지 않습니다.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="radar-cone.html">레이더 원뿔 판정</a> — 같은 내적으로 "앞 원뿔 안인가"를 판단하기</li>
+    <li><a href="dot-product.html">내적은 그림자 길이다</a></li>
+    <li><a href="vector-ops.html">벡터 더하기·빼기·곱하기</a> — 도착 − 출발</li>
+    <li><a href="../projectf/paper-aero-map.html">PaperAero 한 장 지도</a> — ③ 회전 속도, ④ 돌리기</li>
+    <li><a href="https://github.com/DEV-JSB/study-notes/blob/main/gamemathlab/devlog/2026-10-27-GameMathLab.md">2026-10-27 개발 일지</a></li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const svg = $('lab');
+  const W = 400, H = 320, START = [60, 290], HIT_R = 14;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+
+  let mx, my, th;                 // 미사일 위치, 앞 방향 각도(도). 화면 좌표라 +각도 = 시계 방향 = 언리얼 +Yaw
+  let tx = 300, ty = 90;           // 타겟
+  let maxTurn = 180, speed = 120;
+  let playing = !reduce;
+  let hits = 0, trail = [];
+  let swapCross = false, useMul = false, flipSub = false;
+  let info = null, last = performance.now();
+
+  function reset(){ mx = START[0]; my = START[1]; th = -90; trail = []; }
+  reset();
+
+  function step(dt){
+    let dx = tx - mx, dy = ty - my;                 // ① 도착 − 출발
+    if (flipSub) { dx = -dx; dy = -dy; }            //    버그: 나 − 타겟
+    const len = Math.hypot(dx, dy);
+    const ux = len > 0 ? dx / len : 0, uy = len > 0 ? dy / len : 0;
+    const fx = Math.cos(rad(th)), fy = Math.sin(rad(th));
+    let cz = fx * uy - fy * ux;                     // ② CrossProduct(Forward, ToTarget)의 Z
+    if (swapCross) { cz = -cz; }                    //    실험: 순서 바꾸기
+    const axis = Math.abs(cz) < 1e-6 ? 0 : Math.sign(cz);   // GetSafeNormal → ±Z 또는 (0,0,0)
+    const dot = Math.max(-1, Math.min(1, fx * ux + fy * uy));   // ③ Clamp
+    const angle = deg(Math.acos(dot));                          //    Acos → 도
+    const maxStep = maxTurn * dt;
+    let s, pick;
+    if (useMul) { s = angle * maxStep; pick = '곱하기 (버그)'; }   // 버그: Angle * (최대 × dt)
+    else if (angle < maxStep) { s = angle; pick = '남은 각도'; }   // ④ Min
+    else { s = maxStep; pick = '최대 회전'; }
+    th += axis * s;                                             // ⑤ 축 방향으로 돌리기
+    th = ((th % 360) + 540) % 360 - 180;
+    const nfx = Math.cos(rad(th)), nfy = Math.sin(rad(th));     // ⑥ 돌고 난 앞 방향
+    mx += nfx * speed * dt; my += nfy * speed * dt;
+    trail.push([mx, my]); if (trail.length > 260) { trail.shift(); }
+    info = { angle, dot, cz, axis, maxStep, s, pick };
+    if (trail.length > 5 && Math.hypot(tx - mx, ty - my) < HIT_R) { hits++; reset(); }
+    else if (mx < -80 || mx > W + 80 || my < -80 || my > H + 80) { reset(); }
+  }
+
+  function render(){
+    const fx = Math.cos(rad(th)), fy = Math.sin(rad(th));
+    $('trail').setAttribute('points', trail.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' '));
+    const toT = $('toT');
+    toT.setAttribute('x1', mx.toFixed(1)); toT.setAttribute('y1', my.toFixed(1));
+    toT.setAttribute('x2', tx.toFixed(1)); toT.setAttribute('y2', ty.toFixed(1));
+    const fw = $('fwd');
+    fw.setAttribute('x1', mx.toFixed(1)); fw.setAttribute('y1', my.toFixed(1));
+    fw.setAttribute('x2', (mx + fx * 46).toFixed(1)); fw.setAttribute('y2', (my + fy * 46).toFixed(1));
+    // 미사일 몸통 (삼각형)
+    const px = -fy, py = fx;
+    const tip = [mx + fx * 12, my + fy * 12], l = [mx - fx * 8 + px * 6, my - fy * 8 + py * 6], r = [mx - fx * 8 - px * 6, my - fy * 8 - py * 6];
+    $('ms').setAttribute('points', [tip, l, r].map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' '));
+    $('tgt').setAttribute('cx', tx.toFixed(1)); $('tgt').setAttribute('cy', ty.toFixed(1));
+
+    if (info) {
+      // 남은 각도 호
+      const R = 30, a0 = th, a1 = th + info.axis * info.angle;
+      const p0 = [mx + R * Math.cos(rad(a0)), my + R * Math.sin(rad(a0))];
+      const p1 = [mx + R * Math.cos(rad(a1)), my + R * Math.sin(rad(a1))];
+      $('arc').setAttribute('d', info.axis === 0 || info.angle < 0.5 ? '' :
+        `M${p0[0].toFixed(1)} ${p0[1].toFixed(1)} A${R} ${R} 0 0 ${info.axis > 0 ? 1 : 0} ${p1[0].toFixed(1)} ${p1[1].toFixed(1)}`);
+      const am = $('axisMark');
+      am.setAttribute('x', (mx - fx * 22).toFixed(1)); am.setAttribute('y', (my - fy * 22 + 5).toFixed(1));
+      am.textContent = info.axis > 0 ? '⊙' : (info.axis < 0 ? '⊗' : '·');
+      $('rAng').textContent = info.angle.toFixed(1) + '°';
+      $('rDot').textContent = info.dot.toFixed(3);
+      $('rCross').textContent = info.cz.toFixed(3) + (info.axis > 0 ? ' ⊙ +Z' : (info.axis < 0 ? ' ⊗ −Z' : ' 축 없음'));
+      $('rMax').textContent = info.maxStep.toFixed(2) + '°';
+      $('rStep').textContent = info.s.toFixed(2) + '°';
+      $('rStep').style.color = info.s > info.angle + 1e-6 ? 'var(--bad)' : '';
+      $('rPick').textContent = info.pick;
+    }
+    $('rHit').textContent = hits;
+  }
+
+  function frame(now){
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (playing) { step(dt); }
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  $('turn').addEventListener('input', e => { maxTurn = +e.target.value; $('turnOut').textContent = maxTurn + '°/s'; });
+  $('spd').addEventListener('input', e => { speed = +e.target.value; $('spdOut').textContent = speed; });
+  const playBtn = $('play');
+  const syncPlay = () => { playBtn.textContent = playing ? '정지' : '재생'; };
+  playBtn.addEventListener('click', () => { playing = !playing; syncPlay(); });
+  syncPlay();
+  $('again').addEventListener('click', () => { reset(); });
+  $('behind').addEventListener('click', () => {
+    // 미사일은 위를 보고, 타겟은 정확히 바로 아래(정반대) → 외적이 (0,0,0)
+    mx = 200; my = 160; th = -90; trail = [];
+    tx = 200; ty = 300;
+  });
+  $('tSwap').addEventListener('change', e => { swapCross = e.target.checked; });
+  $('tMul').addEventListener('change', e => { useMul = e.target.checked; });
+  $('tSub').addEventListener('change', e => { flipSub = e.target.checked; });
+
+  let dragging = false;
+  function toSvg(e){
+    const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+    const q = p.matrixTransform(svg.getScreenCTM().inverse());
+    return [Math.max(12, Math.min(W - 12, q.x)), Math.max(12, Math.min(H - 12, q.y))];
+  }
+  svg.addEventListener('pointerdown', e => { dragging = true; svg.setPointerCapture(e.pointerId); [tx, ty] = toSvg(e); render(); });
+  svg.addEventListener('pointermove', e => { if (dragging) { [tx, ty] = toSvg(e); render(); } });
+  const stop = () => { dragging = false; };
+  svg.addEventListener('pointerup', stop); svg.addEventListener('pointercancel', stop);
+
+  step(0);
+  render();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
