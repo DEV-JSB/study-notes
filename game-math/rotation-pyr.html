@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>회전 Pitch · Yaw · Roll</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: single reading column; one 3D model lab with three motion sliders and an engine switch, then name/axis, order, sign tables */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --fwd:#2f6fd0; --right:#d2552a; --up:#178a66; --hl:#8a5cd0;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --right:#f08a5d; --up:#4cc79c; --hl:#b48cf0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --right:#f08a5d; --up:#4cc79c; --hl:#b48cf0; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0 0 8px;text-wrap:balance}
+p{margin:0;max-width:65ch}
+a{color:var(--up)}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.def{border-left:3px solid var(--hl);padding:4px 0 4px 16px;font-size:18px}
+.lab{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.ctrl{display:grid;grid-template-columns:150px minmax(0,1fr) 56px;align-items:center;gap:10px}
+@media (max-width:520px){.ctrl{grid-template-columns:110px minmax(0,1fr) 48px}}
+.ctrl label{font-size:14px;color:var(--muted)}
+.ctrl input[type=range]{width:100%;accent-color:var(--hl)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:inherit;font-size:13px;padding:4px 12px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--muted)}
+button[aria-pressed="true"]{border-color:var(--hl);color:var(--hl);font-weight:500}
+button:focus-visible,input:focus-visible{outline:2px solid var(--fwd);outline-offset:2px}
+.stage{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:640px){.stage{grid-template-columns:minmax(0,1fr)}}
+svg{width:100%;height:auto;display:block}
+#view{background:var(--bg);border-radius:8px}
+.read{display:flex;flex-direction:column;gap:8px}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.card.on{border-color:var(--hl)}
+.card b{font-size:13px;color:var(--muted);font-weight:500}
+.card code{font-size:15px}
+.sub{font-size:14px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0;overflow-x:auto;line-height:1.6}
+ul{margin:0;padding-left:20px}
+.warn{border:1px solid var(--right);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">GameMathLab · 과정 1 · 회전 · 2026-10-28</span>
+  <h1>회전 Pitch · Yaw · Roll: 이름은 같고, 축 글자와 순서가 다르다</h1>
+  <p class="lead">미사일을 수직으로 쏘려고 <code>FRotator(90, 0, 0)</code>을 쓰다가 "언리얼은 Yaw Pitch Roll이 아니라 Pitch Yaw Roll이네?"에서 시작한 노트. 미사일 모형을 세 가지 동작으로 직접 돌려 보고, 언리얼과 유니티에서 같은 회전이 어떻게 적히는지 비교합니다.</p>
+</header>
+
+<section>
+  <p class="def">Pitch(끄덕)·Yaw(도리도리)·Roll(갸우뚱)은 <b>물체 자신을 기준으로 한 동작 이름</b>이라 두 엔진에서 뜻이 같다. 다른 건 ① 그 동작에 붙는 <b>축 글자</b>, ② 에디터와 코드의 <b>칸 순서</b>, ③ Pitch의 <b>부호</b>.</p>
+</section>
+
+<section class="lab" aria-labelledby="l1">
+  <h2 id="l1">실험 · 미사일 돌려 보기</h2>
+  <p class="sub">파란 화살표가 미사일의 앞, 주황 점이 달린 날개가 오른쪽, 초록이 위입니다. 미사일을 왼쪽 옆에서 비스듬히 보는 그림이에요(오른쪽은 화면 안쪽으로). 엔진을 바꾸면 축 이름과 아래 숫자가 바뀌지만 <b>미사일은 똑같이 돕니다.</b></p>
+  <div class="btns" role="group" aria-label="엔진">
+    <button id="eUE" aria-pressed="true">언리얼</button>
+    <button id="eUnity" aria-pressed="false">유니티</button>
+    <span class="sub" style="margin-left:8px">미리 놓기:</span>
+    <button data-p="0,0,0">정면</button>
+    <button data-p="90,0,0">수직 발사</button>
+    <button data-p="0,90,0">오른쪽으로 90°</button>
+    <button data-p="0,0,45">기울이기</button>
+    <button data-p="30,45,0">오른쪽 위 비스듬히</button>
+  </div>
+  <div class="ctrl"><label for="sP">끄덕 · Pitch</label><input type="range" id="sP" min="-90" max="90" step="1" value="20"><span id="oP" class="num">20°</span></div>
+  <div class="ctrl"><label for="sY">도리도리 · Yaw</label><input type="range" id="sY" min="-180" max="180" step="1" value="30"><span id="oY" class="num">30°</span></div>
+  <div class="ctrl"><label for="sR">갸우뚱 · Roll</label><input type="range" id="sR" min="-90" max="90" step="1" value="0"><span id="oR" class="num">0°</span></div>
+  <div class="legend">
+    <span><i style="background:var(--fwd)"></i>미사일 앞</span>
+    <span><i style="background:var(--right)"></i>미사일 오른쪽</span>
+    <span><i style="background:var(--up)"></i>미사일 위</span>
+    <span><i style="background:var(--line)"></i>월드 축 (안 돎)</span>
+  </div>
+  <div class="stage">
+    <svg id="view" viewBox="0 0 420 320" role="img" aria-label="비스듬히 본 3D 공간의 미사일 모형. 앞, 오른쪽, 위 방향 화살표와 월드 축">
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+      <g id="world"></g>
+      <g id="model"></g>
+    </svg>
+    <div class="read">
+      <div class="card" id="cUE">
+        <b>언리얼 코드</b>
+        <code id="ueCode">—</code>
+        <b>언리얼 Details (Rotation)</b>
+        <code id="ueDet">—</code>
+      </div>
+      <div class="card" id="cUnity">
+        <b>유니티 코드</b>
+        <code id="unCode">—</code>
+        <b>유니티 인스펙터 (Rotation)</b>
+        <code id="unDet">—</code>
+      </div>
+      <p class="sub">유니티 쪽 Roll 칸의 부호(*)는 이 그림에서 확인하지 않았습니다. Pitch만 부호가 반대라는 건 확실해요.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="l2">
+  <h2 id="l2">이름은 물체 기준 동작</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>이름</th><th>동작</th><th>도는 축 (물체 기준)</th><th>언리얼 축</th><th>유니티 축</th></tr></thead>
+    <tbody>
+      <tr><td><b>Yaw</b></td><td>도리도리 — 좌우로 고개 돌리기</td><td><b>위</b> 축</td><td>Z</td><td>Y</td></tr>
+      <tr><td><b>Pitch</b></td><td>끄덕끄덕 — 고개 들고 숙이기</td><td><b>옆</b> 축</td><td>Y</td><td>X</td></tr>
+      <tr><td><b>Roll</b></td><td>갸우뚱 — 고개 기울이기</td><td><b>앞</b> 축</td><td>X</td><td>Z</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:10px">엔진마다 위·앞·옆에 붙인 글자가 다를 뿐입니다. 언리얼은 <b>Z가 위, X가 앞</b>, 유니티는 <b>Y가 위, Z가 앞</b>이에요.</p>
+</section>
+
+<section aria-labelledby="l3">
+  <h2 id="l3">칸 순서: 언리얼은 에디터와 코드가 어긋난다</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th></th><th>첫째 칸</th><th>둘째 칸</th><th>셋째 칸</th></tr></thead>
+    <tbody>
+      <tr><td>언리얼 <b>코드</b> <code>FRotator(…)</code></td><td>Pitch</td><td>Yaw</td><td>Roll</td></tr>
+      <tr><td>언리얼 <b>Details</b> X / Y / Z</td><td>Roll</td><td>Pitch</td><td>Yaw</td></tr>
+      <tr><td>유니티 코드 <code>Quaternion.Euler(x, y, z)</code></td><td>Pitch</td><td>Yaw</td><td>Roll</td></tr>
+      <tr><td>유니티 인스펙터 X / Y / Z</td><td>Pitch</td><td>Yaw</td><td>Roll</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul style="margin-top:10px">
+    <li>유니티는 Y가 위라서 축 순서(x, y, z)와 동작 순서(Pitch, Yaw, Roll)가 우연히 맞습니다. 그래서 헷갈릴 일이 없었어요.</li>
+    <li>언리얼은 <b>Details는 축 순서</b>(X=Roll, Y=Pitch, Z=Yaw), <b>코드는 Pitch-Yaw-Roll</b>이라 둘이 어긋납니다(Epic 공식).</li>
+  </ul>
+  <pre style="margin-top:10px">// 미사일 수직 발사 — 레벨에서 Details의 Y 칸에 90을 넣었던 것
+Details:  X(Roll)=0   Y(Pitch)=90   Z(Yaw)=0
+코드:     FRotator(90.f, 0.f, 0.f)     // (Pitch, Yaw, Roll)</pre>
+</section>
+
+<section aria-labelledby="l4">
+  <h2 id="l4">부호: Pitch +90은 언리얼에선 위, 유니티에선 아래</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th></th><th>언리얼</th><th>유니티</th></tr></thead>
+    <tbody>
+      <tr><td>Pitch +90</td><td><b>위</b>를 봄 (Epic 공식)</td><td><b>아래</b>를 봄 (탑다운 카메라를 (90, 0, 0)으로 두는 이유)</td></tr>
+      <tr><td>Yaw +90</td><td>오른쪽으로 돎</td><td>오른쪽으로 돎</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="warn" style="margin-top:12px">
+    <b>유니티 습관 함정</b>
+    <p>"아래를 보게 하려면 +90"은 유니티 감각입니다. 언리얼에서 그렇게 쓰면 미사일이 위로 가요. 이번 수직 발사는 우연히 원하는 방향이었지만, 나중에 <b>아래로</b> 쏠 때 반대로 쓰기 쉽습니다. 확인은 눈이 아니라 값으로: <code>GetActorForwardVector()</code>의 Z가 +1이면 위, −1이면 아래.</p>
+  </div>
+</section>
+
+<section aria-labelledby="l5">
+  <h2 id="l5">같이 기억할 것: 도와 라디안</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>함수</th><th>각도 단위</th><th>이번에 쓴 곳</th></tr></thead>
+    <tbody>
+      <tr><td><code>FRotator(Pitch, Yaw, Roll)</code></td><td><b>도</b></td><td>수직 발사 <code>FRotator(90.f, 0.f, 0.f)</code></td></tr>
+      <tr><td><code>AddActorLocalRotation(FRotator(…))</code></td><td><b>도</b></td><td>터렛 제자리 회전</td></tr>
+      <tr><td><code>Vector.RotateAngleAxis(각도, 축)</code></td><td><b>도</b></td><td>레이더 경계선</td></tr>
+      <tr><td><code>FQuat(축, 각도)</code></td><td><b>라디안</b></td><td>미사일 유도 회전</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:8px"><code>FRotator</code>는 사람이 읽기 좋은 "세 동작의 각도(도)"이고, <code>FQuat</code>은 "축 하나 + 각도(라디안)"입니다. 미사일 유도처럼 <b>외적으로 구한 임의의 축</b>으로 돌릴 때는 Pitch·Yaw·Roll로 나누기 어려워서 <code>FQuat</code>을 썼어요.</p>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="homing-turn.html">타겟 쪽으로 돌기</a> — <code>FQuat(축, 라디안)</code>으로 미사일 돌리기</li>
+    <li><a href="dot-cross.html">내적은 숫자, 외적은 화살표</a></li>
+    <li><a href="radar-cone.html">레이더 원뿔 판정</a> — <code>RotateAngleAxis</code>로 경계선 그리기</li>
+    <li><a href="https://github.com/DEV-JSB/study-notes/blob/main/gamemathlab/devlog/2026-10-28-GameMathLab.md">2026-10-28 개발 일지</a></li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const NS = 'http://www.w3.org/2000/svg';
+  const rad = d => d * Math.PI / 180;
+  const CX = 200, CY = 175, S = 85;
+  let P = 20, Y = 30, R = 0, engine = 'ue';
+
+  // 모형 좌표: x = 앞, y = 오른쪽, z = 위
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const mul = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+  const dotv = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const crossv = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  function rot(v, k, a){            // 로드리게스 회전: v를 단위축 k로 a(라디안)만큼
+    const c = Math.cos(a), s = Math.sin(a);
+    return add(add(mul(v, c), mul(crossv(k, v), s)), mul(k, dotv(k, v) * (1 - c)));
+  }
+  // 화면 투영: 앞 → 오른쪽, 위 → 위, 오른쪽 → 화면 안쪽(오른쪽 위 대각선)
+  const proj = p => [CX + S * (p[0] + 0.55 * p[1]), CY - S * (p[2] + 0.38 * p[1])];
+
+  function basis(){
+    let F = [1, 0, 0], Rt = [0, 1, 0], U = [0, 0, 1];
+    const up0 = [0, 0, 1];
+    // 1) Yaw: 위 축으로. +면 앞이 오른쪽으로
+    F = rot(F, up0, rad(Y)); Rt = rot(Rt, up0, rad(Y)); U = rot(U, up0, rad(Y));
+    // 2) Pitch: 지금 오른쪽 축으로. +면 코가 위로 (언리얼 뜻)
+    F = rot(F, Rt, -rad(P)); U = rot(U, Rt, -rad(P));
+    // 3) Roll: 지금 앞 축으로 (이 그림의 + 방향은 엔진과 맞춰 보지 않음)
+    Rt = rot(Rt, F, rad(R)); U = rot(U, F, rad(R));
+    return { F, Rt, U };
+  }
+
+  function line(g, a, b, stroke, w, extra){
+    const l = document.createElementNS(NS, 'line');
+    const p = proj(a), q = proj(b);
+    l.setAttribute('x1', p[0].toFixed(1)); l.setAttribute('y1', p[1].toFixed(1));
+    l.setAttribute('x2', q[0].toFixed(1)); l.setAttribute('y2', q[1].toFixed(1));
+    l.setAttribute('stroke', stroke); l.setAttribute('stroke-width', w); l.setAttribute('stroke-linecap', 'round');
+    if (extra) { for (const k in extra) { l.setAttribute(k, extra[k]); } }
+    g.appendChild(l);
+  }
+  function label(g, p3, text, color){
+    const t = document.createElementNS(NS, 'text');
+    const p = proj(p3);
+    t.setAttribute('x', p[0].toFixed(1)); t.setAttribute('y', p[1].toFixed(1));
+    t.setAttribute('fill', color); t.setAttribute('font-size', '12'); t.setAttribute('text-anchor', 'middle');
+    t.textContent = text; g.appendChild(t);
+  }
+  function dotAt(g, p3, r, color){
+    const c = document.createElementNS(NS, 'circle');
+    const p = proj(p3);
+    c.setAttribute('cx', p[0].toFixed(1)); c.setAttribute('cy', p[1].toFixed(1)); c.setAttribute('r', r); c.setAttribute('fill', color);
+    g.appendChild(c);
+  }
+
+  function drawWorld(){
+    const g = $('world'); g.innerHTML = '';
+    const n = engine === 'ue' ? { f: 'X 앞', r: 'Y 오른쪽', u: 'Z 위' } : { f: 'Z 앞', r: 'X 오른쪽', u: 'Y 위' };
+    line(g, [0, 0, 0], [1.75, 0, 0], 'var(--line)', 1.5, { 'stroke-dasharray': '4 4' });
+    line(g, [0, 0, 0], [0, 1.9, 0], 'var(--line)', 1.5, { 'stroke-dasharray': '4 4' });
+    line(g, [0, 0, 0], [0, 0, 1.6], 'var(--line)', 1.5, { 'stroke-dasharray': '4 4' });
+    label(g, [1.95, 0, -0.08], n.f, 'var(--muted)');
+    label(g, [0, 2.15, 0], n.r, 'var(--muted)');
+    label(g, [0, 0, 1.75], n.u, 'var(--muted)');
+  }
+
+  function drawModel(){
+    const g = $('model'); g.innerHTML = '';
+    const { F, Rt, U } = basis();
+    const at = (f, r, u) => add(add(mul(F, f), mul(Rt, r)), mul(U, u));
+    line(g, at(-0.9, -0.75, 0), at(-0.9, 0.75, 0), 'var(--right)', 3);
+    dotAt(g, at(-0.9, 0.75, 0), 5, 'var(--right)');
+    line(g, at(-0.9, 0, 0), at(-0.95, 0, 0.45), 'var(--up)', 3);
+    line(g, at(-1, 0, 0), at(0.85, 0, 0), 'var(--fg)', 6);
+    line(g, at(0, 0, 0), at(1.35, 0, 0), 'var(--fwd)', 2.5, { 'marker-end': 'url(#ah)' });
+    line(g, at(0, 0, 0), at(0, 0, 0.9), 'var(--up)', 1.5, { 'marker-end': 'url(#ah)', opacity: '.8' });
+  }
+
+  function readout(){
+    $('oP').textContent = P + '°'; $('oY').textContent = Y + '°'; $('oR').textContent = R + '°';
+    $('ueCode').textContent = `FRotator(${P}.f, ${Y}.f, ${R}.f)   // (Pitch, Yaw, Roll)`;
+    $('ueDet').textContent = `X(Roll) ${R}   Y(Pitch) ${P}   Z(Yaw) ${Y}`;
+    const ux = P === 0 ? 0 : -P;
+    $('unCode').textContent = `Quaternion.Euler(${ux}, ${Y}, ${R}*)   // (Pitch, Yaw, Roll)`;
+    $('unDet').textContent = `X ${ux}   Y ${Y}   Z ${R}*`;
+    $('cUE').classList.toggle('on', engine === 'ue');
+    $('cUnity').classList.toggle('on', engine === 'unity');
+  }
+
+  function render(){ drawWorld(); drawModel(); readout(); }
+
+  const sync = () => { $('sP').value = P; $('sY').value = Y; $('sR').value = R; };
+  $('sP').addEventListener('input', e => { P = +e.target.value; render(); });
+  $('sY').addEventListener('input', e => { Y = +e.target.value; render(); });
+  $('sR').addEventListener('input', e => { R = +e.target.value; render(); });
+  function setEngine(e){
+    engine = e;
+    $('eUE').setAttribute('aria-pressed', String(e === 'ue'));
+    $('eUnity').setAttribute('aria-pressed', String(e === 'unity'));
+    render();
+  }
+  $('eUE').addEventListener('click', () => setEngine('ue'));
+  $('eUnity').addEventListener('click', () => setEngine('unity'));
+  document.querySelectorAll('button[data-p]').forEach(b => b.addEventListener('click', () => {
+    [P, Y, R] = b.dataset.p.split(',').map(Number); sync(); render();
+  }));
+  render();
+})();
+</script>
+</body>
+</html>

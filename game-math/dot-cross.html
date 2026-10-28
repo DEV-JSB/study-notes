@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>내적은 숫자, 외적은 화살표</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: single reading column; arrow lab (cos = shadow, sin = sideways, mirrored 180-θ) first, then the curve lab that shows why sin repeats, then why cross is an arrow */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --fwd:#2f6fd0; --cos:#178a66; --sin:#d2552a; --mir:#8a5cd0;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --cos:#4cc79c; --sin:#f08a5d; --mir:#b48cf0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --cos:#4cc79c; --sin:#f08a5d; --mir:#b48cf0; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0 0 8px;text-wrap:balance}
+p{margin:0;max-width:65ch}
+a{color:var(--cos)}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.def{border-left:3px solid var(--sin);padding:4px 0 4px 16px;font-size:18px}
+.lab{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctrl label{font-size:14px;color:var(--muted)}
+.ctrl input[type=range]{flex:1;min-width:160px;accent-color:var(--sin)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;padding:4px 12px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--fwd);outline-offset:2px}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
+.stage{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:640px){.stage{grid-template-columns:minmax(0,1fr)}}
+svg{width:100%;height:auto;display:block}
+.read{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:4px;font-size:14px}
+.row span:first-child{color:var(--muted)}
+.big{font-size:18px;font-weight:500}
+.sub{font-size:14px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+td.num{white-space:nowrap}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0;overflow-x:auto;line-height:1.6}
+ul{margin:0;padding-left:20px}
+.quote{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.quote q{font-size:17px}
+.verdict{font-size:14px;font-weight:500}
+.ok{color:var(--cos)} .half{color:var(--sin)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+.c-cos{color:var(--cos)} .c-sin{color:var(--sin)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">GameMathLab · 과정 1 · 내적·외적 다지기 · 2026-10-28</span>
+  <h1>내적은 숫자, 외적은 화살표: cos와 sin으로 보기</h1>
+  <p class="lead">유도 미사일을 만든 다음 날, "왜 정반대면 외적이 0이지?"에서 시작해 이어진 질문들을 그림으로 정리합니다. 핵심은 하나예요. 화살표 하나를 앞 방향 기준으로 <b class="c-cos">그림자 조각</b>과 <b class="c-sin">옆 조각</b>으로 나누면, 그게 cos와 sin입니다.</p>
+</header>
+
+<section>
+  <p class="def">길이 1인 두 화살표에서 <b>내적 = cos(사이 각도)</b>, 숫자 하나. <b>외적 = 화살표</b>: 방향은 돌릴 축, 길이는 <b>sin(사이 각도)</b>. 그런데 sin은 30°와 150°가 같아서, <b>각도는 내적으로 구한다.</b></p>
+</section>
+
+<section class="lab" aria-labelledby="l1">
+  <h2 id="l1">실험 1 · 그림자 조각과 옆 조각</h2>
+  <p class="sub">파란 화살표가 "내 앞 방향"(미사일 정면)이고, 검은 화살표가 목표 방향(길이 1)입니다. 슬라이더로 사이 각도를 바꿔 보세요. 보라 점선은 <b>180° − θ</b>에 있는 화살표예요.</p>
+  <div class="ctrl">
+    <label for="th">사이 각도 θ</label>
+    <input type="range" id="th" min="0" max="180" step="1" value="30">
+    <span id="thOut" class="num" style="min-width:44px">30°</span>
+  </div>
+  <div class="btns">
+    <button data-a="0">0°</button>
+    <button data-a="30">30°</button>
+    <button data-a="60">60°</button>
+    <button data-a="90">90°</button>
+    <button data-a="150">150°</button>
+    <button data-a="180">180°</button>
+    <label class="chk"><input type="checkbox" id="mirror" checked> 180° − θ도 같이 보기</label>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--fwd)"></i>앞 방향 (기준)</span>
+    <span><i style="background:var(--cos)"></i>그림자 조각 = cos = 내적</span>
+    <span><i style="background:var(--sin)"></i>옆 조각 = sin = 외적 길이</span>
+    <span><i style="background:var(--mir)"></i>180° − θ</span>
+  </div>
+  <div class="stage">
+    <svg id="arrows" viewBox="0 0 420 250" role="img" aria-label="앞 방향을 기준으로 길이 1 화살표의 그림자 조각과 옆 조각. 180도 빼기 세타 화살표가 거울처럼 대칭으로 함께 그려짐">
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+      <path d="M 60 210 A 150 150 0 0 1 360 210" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+      <line x1="40" y1="210" x2="380" y2="210" stroke="var(--line)" stroke-width="1"/>
+      <line x1="210" y1="40" x2="210" y2="215" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 5"/>
+      <text x="216" y="36" fill="var(--muted)" font-size="12">옆 방향 (거울 축)</text>
+      <g id="mirG">
+        <line id="mCos" x1="210" y1="210" x2="210" y2="210" stroke="var(--cos)" stroke-width="7" stroke-linecap="round" opacity=".35"/>
+        <line id="mSin" x1="210" y1="210" x2="210" y2="210" stroke="var(--sin)" stroke-width="5" stroke-linecap="round" stroke-dasharray="6 5" opacity=".9"/>
+        <line id="mVec" x1="210" y1="210" x2="210" y2="210" stroke="var(--mir)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ah)"/>
+      </g>
+      <line id="cosL" x1="210" y1="210" x2="210" y2="210" stroke="var(--cos)" stroke-width="7" stroke-linecap="round" opacity=".75"/>
+      <line id="sinL" x1="210" y1="210" x2="210" y2="210" stroke="var(--sin)" stroke-width="5" stroke-linecap="round"/>
+      <line x1="210" y1="210" x2="372" y2="210" stroke="var(--fwd)" stroke-width="2.5" marker-end="url(#ah)"/>
+      <line id="vec" x1="210" y1="210" x2="210" y2="210" stroke="var(--fg)" stroke-width="2.5" marker-end="url(#ah)"/>
+      <circle cx="210" cy="210" r="4" fill="var(--fg)"/>
+      <text x="330" y="232" fill="var(--fwd)" font-size="12">앞 (기준)</text>
+    </svg>
+    <div class="read">
+      <div class="row"><span>θ</span><span class="num" id="r1a">—</span></div>
+      <div class="row"><span class="c-cos">cos θ (내적)</span><span class="num" id="r1c">—</span></div>
+      <div class="row"><span class="c-sin">sin θ (외적 길이)</span><span class="num" id="r1s">—</span></div>
+      <div class="row"><span>180° − θ</span><span class="num" id="r2a">—</span></div>
+      <div class="row"><span class="c-cos">cos (내적)</span><span class="num" id="r2c">—</span></div>
+      <div class="row"><span class="c-sin">sin (외적 길이)</span><span class="num" id="r2s">—</span></div>
+      <div class="row"><span>cos² + sin²</span><span class="num" id="rChk">—</span></div>
+      <p class="big" id="rMsg">—</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="l2">
+  <h2 id="l2">왜 외적 길이로는 30°와 150°를 구별 못 하나</h2>
+  <p>위 실험에서 30°를 누르면 검은 화살표와 보라 점선 화살표가 <b>세로 점선(옆 방향)을 기준으로 거울처럼</b> 마주 보고 있어요.</p>
+  <ul style="margin-top:8px">
+    <li><b class="c-sin">옆 조각(주황)</b>은 둘 다 <b>같은 높이</b>입니다. 거울에 비추면 높이는 그대로니까요. → sin 30° = sin 150° = <b>0.5</b></li>
+    <li><b class="c-cos">그림자 조각(초록)</b>은 하나는 앞쪽(+), 하나는 뒤쪽(−)으로 <b>반대</b>입니다. 거울에 비추면 좌우가 뒤집히니까요. → cos 30° = <b>0.866</b>, cos 150° = <b>−0.866</b></li>
+  </ul>
+  <div class="tbl" style="margin-top:12px">
+  <table>
+    <thead><tr><th>짝</th><th class="c-cos">내적 (cos)</th><th class="c-sin">외적 길이 (sin)</th><th>뜻</th></tr></thead>
+    <tbody>
+      <tr><td class="num">30° / 150°</td><td class="num">0.866 / −0.866</td><td class="num">0.5 / 0.5</td><td>조금만 돌면 됨 / 거의 뒤돌아야 함</td></tr>
+      <tr><td class="num">60° / 120°</td><td class="num">0.5 / −0.5</td><td class="num">0.866 / 0.866</td><td></td></tr>
+      <tr><td class="num">0° / 180°</td><td class="num">1 / −1</td><td class="num">0 / 0</td><td>정면 / 정반대 — 둘 다 외적 (0,0,0)</td></tr>
+      <tr><td class="num">90°</td><td class="num">0</td><td class="num">1</td><td>거울 축 위라 짝이 자기 자신</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:10px">외적 길이만 보고는 "목표가 내 앞쪽 비스듬히 있나, 뒤쪽 비스듬히 있나"를 모릅니다. 미사일한테는 "조금만 꺾으면 되나, 거의 유턴해야 하나"의 차이예요.</p>
+</section>
+
+<section class="lab" aria-labelledby="l3">
+  <h2 id="l3">실험 2 · 같은 값이 몇 번 나오나</h2>
+  <p class="sub">0°부터 180°까지 cos(초록)와 sin(주황)을 그린 그래프입니다. 가로선의 높이(값)를 바꾸면, 그 값이 되는 각도에 점이 찍힙니다.</p>
+  <div class="ctrl">
+    <label for="lv">값</label>
+    <input type="range" id="lv" min="-1" max="1" step="0.01" value="0.5">
+    <span id="lvOut" class="num" style="min-width:52px">0.50</span>
+  </div>
+  <svg id="graph" viewBox="0 0 420 250" role="img" aria-label="0도부터 180도까지 cos와 sin 곡선. 가로선이 sin과는 두 번, cos와는 한 번 만남">
+    <line x1="40" y1="125" x2="400" y2="125" stroke="var(--line)"/>
+    <line x1="40" y1="35" x2="40" y2="215" stroke="var(--line)"/>
+    <line x1="220" y1="35" x2="220" y2="215" stroke="var(--line)" stroke-dasharray="3 5"/>
+    <text x="34" y="39" fill="var(--muted)" font-size="11" text-anchor="end">1</text>
+    <text x="34" y="129" fill="var(--muted)" font-size="11" text-anchor="end">0</text>
+    <text x="34" y="219" fill="var(--muted)" font-size="11" text-anchor="end">−1</text>
+    <text x="40" y="236" fill="var(--muted)" font-size="11" text-anchor="middle">0°</text>
+    <text x="220" y="236" fill="var(--muted)" font-size="11" text-anchor="middle">90°</text>
+    <text x="400" y="236" fill="var(--muted)" font-size="11" text-anchor="middle">180°</text>
+    <polyline id="cCos" points="" fill="none" stroke="var(--cos)" stroke-width="2.5"/>
+    <polyline id="cSin" points="" fill="none" stroke="var(--sin)" stroke-width="2.5"/>
+    <line id="hl" x1="40" y1="80" x2="400" y2="80" stroke="var(--fg)" stroke-width="1" stroke-dasharray="5 4"/>
+    <g id="dots"></g>
+    <text x="300" y="58" fill="var(--sin)" font-size="12">sin (외적 길이)</text>
+    <text x="300" y="200" fill="var(--cos)" font-size="12">cos (내적)</text>
+  </svg>
+  <div class="read">
+    <div class="row"><span class="c-sin">sin이 이 값인 각도</span><span class="num" id="gS">—</span></div>
+    <div class="row"><span class="c-cos">cos가 이 값인 각도</span><span class="num" id="gC">—</span></div>
+  </div>
+  <p class="sub">sin은 90°에서 꺾여 내려오는 <b>산 모양</b>이라 같은 높이를 <b>두 번</b> 지나갑니다. cos는 1에서 −1로 <b>계속 내려가기만</b> 해서 어떤 값이든 <b>딱 한 번</b>. 그래서 <code>Acos(내적)</code>은 각도를 하나로 정해 주고, sin으로는 그게 안 돼요.</p>
+</section>
+
+<section aria-labelledby="l4">
+  <h2 id="l4">그래서 미사일 코드는 역할을 나눴다</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>정보</th><th>어디서</th><th>코드</th></tr></thead>
+    <tbody>
+      <tr><td><b>얼마나</b> 돌지 (각도)</td><td>내적 — 0°~180°를 헷갈림 없이</td><td><code>FMath::Acos(FMath::Clamp(DotResult, -1.f, 1.f))</code></td></tr>
+      <tr><td><b>어느 쪽</b>으로 돌지 (축)</td><td>외적의 <b>방향</b></td><td><code>FVector::CrossProduct(ForwardVector, ToTarget)</code></td></tr>
+      <tr><td>외적의 길이 (sin)</td><td>버림 — 각도는 내적이 이미 알려 줌</td><td><code>.GetSafeNormal()</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:8px">참고: 내적(cos)과 외적 길이(sin)를 <b>같이</b> 쓰면 각도를 더 정확하게 구할 수 있어요. <code>FMath::Atan2(Cross.Size(), Dot)</code>. cos 부호로 30°/150°를 가르고, Clamp도 필요 없습니다. 지금 코드(<code>Acos</code> + <code>Clamp</code>)로도 충분해요.</p>
+</section>
+
+<section aria-labelledby="l5">
+  <h2 id="l5">sin은 이미 짜 본 적 있다: 종이의 vt</h2>
+  <p>종이 공기저항(<a href="../projectf/paper-aero-map.html">PaperAero 지도</a> ②)에서 속도를 이렇게 쪼갰어요.</p>
+  <pre>float3 vn = dot(Vel, N) * N;   // N 방향 그림자 조각  → cos 쪽 (초록)
+float3 vt = Vel - vn;          // 그림자를 떼어낸 나머지 → sin 쪽 (주황)</pre>
+  <p style="margin-top:10px"><code>vt</code>가 실험 1의 주황 조각입니다. 화살표 길이가 1이면 <code>vt</code>의 길이가 정확히 sin이에요. 그리고 초록과 주황은 직각이라 <b>cos² + sin² = 1</b>은 빗변이 1인 직각삼각형의 피타고라스(중2)일 뿐입니다.</p>
+</section>
+
+<section aria-labelledby="l6">
+  <h2 id="l6">왜 내적은 숫자고 외적은 화살표인가</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th></th><th>질문</th><th>대답에 필요한 것</th></tr></thead>
+    <tbody>
+      <tr><td>내적</td><td>기준 방향으로 <b>얼마나</b>?</td><td>기준은 하나뿐 → <b>숫자</b> (뒤쪽이면 −)</td></tr>
+      <tr><td>외적</td><td>옆으로 얼마나, <b>어느 옆</b>으로?</td><td>3D에서 "옆"은 한 바퀴 빙 둘러 무수히 많음 → <b>방향을 담은 화살표</b></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <svg viewBox="0 0 420 200" role="img" aria-label="앞 방향 화살표 둘레로 수직인 방향들이 원을 그리며 무수히 많음" style="margin-top:12px;max-width:520px">
+    <defs><marker id="ah3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <ellipse cx="200" cy="100" rx="28" ry="70" fill="none" stroke="var(--sin)" stroke-width="1" stroke-dasharray="4 4"/>
+    <line x1="80" y1="100" x2="360" y2="100" stroke="var(--fwd)" stroke-width="2.5" marker-end="url(#ah3)"/>
+    <line x1="200" y1="100" x2="200" y2="34" stroke="var(--sin)" stroke-width="2" marker-end="url(#ah3)"/>
+    <line x1="200" y1="100" x2="200" y2="166" stroke="var(--sin)" stroke-width="2" marker-end="url(#ah3)"/>
+    <line x1="200" y1="100" x2="222" y2="54" stroke="var(--sin)" stroke-width="2" marker-end="url(#ah3)"/>
+    <line x1="200" y1="100" x2="178" y2="146" stroke="var(--sin)" stroke-width="2" marker-end="url(#ah3)"/>
+    <line x1="200" y1="100" x2="226" y2="128" stroke="var(--sin)" stroke-width="2" marker-end="url(#ah3)"/>
+    <text x="330" y="90" fill="var(--fwd)" font-size="12">앞</text>
+    <text x="244" y="40" fill="var(--sin)" font-size="12">앞에 수직인 "옆"은</text>
+    <text x="244" y="56" fill="var(--sin)" font-size="12">이 원 위 어디든</text>
+  </svg>
+  <p style="margin-top:8px"><b>2D에서는 외적도 숫자 하나</b>입니다. 평면에서 옆은 왼쪽·오른쪽 둘뿐이라 부호 있는 숫자로 충분해요.</p>
+  <pre style="margin-top:8px">2D 외적 = A.X × B.Y − A.Y × B.X     // +면 한쪽, −면 반대쪽, 0이면 일직선</pre>
+  <p class="sub" style="margin-top:8px"><a href="homing-turn.html">유도 노트</a> 실험의 "외적 Z" 칸이 바로 이 값이었어요. 위에서 내려다본 평면이라 ⊙(+)와 ⊗(−) 두 가지뿐이었죠.</p>
+</section>
+
+<section aria-labelledby="l7">
+  <h2 id="l7">3D 외적 = 2D 외적 세 개 (몰라도 되는 칸)</h2>
+  <p>공식 안쪽은 블랙박스여도 됩니다. 한 칸만 들여다보면, 세 평면에서 각각 2D 외적을 해서 축의 X·Y·Z 칸에 <b>하나씩 넣어 모은</b> 것이에요(<code>FVector::CrossProduct</code>).</p>
+  <pre style="margin-top:8px">축.Z = A.X × B.Y − A.Y × B.X    // 바닥(XY): 위에서 보면 얼마나 옆으로
+축.X = A.Y × B.Z − A.Z × B.Y    // 옆벽(YZ)
+축.Y = A.Z × B.X − A.X × B.Z    // 앞벽(ZX): 옆에서 보면 얼마나 위·아래로</pre>
+  <div class="tbl" style="margin-top:12px">
+  <table>
+    <thead><tr><th>앞 (1,0,0)일 때 목표 방향</th><th>축 (X, Y, Z)</th><th>뜻</th></tr></thead>
+    <tbody>
+      <tr><td>오른쪽 앞 (0.87, 0.5, 0)</td><td class="num">(0, 0, 0.5)</td><td>위아래 축 — 옆으로만</td></tr>
+      <tr><td>위쪽 앞 (0.87, 0, 0.5)</td><td class="num">(0, −0.5, 0)</td><td>좌우 축 — 고개만 듦</td></tr>
+      <tr><td>오른쪽 위 앞 (0.7, 0.5, 0.5)</td><td class="num">(0, −0.5, 0.5)</td><td><b>기울어진 축</b> — 둘 다</td></tr>
+      <tr><td>정반대 (−1, 0, 0)</td><td class="num">(0, 0, 0)</td><td>뒤를 보는 축이 무수히 많아 하나로 못 고름</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section aria-labelledby="l8">
+  <h2 id="l8">내가 정리한 문장</h2>
+  <div class="quote">
+    <q>2D 에서는 외적도 마찬가지로 그냥 숫자에 불과하지만, 3D 에서는 그런 단순 숫자를 가지고는 방향을 알 수가 없기 때문에 입체적으로 여러 평면들끼리의 외적을 합친 값을 구한다?</q>
+    <span class="verdict ok">맞음</span>
+    <p class="sub">"합친"은 더하는 게 아니라 축의 X·Y·Z 칸에 하나씩 넣어 모은 것.</p>
+  </div>
+  <div class="quote" style="margin-top:12px">
+    <q>내적은 어디로 회전해야 하는 게 아닌, 회전해야 하는 양밖에 필요하지 않으니까 굳이 3차원까지 갈 필요가 없다?</q>
+    <span class="verdict half">반만 맞음</span>
+    <p class="sub">내적도 세 칸을 다 씁니다 (<code>A.X×B.X + A.Y×B.Y + A.Z×B.Z</code>). 고친 문장: <b>내적도 3차원을 다 쓰지만, "얼마나"는 숫자 하나로 대답할 수 있어서 결과가 숫자다.</b></p>
+  </div>
+  <div class="quote" style="margin-top:12px">
+    <q>앞으로 얼마나, 옆으로 얼마나 라고 하는 건 좀 헷갈리지 않나. 그렇게 따지면 외적으로도 cos와 같은, 얼마나 회전해야 하는 양을 알 수 있다는 건가</q>
+    <span class="verdict ok">좋은 의심 — 이 질문에서 30°/150° 문제가 드러남</span>
+    <p class="sub">외적 길이(sin)로도 각도를 반쯤 알 수 있지만 30°와 150°를 구별 못 함 → 그래서 각도는 내적.</p>
+  </div>
+</section>
+
+<section aria-labelledby="l9">
+  <h2 id="l9">한 장 요약</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th></th><th>결과</th><th>길이 1끼리면</th><th>알려 주는 것</th><th>0° / 180°</th></tr></thead>
+    <tbody>
+      <tr><td>내적</td><td>숫자</td><td>cos</td><td>사이 각도 (0°~180°를 하나로)</td><td>1 / −1</td></tr>
+      <tr><td>외적</td><td>화살표</td><td>길이 = sin</td><td>방향 = 어느 쪽으로 (축), 길이 = 각도 힌트 (30°/150° 구별 못 함)</td><td>(0,0,0) / (0,0,0)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul style="margin-top:10px">
+    <li>둘 다 안에서 cos·sin을 부르지 않습니다. 곱하고 더하고 빼기만 하는데 결과가 cos·sin과 같아져요. 그래서 각도를 몰라도 화살표 두 개만 있으면 됩니다.</li>
+    <li>검증: 길이 1끼리면 언제나 내적² + 외적 길이² = 1.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="homing-turn.html">타겟 쪽으로 돌기</a> — 외적(어느 쪽) + 내적(얼마나)으로 미사일 돌리기</li>
+    <li><a href="rotation-pyr.html">회전 Pitch · Yaw · Roll</a></li>
+    <li><a href="dot-product.html">내적은 그림자 길이다</a></li>
+    <li><a href="../projectf/paper-aero-map.html">PaperAero 한 장 지도</a> — ② vn/vt, ③ torque = dot × cross</li>
+    <li><a href="https://github.com/DEV-JSB/study-notes/blob/main/gamemathlab/devlog/2026-10-28-GameMathLab.md">2026-10-28 개발 일지</a></li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+  const f = v => (Math.abs(v) < 0.0005 ? 0 : v).toFixed(3);
+  const set = (el, a) => { for (const k in a) { el.setAttribute(k, a[k]); } };
+
+  // 실험 1
+  const OX = 210, OY = 210, R = 150;
+  let th = 30;
+  function draw1(){
+    const c = Math.cos(rad(th)), s = Math.sin(rad(th));
+    const tx = OX + R * c, ty = OY - R * s;
+    set($('vec'), { x2: tx.toFixed(1), y2: ty.toFixed(1) });
+    set($('cosL'), { x2: tx.toFixed(1) });
+    set($('sinL'), { x1: tx.toFixed(1), x2: tx.toFixed(1), y1: OY, y2: ty.toFixed(1) });
+    const mx = OX - R * c;   // 180° − θ: cos는 반대, sin은 그대로
+    set($('mVec'), { x2: mx.toFixed(1), y2: ty.toFixed(1) });
+    set($('mCos'), { x2: mx.toFixed(1) });
+    set($('mSin'), { x1: mx.toFixed(1), x2: mx.toFixed(1), y1: OY, y2: ty.toFixed(1) });
+    $('mirG').style.display = $('mirror').checked ? '' : 'none';
+    $('thOut').textContent = th + '°';
+    $('r1a').textContent = th + '°';
+    $('r1c').textContent = f(c);
+    $('r1s').textContent = f(s);
+    $('r2a').textContent = (180 - th) + '°';
+    $('r2c').textContent = f(-c);
+    $('r2s').textContent = f(s);
+    $('rChk').textContent = (c * c + s * s).toFixed(3);
+    let msg;
+    if (th === 90) { msg = '거울 축 위: 짝이 자기 자신'; }
+    else if (th === 0 || th === 180) { msg = '일직선: 옆 조각 0 → 외적 (0,0,0)'; }
+    else { msg = `외적 길이는 둘 다 ${f(s)}, 내적은 ${f(c)} / ${f(-c)}`; }
+    $('rMsg').textContent = msg;
+  }
+  $('th').addEventListener('input', e => { th = +e.target.value; draw1(); });
+  $('mirror').addEventListener('change', draw1);
+  document.querySelectorAll('button[data-a]').forEach(b => b.addEventListener('click', () => {
+    th = +b.dataset.a; $('th').value = th; draw1();
+  }));
+  draw1();
+
+  // 실험 2
+  const GX0 = 40, GX1 = 400, GY0 = 125, GA = 90;
+  const gx = d => GX0 + (GX1 - GX0) * d / 180;
+  const gy = v => GY0 - GA * v;
+  const pts = fn => { const p = []; for (let d = 0; d <= 180; d += 2) { p.push(gx(d).toFixed(1) + ',' + gy(fn(rad(d))).toFixed(1)); } return p.join(' '); };
+  $('cCos').setAttribute('points', pts(Math.cos));
+  $('cSin').setAttribute('points', pts(Math.sin));
+  function dot(cx, cy, color){
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    set(c, { cx: cx.toFixed(1), cy: cy.toFixed(1), r: 6, fill: color, stroke: 'var(--panel)', 'stroke-width': 2 });
+    return c;
+  }
+  function draw2(v){
+    $('lvOut').textContent = v.toFixed(2);
+    set($('hl'), { y1: gy(v).toFixed(1), y2: gy(v).toFixed(1) });
+    const g = $('dots'); g.innerHTML = '';
+    const sa = [];
+    if (v >= 0 && v <= 1) {
+      const a1 = deg(Math.asin(v)), a2 = 180 - a1;
+      sa.push(a1); if (Math.abs(a2 - a1) > 0.05) { sa.push(a2); }
+      sa.forEach(a => g.appendChild(dot(gx(a), gy(v), 'var(--sin)')));
+    }
+    const ca = deg(Math.acos(Math.max(-1, Math.min(1, v))));
+    g.appendChild(dot(gx(ca), gy(v), 'var(--cos)'));
+    $('gS').textContent = sa.length === 0 ? '없음 (sin은 0~180°에서 음수가 안 됨)' : sa.map(a => a.toFixed(1) + '°').join(', ') + (sa.length === 2 ? '  ← 두 개' : '  ← 하나 (90°)');
+    $('gC').textContent = ca.toFixed(1) + '°  ← 늘 하나';
+  }
+  $('lv').addEventListener('input', e => draw2(+e.target.value));
+  draw2(0.5);
+})();
+</script>
+</body>
+</html>
