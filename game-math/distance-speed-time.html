@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>거리 · 속력 · 시간</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: one reading column; integers first (highway signs), then dividing by numbers smaller than 1, then frames, then the two directions in code */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --fwd:#2f6fd0; --a:#178a66; --b:#d2552a; --c:#7a4cc8; --cellA:#cfeee2; --cellB:#e3e6eb;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --a:#4cc79c; --b:#f08a5d; --c:#b48cf0; --cellA:#1f4a3c; --cellB:#2b323d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --a:#4cc79c; --b:#f08a5d; --c:#b48cf0; --cellA:#1f4a3c; --cellB:#2b323d; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0 0 8px;text-wrap:balance}
+p{margin:0;max-width:65ch}
+a{color:var(--a)}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.def{border-left:3px solid var(--b);padding:4px 0 4px 16px;font-size:18px}
+.lab{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctrl label{font-size:14px;color:var(--muted);min-width:130px}
+.ctrl input[type=range]{flex:1;min-width:160px;accent-color:var(--b)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+svg{width:100%;height:auto;display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.card{background:var(--bg);border-radius:8px;padding:10px 12px}
+.card .k{font-size:13px;color:var(--muted)}
+.card .v{font-size:20px;font-weight:500;font-family:var(--mono)}
+.sub{font-size:14px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+code{font-family:var(--mono);font-size:.92em}
+pre{font-family:var(--mono);font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0;overflow-x:auto;line-height:1.6}
+ul{margin:0;padding-left:20px}
+.quote{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.quote q{font-size:17px}
+.verdict{font-size:14px;font-weight:500;color:var(--a)}
+.steps{display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:15px}
+.steps span.n{display:inline-block;min-width:26px;color:var(--muted)}
+input:focus-visible{outline:2px solid var(--fwd);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">기초 다지기 · 초5~중1 · 2026-10-29</span>
+  <h1>거리 · 속력 · 시간</h1>
+  <p class="lead">발 속도를 <code>(지금 위치 − 이전 위치) / DeltaTime</code>으로 구하다가 막혔던 날의 정리입니다. 막힌 건 거속시 자체가 아니라 <b>소수로 나누기</b>였어요. 그래서 정수로 먼저, 소수는 그다음에 봅니다.</p>
+</header>
+
+<section>
+  <p class="def"><b>속력 = 1초(또는 1시간) 동안 가는 거리.</b> 걸린 시간이 제각각이어도 "1당 얼마"로 맞추면 비교할 수 있다. 그래서 거리를 시간으로 나눈다.</p>
+</section>
+
+<section class="lab" aria-labelledby="l1">
+  <h2 id="l1">1 · 고속도로 이정표 (정수로)</h2>
+  <p class="sub">길가의 km 표지판을 두 번 봤다고 해 봅시다. 숫자를 바꿔 보세요.</p>
+  <div class="ctrl"><label for="kPrev">이전 표지판 (2시)</label><input id="kPrev" type="range" min="0" max="300" step="10" value="100"><span class="num" id="oPrev" style="min-width:70px"></span></div>
+  <div class="ctrl"><label for="kNow">지금 표지판</label><input id="kNow" type="range" min="0" max="500" step="10" value="220"><span class="num" id="oNow" style="min-width:70px"></span></div>
+  <div class="ctrl"><label for="kHr">걸린 시간</label><input id="kHr" type="range" min="1" max="6" step="1" value="2"><span class="num" id="oHr" style="min-width:70px"></span></div>
+  <svg id="road" viewBox="0 0 680 90" role="img" aria-label="도로 위 이전 표지판과 지금 표지판, 그 사이를 시간 칸으로 나눈 그림"></svg>
+  <div class="steps">
+    <div><span class="n">①</span>지금 위치 − 이전 위치 = <b id="s1"></b> <span class="sub">← 달린 거리 (떼어내기)</span></div>
+    <div><span class="n">②</span>걸린 시간 = <b id="s2"></b> <span class="sub">← 코드에서는 DeltaTime</span></div>
+    <div><span class="n">③</span>거리 ÷ 시간 = <b id="s3" style="color:var(--b)"></b> <span class="sub">← 1시간에 똑같이 나눠 달린 거리 = 속력</span></div>
+  </div>
+</section>
+
+<section aria-labelledby="l2">
+  <h2 id="l2">2 · 시간이 달라도 같은 빠르기</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>상황</th><th>1초 동안 가는 거리</th><th>속력</th></tr></thead>
+    <tbody>
+      <tr><td>1초에 5m</td><td>5m</td><td class="num">5 m/s</td></tr>
+      <tr><td>2초에 10m</td><td>2초로 똑같이 나눔 → 5m</td><td class="num">5 m/s</td></tr>
+      <tr><td>4초에 20m</td><td>4초로 나눔 → 5m</td><td class="num">5 m/s</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:8px">세 사람 다 같은 빠르기예요. 나누는 건 전부 "1초 기준"으로 맞춰서 비교하려는 것입니다.</p>
+</section>
+
+<section class="lab" aria-labelledby="l3">
+  <h2 id="l3">3 · 1보다 작은 수로 나누면 커진다</h2>
+  <p>나눗셈은 <b>"몇 번 들어가나"</b>입니다. <code>1 ÷ 0.25</code> = "1 안에 0.25가 몇 번 들어가나" = 4번. 나누는 수가 작을수록 많이 들어가서 결과가 커져요.</p>
+  <div class="ctrl"><label for="dv">나누는 수</label><input id="dv" type="range" min="0" max="7" step="1" value="3"><span class="num" id="oDv" style="min-width:70px"></span></div>
+  <svg id="fit" viewBox="0 0 680 70" role="img" aria-label="길이 1인 막대 안에 나누는 수 크기의 칸이 몇 번 들어가는지 보여 주는 그림"></svg>
+  <p class="num" id="fitT" style="font-size:16px"></p>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>식</th><th>몇 번 들어가나</th><th>곱셈으로 확인</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1 ÷ 0.5</td><td>2번</td><td class="num">0.5 × 2 = 1</td></tr>
+      <tr><td class="num">1 ÷ 0.25</td><td>4번</td><td class="num">0.25 × 4 = 1</td></tr>
+      <tr><td class="num">1 ÷ 0.1</td><td>10번</td><td class="num">0.1 × 10 = 1</td></tr>
+      <tr><td class="num">1 ÷ 0.017</td><td>약 60번</td><td class="num">0.017 × 60 ≈ 1.02</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub">헷갈렸던 곳: <code>17 ÷ 1000 = 0.017</code>은 60이 아니다(맞음). 계산하려는 건 그 반대인 <code>1 ÷ 0.017 = 1000 ÷ 17 ≈ 58.8</code>. 사실 0.017은 <code>1 ÷ 60 = 0.01666…</code>을 반올림한 수라서, 원래 값으로 나누면 정확히 60이에요. 1초를 60조각으로 자른 걸 다시 세는 것뿐입니다.</p>
+</section>
+
+<section class="lab" aria-labelledby="l4">
+  <h2 id="l4">4 · 게임은 1초를 프레임으로 자른다</h2>
+  <p class="sub">공은 늘 같은 빠르기로 갑니다. FPS를 바꿔 보세요. 칸(한 프레임 이동)은 작아지지만 <b>1초 뒤 도착 지점은 그대로</b>예요. 그 거리가 속력입니다.</p>
+  <div class="ctrl"><label for="fps">FPS (1초에 몇 장)</label><input id="fps" type="range" min="2" max="60" step="1" value="5"><span class="num" id="oFps" style="min-width:70px"></span></div>
+  <div class="ctrl"><label for="spd">공의 빠르기</label><input id="spd" type="range" min="60" max="300" step="10" value="120"><span class="num" id="oSpd" style="min-width:70px"></span></div>
+  <svg id="track" viewBox="0 0 680 110" role="img" aria-label="1초 동안의 이동을 프레임 칸으로 나눈 트랙과 칸 단위로 뛰는 공"></svg>
+  <div class="cards">
+    <div class="card"><div class="k">한 프레임 시간 (DeltaTime)</div><div class="v" id="cDt"></div></div>
+    <div class="card"><div class="k">한 칸 = 지금 − 이전</div><div class="v" id="cStep"></div></div>
+    <div class="card"><div class="k">한 칸 ÷ DeltaTime</div><div class="v" id="cSpd" style="color:var(--b)"></div></div>
+  </div>
+</section>
+
+<section aria-labelledby="l5">
+  <h2 id="l5">5 · 코드에서는 두 방향으로 쓴다</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>방향</th><th>식</th><th>어디서</th></tr></thead>
+    <tbody>
+      <tr><td>속력 → 이번 프레임 이동</td><td><code>OutPos += OutVel * DeltaTime;</code></td><td>종이 PaperSim (지금 코드)</td></tr>
+      <tr><td>이번 프레임 이동 → 속력</td><td><code>FootVel = (FootPos - PrevFootPos) / DeltaTime;</code></td><td>4단계 발 속도 (만들 것)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <h2 style="margin-top:20px">왜 굳이 1초 단위로?</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>컴퓨터</th><th>DeltaTime</th><th>한 프레임 이동</th><th>÷ DeltaTime</th></tr></thead>
+    <tbody>
+      <tr><td>60fps</td><td class="num">0.016초</td><td class="num">2 cm</td><td class="num">120 cm/s</td></tr>
+      <tr><td>30fps</td><td class="num">0.033초</td><td class="num">4 cm</td><td class="num">120 cm/s</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:8px">같은 발차기가 컴퓨터에 따라 한 프레임에 2cm도 되고 4cm도 됩니다. 프레임 단위로 두면 느린 컴퓨터에서 종이가 두 배로 튀어요. 1초 단위로 바꾸면 둘 다 120이고, 종이의 <code>Vel</code>(cm/s)과도 단위가 맞습니다.</p>
+  <h2 style="margin-top:20px">발 속도 공식의 함정</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>상황</th><th>무슨 일</th><th>막는 법</th></tr></thead>
+    <tbody>
+      <tr><td>첫 프레임</td><td>이전 위치가 (0,0,0) → "원점에서 발까지 순간이동" → 엄청난 속도로 종이 폭발</td><td>BeginPlay에서 이전 위치 = 지금 위치</td></tr>
+      <tr><td>DeltaTime = 0 (일시정지 등)</td><td>0으로 나누기</td><td>DeltaTime &gt; 0일 때만 계산</td></tr>
+      <tr><td>텔레포트·리스폰</td><td>첫 프레임과 같은 폭발</td><td>생기면 그때</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section aria-labelledby="l6">
+  <h2 id="l6">내가 정리한 문장</h2>
+  <div class="quote">
+    <q>속력은 거리 / 시간인데, 이동한 거리가 한 프레임에 이동한 양이고, 여기서 시간은 한 프레임의 시간인 DeltaTime이니까, 속력을 구하려면 당연히 이동한 양 / 시간을 나눠야 하는 게 맞지</q>
+    <span class="verdict">맞음 — 이정표 정수 비교로 와닿은 뒤 스스로 다시 조립</span>
+  </div>
+  <div class="quote">
+    <q>(지금 위치 − 이전 위치) / DeltaTime 이면 되나?</q>
+    <span class="verdict">맞음 — 공식은 처음부터 맞게 말했고, 막힌 건 ÷ 소수의 감각이었다</span>
+  </div>
+</section>
+
+<section aria-labelledby="l7">
+  <h2 id="l7">구멍의 위치</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>개념</th><th>학교</th><th>이 노트</th></tr></thead>
+    <tbody>
+      <tr><td>소수의 나눗셈 ("몇 번 들어가나")</td><td>초5~6</td><td>3</td></tr>
+      <tr><td>비와 비율 ("1당 얼마")</td><td>초6</td><td>1, 2</td></tr>
+      <tr><td>속력 = 거리 ÷ 시간</td><td>중1</td><td>1, 4</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:8px">다음에 <code>÷ DeltaTime</code>이 또 낯설면: 숫자를 정수로 바꿔서 먼저 생각하거나, "1 안에 몇 번 들어가나"로 생각하기.</p>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="vector-ops.html">벡터 더하기·빼기·곱하기</a> — <code>지금 − 이전</code>은 떼어내기, <code>× DeltaTime</code>은 늘이고 줄이기</li>
+    <li><a href="torque-skewer.html">꼬챙이로 보는 torque</a> — 같은 날의 다른 복습</li>
+    <li><a href="https://github.com/DEV-JSB/study-notes/blob/main/projectf/devlog/2026-10-29-ProjectF.md">2026-10-29 개발 일지</a></li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const NS='http://www.w3.org/2000/svg';
+  const el=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+  function road(){
+    let p=+$('kPrev').value,n=+$('kNow').value,h=+$('kHr').value;
+    if(n<p){n=p;$('kNow').value=n;}
+    $('oPrev').textContent=p+' km';$('oNow').textContent=n+' km';$('oHr').textContent=h+' 시간';
+    const d=n-p,v=d/h;
+    $('s1').textContent=n+' − '+p+' = '+d+' km';
+    $('s2').textContent=h+' 시간';
+    $('s3').textContent=d+' ÷ '+h+' = '+(Number.isInteger(v)?v:v.toFixed(1))+' km/h';
+    const g=$('road');g.innerHTML='';
+    const L=20,R=660,max=500,x=k=>L+(R-L)*k/max;
+    g.appendChild(el('line',{x1:L,y1:50,x2:R,y2:50,stroke:'var(--line)','stroke-width':6,'stroke-linecap':'round'}));
+    for(let i=0;i<h;i++){
+      const a=x(p+d*i/h),b=x(p+d*(i+1)/h);
+      g.appendChild(el('rect',{x:a,y:40,width:Math.max(b-a-1,0.5),height:20,rx:2,fill:i%2?'var(--cellB)':'var(--cellA)'}));
+      if(b-a>40){const t=el('text',{x:(a+b)/2,y:78,'text-anchor':'middle','font-size':11,fill:'var(--muted)'});t.textContent='1시간';g.appendChild(t);}
+    }
+    [[p,'이전 '+p],[n,'지금 '+n]].forEach(([k,s],i)=>{
+      g.appendChild(el('line',{x1:x(k),y1:22,x2:x(k),y2:62,stroke:i?'var(--b)':'var(--muted)','stroke-width':2}));
+      const t=el('text',{x:x(k),y:16,'text-anchor':'middle','font-size':12,fill:i?'var(--b)':'var(--muted)'});t.textContent=s;g.appendChild(t);
+    });
+  }
+  ['kPrev','kNow','kHr'].forEach(id=>$(id).addEventListener('input',road));road();
+
+  const DIVS=[2,1,0.5,0.25,0.2,0.1,0.05,0.017];
+  function fit(){
+    const d=DIVS[+$('dv').value];$('oDv').textContent=d;
+    const g=$('fit');g.innerHTML='';const L=20,W=640,cnt=1/d;
+    g.appendChild(el('rect',{x:L,y:14,width:W,height:30,rx:3,fill:'none',stroke:'var(--fg)','stroke-width':1.5}));
+    const w=W*d,full=Math.floor(cnt+1e-9);
+    for(let i=0;i<Math.min(full,80);i++)g.appendChild(el('rect',{x:L+i*w+0.5,y:15,width:Math.max(w-1,0.4),height:28,fill:i%2?'var(--cellB)':'var(--cellA)'}));
+    if(d>1){g.appendChild(el('rect',{x:L,y:15,width:W,height:28,fill:'var(--cellA)'}));}
+    const t=el('text',{x:L,y:62,'font-size':11,fill:'var(--muted)'});t.textContent='길이 1';g.appendChild(t);
+    const r=1/d;
+    $('fitT').textContent='1 ÷ '+d+' = '+(Number.isInteger(r)?r:r.toFixed(1))+(d>1?'  → 1보다 큰 수로 나누면 작아짐 (한 번도 다 못 들어감)':'  → '+(d===1?'딱 한 번':'칸이 '+(Number.isInteger(r)?r:'약 '+Math.round(r))+'번 들어감'));
+  }
+  $('dv').addEventListener('input',fit);fit();
+
+  let fps=5,spd=120,frame=0,last=0,acc=0;
+  function track(){
+    fps=+$('fps').value;spd=+$('spd').value;
+    $('oFps').textContent=fps;$('oSpd').textContent=spd+' cm/s';
+    const g=$('track');g.innerHTML='';const L=20,W=640,w=W/fps;
+    for(let i=0;i<fps;i++)g.appendChild(el('rect',{x:L+i*w,y:30,width:Math.max(w-1,0.5),height:40,rx:2,fill:i%2?'var(--cellB)':'var(--cellA)'}));
+    g.appendChild(el('circle',{id:'ball',cx:L,cy:50,r:10,fill:'var(--b)'}));
+    const a=el('text',{x:L,y:96,'font-size':12,fill:'var(--muted)'});a.textContent='출발';g.appendChild(a);
+    const b=el('text',{x:L+W,y:96,'font-size':12,fill:'var(--muted)','text-anchor':'end'});b.textContent='1초 뒤 ('+spd+' cm)';g.appendChild(b);
+    const st=spd/fps;
+    $('cDt').textContent=(1/fps).toFixed(3)+'초';
+    $('cStep').textContent=st.toFixed(1)+' cm';
+    $('cSpd').textContent=spd+' cm/s';
+    frame=0;acc=0;
+  }
+  ['fps','spd'].forEach(id=>$(id).addEventListener('input',track));track();
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function tick(now){
+    if(!last)last=now;acc+=(now-last)/1000;last=now;
+    const dt=1/fps;while(acc>=dt){acc-=dt;frame=(frame+1)%(fps+1);}
+    const ball=document.getElementById('ball');if(ball)ball.setAttribute('cx',20+640*frame/fps);
+    requestAnimationFrame(tick);
+  }
+  if(!reduce)requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>꼬챙이로 보는 torque</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: one reading column; a 3D lab (N, V, their plane, the cross skewer, the dot-flipped skewer) first, then the 50/130 flip, then where the same skewer shows up elsewhere */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --fwd:#2f6fd0; --n:#178a66; --v:#d2552a; --sk:#8a8f99; --fin:#7a4cc8; --plane:rgba(47,111,208,.12);
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --n:#4cc79c; --v:#f08a5d; --sk:#9aa1ad; --fin:#b48cf0; --plane:rgba(106,163,240,.16); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --n:#4cc79c; --v:#f08a5d; --sk:#9aa1ad; --fin:#b48cf0; --plane:rgba(106,163,240,.16); color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0 0 8px;text-wrap:balance}
+h3{font-size:16px;font-weight:500;margin:8px 0 4px}
+p{margin:0;max-width:65ch}
+a{color:var(--n)}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.def{border-left:3px solid var(--fin);padding:4px 0 4px 16px;font-size:18px}
+.lab{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctrl label{font-size:14px;color:var(--muted);min-width:120px}
+.ctrl input[type=range]{flex:1;min-width:160px;accent-color:var(--fin)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;padding:4px 12px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--fwd);outline-offset:2px}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
+.stage{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:640px){.stage{grid-template-columns:minmax(0,1fr)}}
+svg{width:100%;height:auto;display:block}
+#view{touch-action:none;cursor:grab;border:1px solid var(--line);border-radius:8px}
+.read{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:4px;font-size:14px}
+.row span:first-child{color:var(--muted)}
+.big{font-size:17px;font-weight:500}
+.sub{font-size:14px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0;overflow-x:auto;line-height:1.6}
+ul{margin:0;padding-left:20px}
+.quote{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.quote q{font-size:17px}
+.verdict{font-size:14px;font-weight:500;color:var(--n)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:16px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">ProjectF · PaperAero ③ 복습 · 2026-10-29</span>
+  <h1>꼬챙이로 보는 torque</h1>
+  <p class="lead">종이가 공기를 맞아 뒤집히는 한 줄, <code>torque = dot(N, v) * cross(N, v) * FlipStrength</code>를 3D로 돌려 봅니다. 외적은 각도가 아니라 <b>꼬챙이</b>를 주고, 내적은 그 꼬챙이를 <b>앞으로 꽂을지 뒤로 꽂을지</b> 정합니다.</p>
+</header>
+
+<section>
+  <p class="def">N과 V가 놓인 평면에 <b>수직으로 꼬챙이(외적)</b>를 꽂는다. 종이는 그 꼬챙이를 중심으로 평면 안에서 돈다. 꼬챙이를 앞으로 꽂을지 뒤로 꽂을지는 <b>내적의 부호</b>가 정한다. → N은 V와 −V 중 <b>더 가까운 쪽</b>으로 돈다.</p>
+</section>
+
+<section class="lab" aria-labelledby="l1">
+  <h2 id="l1">실험 1 · 평면과 꼬챙이</h2>
+  <p class="sub">그림을 끌어서 시점을 돌릴 수 있어요. 종이는 처음에 하늘을 보고 누워 있습니다(N = 위).</p>
+  <div class="stage">
+    <svg id="view" viewBox="0 0 400 360" role="img" aria-label="법선 N, 속도 V, 두 화살표가 놓인 평면, 외적 꼬챙이와 내적을 곱한 꼬챙이를 3D로 보여 주는 그림">
+      <defs>
+        <marker id="aN" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--n)"/></marker>
+        <marker id="aV" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--v)"/></marker>
+        <marker id="aS" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--sk)"/></marker>
+        <marker id="aF" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--fin)"/></marker>
+      </defs>
+      <g id="axes"></g>
+      <path id="plane" fill="var(--plane)" stroke="var(--fwd)" stroke-width="1" stroke-dasharray="3 3"/>
+      <path id="paper" fill="none" stroke="var(--fg)" stroke-width="2"/>
+      <line id="lVn" stroke="var(--v)" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <line id="lV" stroke="var(--v)" stroke-width="2.5" marker-end="url(#aV)"/>
+      <line id="lS" stroke="var(--sk)" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#aS)"/>
+      <line id="lF" stroke="var(--fin)" stroke-width="3" marker-end="url(#aF)"/>
+      <line id="lN" stroke="var(--n)" stroke-width="3" marker-end="url(#aN)"/>
+      <text id="tN" font-size="13" fill="var(--n)">N</text>
+      <text id="tV" font-size="13" fill="var(--v)">V</text>
+      <text id="tVn" font-size="12" fill="var(--v)">−V</text>
+      <text id="tS" font-size="12" fill="var(--sk)">외적만</text>
+      <text id="tF" font-size="12" fill="var(--fin)">× 내적</text>
+    </svg>
+    <div class="read">
+      <div class="row"><span>N과 V 사이</span><span class="num big" id="rAng">—</span></div>
+      <div class="row"><span>내적 dot(N, V)</span><span class="num" id="rDot">—</span></div>
+      <div class="row"><span>외적 길이 |cross(N, V)|</span><span class="num" id="rCr">—</span></div>
+      <div class="row"><span>꼬챙이 cross(N, V)</span><span class="num" id="rSk">—</span></div>
+      <div class="row"><span>× 내적 = torque 방향</span><span class="num" id="rT">—</span></div>
+      <p class="sub" id="rMsg"></p>
+    </div>
+  </div>
+  <div class="ctrl"><label for="sAng">N과 V 사이 각도</label><input id="sAng" type="range" min="0" max="180" step="1" value="50"><span class="num" id="oAng" style="min-width:44px">50°</span></div>
+  <div class="ctrl"><label for="sAz">V가 오는 방향 (둘레)</label><input id="sAz" type="range" min="0" max="359" step="1" value="0"><span class="num" id="oAz" style="min-width:44px">0°</span></div>
+  <div class="btns">
+    <button id="b50">50°</button><button id="b130">130°</button>
+    <button id="bPlay">놓아 보기</button><button id="bReset">처음으로</button>
+    <label class="chk"><input type="checkbox" id="cDot" checked> 내적 곱하기</label>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--n)"></i>N (종이 법선)</span>
+    <span><i style="background:var(--v)"></i>V (종이 속도) / −V 점선</span>
+    <span><i style="background:var(--sk)"></i>외적만 = N→V 꼬챙이</span>
+    <span><i style="background:var(--fin)"></i>× 내적 = 실제 꼬챙이</span>
+    <span><i style="background:var(--fwd)"></i>N·V 평면</span>
+  </div>
+  <p class="sub">해 볼 것: ① 50°에서 놓아 보기 → N이 V에 붙음 ② 130°에서 놓아 보기 → 보라 꼬챙이가 회색과 <b>반대로</b> 꽂혀서 N이 −V에 붙음 ③ "내적 곱하기"를 끄고 130°에서 놓아 보기 → 먼 V까지 130°를 돌아감 ④ 둘레 슬라이더를 움직이면 평면이 돌고 꼬챙이도 같이 돈다 — 꼬챙이는 언제나 평면에 수직</p>
+</section>
+
+<section aria-labelledby="l2">
+  <h2 id="l2">50°와 130°: 외적만으로는 똑같다</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>N과 V 사이</th><th>외적 길이 (sin)</th><th>내적 (cos)</th><th>꼬챙이</th><th>도는 쪽</th></tr></thead>
+    <tbody>
+      <tr><td>50°</td><td class="num">0.77</td><td class="num">+0.64</td><td>그대로</td><td>V 쪽으로 50°</td></tr>
+      <tr><td>130°</td><td class="num">0.77</td><td class="num">−0.64</td><td><b>뒤집힘</b></td><td>−V 쪽으로 50° (V까지 130°를 돌지 않음)</td></tr>
+      <tr><td>90°</td><td class="num">1</td><td class="num">0</td><td>사라짐</td><td>안 돎 (V와 −V가 똑같이 멂 — 불안정한 자리)</td></tr>
+      <tr><td>0° / 180°</td><td class="num">0</td><td class="num">±1</td><td>없음</td><td>안 돎 — 넓은 면이 이미 정면으로 맞음 (멈춤 자리)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:10px">꼬챙이를 뒤집는 건 특별한 연산이 아니에요. 화살표에 음수를 곱하면 반대 방향 화살표가 됩니다(<b>늘이고 줄이기</b>).</p>
+  <pre style="margin-top:8px">(0, 3, 0) ×  2 = (0,  6, 0)   같은 방향, 더 셈
+(0, 3, 0) × −1 = (0, −3, 0)   반대 방향 → 반대로 돎
+(0, 3, 0) × −4 = (0,−12, 0)   반대 방향 + 4배 셈</pre>
+  <p class="sub" style="margin-top:8px">미사일에서 외적 순서를 바꿨더니 "딱 반대로" 도망간 것(<code>cross(B, A) = −cross(A, B)</code>)과 같은 일을, 순서 대신 음수 곱하기로 한 것입니다.</p>
+</section>
+
+<section aria-labelledby="l3">
+  <h2 id="l3">손 계산 하나</h2>
+  <pre>N = (0, 0, 1)    종이가 하늘을 보고 누움
+V = (3, 0, −4)   +X 쪽으로 미끄러지며 떨어짐
+
+cross(N, V) = (0, 3, 0)   → Y 꼬챙이: 종이 가운데를 양옆으로 꿰뚫음
+dot(N, V)   = −4          → N은 −V 쪽에 더 가까움
+torque      = (0, −12, 0) × FlipStrength → 꼬챙이가 뒤집혀 −V 쪽으로 끄덕임</pre>
+  <p style="margin-top:8px">Y 꼬챙이로 도는 건 고개를 끄덕이는 Pitch와 같은 모양이에요. 외적은 결국 "Yaw로 돌아 / Pitch로 돌아 / 섞은 비스듬한 막대로 돌아"를 계산해 주는 것입니다.</p>
+</section>
+
+<section aria-labelledby="l4">
+  <h2 id="l4">각도는 아무도 구하지 않는다</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th></th><th>미사일</th><th>종이</th></tr></thead>
+    <tbody>
+      <tr><td>꼬챙이</td><td>외적, 길이는 버림 (<code>GetSafeNormal</code>)</td><td>외적 그대로</td></tr>
+      <tr><td>내적</td><td><code>Acos</code>로 <b>각도까지</b> 구함</td><td>각도는 안 구하고 <b>숫자 그대로 곱함</b> (부호 = 앞뒤, 크기 = 세기)</td></tr>
+      <tr><td>결과</td><td>"이만큼 돌아"</td><td>"이 꼬챙이로 이만큼 빠르게 돌아" (각속도)</td></tr>
+      <tr><td>멈춤</td><td>남은 각도가 0</td><td>N이 V나 −V와 나란해지면 외적이 0 → 저절로 멈춤</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section aria-labelledby="l5">
+  <h2 id="l5">같은 꼬챙이가 나오는 곳</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>어디서</th><th>꼬챙이</th><th>앞뒤를 정하는 것</th></tr></thead>
+    <tbody>
+      <tr><td>터렛 (GameMathLab)</td><td><code>cross(앞, 타겟 방향)</code> → 거의 Z 막대 = Yaw</td><td>순서 (타겟 쪽으로)</td></tr>
+      <tr><td>유도 미사일</td><td>위로 솟았다 꺾일 때 비스듬한 막대</td><td>순서</td></tr>
+      <tr><td>종이 펄럭임 (③ torque)</td><td><code>cross(N, v)</code></td><td><b>내적 부호</b> — 더 가까운 쪽</td></tr>
+      <tr><td>종이 눕기 (③ settle)</td><td><code>cross(N, flatN)</code></td><td><code>flatN</code>을 위·아래 중 가까운 쪽으로 미리 골라 둠 (<code>step(0, N.z)</code>)</td></tr>
+      <tr><td>4단계 예고: 모서리를 차면 돈다</td><td><code>cross(가운데→닿은 곳, 미는 힘)</code></td><td>어디를 미느냐</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:8px">settle 줄도 사실 같은 생각이에요. torque는 "v와 −v 중 가까운 쪽"을 내적 부호로 고르고, settle은 "위와 아래 중 가까운 쪽"을 <code>step</code>으로 먼저 고른 다음 그쪽으로 꼬챙이를 꽂습니다.</p>
+</section>
+
+<section aria-labelledby="l6">
+  <h2 id="l6">내가 정리한 문장</h2>
+  <div class="quote">
+    <q>N과 V를 외적함으로써, N과 V로 이루어져 있는 2차원 평면이 있다고 하면 그 평면에 수직선을 꽂아야 하는데, 그걸 앞으로 꽂을지 뒤로 꽂을지는 내적으로 정하는 건가!?</q>
+    <span class="verdict">맞음 — 이 노트의 제목이 된 문장</span>
+    <p class="sub">한 가지만 덧붙이면 외적도 혼자서 꽂는 방향을 하나 정합니다(N → V 쪽). 내적은 −V가 더 가까우면 그걸 반대로 다시 꽂아요.</p>
+  </div>
+  <div class="quote">
+    <q>torque는 바람으로 인해서 영향을 받는 종이를 만들기 위해 존재하는 거네. 외적으로 인해서 돌아야 할 각도는 아는데, 그 각도를 가까운 쪽으로 돌리기 위해서 내적의 값을 곱한다?</q>
+    <span class="verdict">거의 맞음 — 두 단어만</span>
+    <p class="sub">외적이 주는 건 각도가 아니라 <b>축(꼬챙이)</b>. 바람은 바깥 바람이 아니라 <b>종이가 떨어지며 스스로 맞는 공기</b>(그래서 v = 종이 자신의 속도, 가만히 있으면 torque 0).</p>
+  </div>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="dot-cross.html">내적은 숫자, 외적은 화살표</a> — 내적 부호 = 앞/뒤 두 갈래, 30°/150°</li>
+    <li><a href="homing-turn.html">타겟 쪽으로 돌기</a> — 미사일의 꼬챙이</li>
+    <li><a href="rotation-pyr.html">회전 Pitch · Yaw · Roll</a> — 꼬챙이를 Yaw·Pitch로 읽기</li>
+    <li><a href="../projectf/paper-aero-map.html">PaperAero 한 장 지도</a> — ③ 각속도</li>
+    <li><a href="https://github.com/DEV-JSB/study-notes/blob/main/projectf/devlog/2026-10-29-ProjectF.md">2026-10-29 개발 일지</a></li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+  const mul=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+  const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  const len=a=>Math.hypot(a[0],a[1],a[2]);
+  const norm=a=>{const l=len(a);return l<1e-9?[0,0,0]:mul(a,1/l);};
+  function rot(v,k,ang){const c=Math.cos(ang),s=Math.sin(ang);return add(add(mul(v,c),mul(cross(k,v),s)),mul(k,dot(k,v)*(1-c)));}
+
+  let yaw=-0.9,pitch=0.35;
+  const CX=200,CY=200,S=110;
+  function proj(p){
+    const x1=p[0]*Math.cos(yaw)-p[1]*Math.sin(yaw), y1=p[0]*Math.sin(yaw)+p[1]*Math.cos(yaw);
+    const up=p[2]*Math.cos(pitch)+x1*Math.sin(pitch);
+    return [CX+y1*S, CY-up*S];
+  }
+  let N=[0,0,1],A=[1,0,0],B=[0,1,0];
+  let ang=50,az=0,anim=null;
+  function V(){const t=ang*Math.PI/180,p=az*Math.PI/180;return [Math.sin(t)*Math.cos(p),Math.sin(t)*Math.sin(p),Math.cos(t)];}
+  let Vv=V();
+  function setLine(el,a,b){const p=proj(a),q=proj(b);el.setAttribute('x1',p[0]);el.setAttribute('y1',p[1]);el.setAttribute('x2',q[0]);el.setAttribute('y2',q[1]);}
+  function setText(el,p,dx,dy){const q=proj(p);el.setAttribute('x',q[0]+(dx||0));el.setAttribute('y',q[1]+(dy||0));}
+  function f(x){return (x<0?'−':' ')+Math.abs(x).toFixed(2);}
+  function fv(v){return '('+v.map(x=>(Math.abs(x)<0.005?0:x).toFixed(2).replace('-','−')).join(', ')+')';}
+  function drawAxes(){
+    const g=$('axes');g.innerHTML='';
+    [[[1.25,0,0],'X'],[[0,1.25,0],'Y'],[[0,0,1.25],'Z']].forEach(([p,t])=>{
+      const a=proj([0,0,0]),b=proj(p);
+      const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+      l.setAttribute('x1',a[0]);l.setAttribute('y1',a[1]);l.setAttribute('x2',b[0]);l.setAttribute('y2',b[1]);
+      l.setAttribute('stroke','var(--line)');l.setAttribute('stroke-width','1');g.appendChild(l);
+      const tx=document.createElementNS('http://www.w3.org/2000/svg','text');
+      tx.setAttribute('x',b[0]+4);tx.setAttribute('y',b[1]+4);tx.setAttribute('font-size','11');tx.setAttribute('fill','var(--muted)');tx.textContent=t;g.appendChild(tx);
+    });
+  }
+  function draw(){
+    drawAxes();
+    const O=[0,0,0];
+    const d=dot(N,Vv), c=cross(N,Vv), cl=len(c);
+    const useDot=$('cDot').checked;
+    const t=useDot?mul(c,d):c;
+    const u=norm(add(Vv,mul(N,-d)));
+    if(cl>1e-3){
+      let pts=[];for(let i=0;i<=36;i++){const a=i/36*Math.PI*2;pts.push(proj(add(mul(N,Math.cos(a)*1.05),mul(u,Math.sin(a)*1.05))));}
+      $('plane').setAttribute('d','M'+pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L')+'Z');
+    } else $('plane').setAttribute('d','');
+    const pa=[add(mul(A,0.45),mul(B,0.3)),add(mul(A,-0.45),mul(B,0.3)),add(mul(A,-0.45),mul(B,-0.3)),add(mul(A,0.45),mul(B,-0.3))].map(proj);
+    $('paper').setAttribute('d','M'+pa.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L')+'Z');
+    setLine($('lN'),O,mul(N,1));setText($('tN'),mul(N,1.12),-4,4);
+    setLine($('lV'),O,mul(Vv,1));setText($('tV'),mul(Vv,1.14),-4,4);
+    setLine($('lVn'),O,mul(Vv,-1));setText($('tVn'),mul(Vv,-1.16),-8,4);
+    const sk=mul(norm(c),Math.max(cl,0.001)*1.1), fk=mul(norm(t),Math.max(len(t),0.001)*1.1);
+    setLine($('lS'),O,sk);setText($('tS'),mul(norm(c),cl*1.1+0.12),-14,4);
+    const showF=useDot&&len(t)>1e-3;
+    $('lF').style.display=showF?'':'none';$('tF').style.display=showF?'':'none';
+    $('lS').style.display=cl>1e-3?'':'none';$('tS').style.display=cl>1e-3?'':'none';
+    if(showF){setLine($('lF'),O,fk);setText($('tF'),mul(norm(t),len(t)*1.1+0.14),-14,14);}
+    const angNV=Math.acos(Math.max(-1,Math.min(1,d)))*180/Math.PI;
+    $('rAng').textContent=Math.round(angNV)+'°';
+    $('rDot').textContent=f(d);
+    $('rCr').textContent=cl.toFixed(2);
+    $('rSk').textContent=fv(c);
+    $('rT').textContent=useDot?fv(t):'(내적 안 곱함)';
+    let msg;
+    if(cl<0.02) msg='N과 V가 일직선 → 꼬챙이 없음. 안 돎.';
+    else if(!useDot) msg='내적을 안 곱하면 언제나 N → V 쪽. 멀어도 V까지 돌아감.';
+    else if(Math.abs(d)<0.02) msg='내적 0 → 꼬챙이가 사라짐. V와 −V가 똑같이 멀다.';
+    else if(d>0) msg='내적 양수 → 꼬챙이 그대로. N이 V 쪽으로 '+Math.round(angNV)+'° 돌면 됨.';
+    else msg='내적 음수 → 꼬챙이 뒤집힘. N이 −V 쪽으로 '+Math.round(180-angNV)+'°만 돌면 됨.';
+    $('rMsg').textContent=msg;
+  }
+  function resetPaper(){N=[0,0,1];A=[1,0,0];B=[0,1,0];}
+  function stop(){if(anim){cancelAnimationFrame(anim);anim=null;}}
+  function sync(){Vv=V();$('oAng').textContent=ang+'°';$('oAz').textContent=az+'°';$('sAng').value=ang;$('sAz').value=az;}
+  $('sAng').addEventListener('input',e=>{stop();resetPaper();ang=+e.target.value;sync();draw();});
+  $('sAz').addEventListener('input',e=>{stop();resetPaper();az=+e.target.value;sync();draw();});
+  $('b50').addEventListener('click',()=>{stop();resetPaper();ang=50;sync();draw();});
+  $('b130').addEventListener('click',()=>{stop();resetPaper();ang=130;sync();draw();});
+  $('bReset').addEventListener('click',()=>{stop();resetPaper();draw();});
+  $('cDot').addEventListener('change',()=>{stop();resetPaper();draw();});
+  $('bPlay').addEventListener('click',()=>{
+    stop();resetPaper();draw();
+    let last=performance.now(),t0=last;
+    const step=now=>{
+      const dt=Math.min((now-last)/1000,0.05);last=now;
+      const d=dot(N,Vv),c=cross(N,Vv);
+      const w=$('cDot').checked?mul(c,d*3):mul(c,3);
+      const wl=len(w);
+      if(wl>1e-4){const k=mul(w,1/wl);N=norm(rot(N,k,wl*dt));A=norm(rot(A,k,wl*dt));B=norm(rot(B,k,wl*dt));}
+      draw();
+      if(now-t0<9000&&wl>0.004)anim=requestAnimationFrame(step);else anim=null;
+    };
+    anim=requestAnimationFrame(step);
+  });
+  const view=$('view');let drag=null;
+  view.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY,yaw,pitch];view.setPointerCapture(e.pointerId);view.style.cursor='grabbing';});
+  view.addEventListener('pointermove',e=>{if(!drag)return;yaw=drag[2]+(e.clientX-drag[0])*0.01;pitch=Math.max(-1.4,Math.min(1.4,drag[3]+(e.clientY-drag[1])*0.01));draw();});
+  const end=()=>{drag=null;view.style.cursor='grab';};
+  view.addEventListener('pointerup',end);view.addEventListener('pointercancel',end);
+  sync();draw();
+})();
+</script>
+</body>
+</html>
