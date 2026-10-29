@@ -239,6 +239,42 @@ float3 vt = Vel - vn;          // 그림자를 떼어낸 나머지 → sin 쪽 (
   <p class="sub" style="margin-top:8px"><a href="homing-turn.html">유도 노트</a> 실험의 "외적 Z" 칸이 바로 이 값이었어요. 위에서 내려다본 평면이라 ⊙(+)와 ⊗(−) 두 가지뿐이었죠.</p>
 </section>
 
+<section aria-labelledby="l6b">
+  <h2 id="l6b">내적도 "어디"를 말한다 — 단, 앞이냐 뒤냐 두 갈래만</h2>
+  <p>"내적 = 얼마나, 외적 = 어느 쪽"은 반만 맞는 문장이에요. 내적의 <b>부호</b>는 "같은 편인가, 반대 편인가"를 알려 줍니다.</p>
+  <div class="tbl">
+  <table>
+    <thead><tr><th></th><th>알려 주는 것</th><th>고를 수 있는 "어디"</th></tr></thead>
+    <tbody>
+      <tr><td>내적</td><td>부호 = <b>앞/뒤</b> (같은 편 / 반대 편) · 크기 = 얼마나</td><td><b>두 갈래</b> 중 하나</td></tr>
+      <tr><td>외적</td><td>어느 축으로 돌아야 B 쪽인가</td><td>빙 둘러 <b>무수히 많은 옆</b> 중 하나</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="tbl" style="margin-top:12px">
+  <table>
+    <thead><tr><th>어디서</th><th>내적으로 물은 것</th></tr></thead>
+    <tbody>
+      <tr><td>터렛 레이더 원뿔</td><td>타겟이 <b>앞에</b> 있나 → 내적 &gt; cos(반각)</td></tr>
+      <tr><td>미사일</td><td>얼마나 돌아야 하나 → <code>Acos(내적)</code></td></tr>
+      <tr><td>종이 torque</td><td>N이 v 편인가 −v 편인가 → <b>부호로 축을 뒤집음</b> + 크기로 세기</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <h3 style="margin-top:16px">종이 torque: 50°와 130°</h3>
+  <pre>float3 torque = dot(N, v) * cross(N, v) * FlipStrength;</pre>
+  <div class="tbl" style="margin-top:8px">
+  <table>
+    <thead><tr><th>N과 v 사이</th><th>외적 길이 (sin)</th><th>내적 (cos)</th><th>실제로 도는 쪽</th></tr></thead>
+    <tbody>
+      <tr><td>50°</td><td class="num">0.77</td><td class="num">+0.64</td><td>v 쪽으로 50°</td></tr>
+      <tr><td>130°</td><td class="num">0.77</td><td class="num">−0.64</td><td>축이 뒤집혀 <b>−v 쪽으로 50°</b> (v까지 130°를 돌지 않음)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:8px">외적만 보면 둘이 똑같아요(30°/150°와 같은 문제). 내적 부호가 "v가 가깝다 / −v가 가깝다"를 골라 주고, 음수를 곱하면 축이 정반대가 되어 <b>더 가까운 쪽으로</b> 돕니다. 화살표 × 음수 = 반대 방향 화살표 (늘이고 줄이기).</p>
+</section>
+
 <section aria-labelledby="l7">
   <h2 id="l7">3D 외적 = 2D 외적 세 개 (몰라도 되는 칸)</h2>
   <p>공식 안쪽은 블랙박스여도 됩니다. 한 칸만 들여다보면, 세 평면에서 각각 2D 외적을 해서 축의 X·Y·Z 칸에 <b>하나씩 넣어 모은</b> 것이에요(<code>FVector::CrossProduct</code>).</p>
@@ -275,6 +311,11 @@ float3 vt = Vel - vn;          // 그림자를 떼어낸 나머지 → sin 쪽 (
     <span class="verdict ok">좋은 의심 — 이 질문에서 30°/150° 문제가 드러남</span>
     <p class="sub">외적 길이(sin)로도 각도를 반쯤 알 수 있지만 30°와 150°를 구별 못 함 → 그래서 각도는 내적.</p>
   </div>
+  <div class="quote" style="margin-top:12px">
+    <q>외적은 50도로 돌아도 50도 위치, 130도를 돌아도 50 위치. 이걸 내적을 이용해서 50도로 돌지 130도를 돌지… 그런 느낌인가</q>
+    <span class="verdict ok">맞음 — 30°/150°를 종이에서 스스로 다시 찾음 (2026-10-29)</span>
+    <p class="sub">종이에서는 한 걸음 더: 130°면 v까지 130°를 도는 대신, 내적 음수로 축을 뒤집어 −v 쪽으로 50°만 돈다.</p>
+  </div>
 </section>
 
 <section aria-labelledby="l9">
@@ -283,7 +324,7 @@ float3 vt = Vel - vn;          // 그림자를 떼어낸 나머지 → sin 쪽 (
   <table>
     <thead><tr><th></th><th>결과</th><th>길이 1끼리면</th><th>알려 주는 것</th><th>0° / 180°</th></tr></thead>
     <tbody>
-      <tr><td>내적</td><td>숫자</td><td>cos</td><td>사이 각도 (0°~180°를 하나로)</td><td>1 / −1</td></tr>
+      <tr><td>내적</td><td>숫자</td><td>cos</td><td>사이 각도 (0°~180°를 하나로), 부호 = 앞/뒤 두 갈래</td><td>1 / −1</td></tr>
       <tr><td>외적</td><td>화살표</td><td>길이 = sin</td><td>방향 = 어느 쪽으로 (축), 길이 = 각도 힌트 (30°/150° 구별 못 함)</td><td>(0,0,0) / (0,0,0)</td></tr>
     </tbody>
   </table>
