@@ -102,6 +102,7 @@ input:focus-visible{outline:2px solid var(--fwd);outline-offset:2px}
     <div class="card"><div class="k">계산</div><div class="v" id="cF" style="font-size:14px"></div></div>
   </div>
   <p class="sub">피타고라스: 반폭 = √(반지름² − 높이²). 반지름 15 → 약 12cm, 20 → 약 18cm. 반지름이 발목 높이보다 작으면 바닥 종이는 영영 안 걸립니다.</p>
+  <p><b>이 폭은 코드에 없습니다.</b> 코드는 <code>length(FootPos - Pos) ≤ FootRadius</code>, 즉 3D 거리만 봅니다. 바닥 종이는 높이가 0이라 그 3D 거리 안에 발목 높이 8.7이 섞여 있고, 풀어 쓰면 "옆으로 √(20² − 8.7²) ≈ 18cm 이내"가 됩니다. 반지름을 고를 때 쓰는 손 계산이에요. 공중에 뜬 종이는 그냥 3D 구 안이면 걸립니다.</p>
 </section>
 
 <section class="lab" aria-labelledby="l2">
