@@ -340,6 +340,7 @@ OutAngVel = (AngVel + torque * DeltaTime) * keepSpin * air + settle * Landed;</p
     <b>알아야 할 것</b><span>회전 속도 = 축 화살표. 공중/바닥에 따라 넣는 회전 속도만 바꿔 끼운다. 0/1 곱해서 고르기. <code>cross</code>는 "경첩 축, 순서 바꾸면 반대".</span>
     <b>말로 설명할 수 있으면 됨</b><span><code>torque = dot × cross</code>: "얼마나 정면으로 받나 × 어느 축으로 비틀리나". 성분 계산은 몰라도 됩니다.</span>
     <b>Unity에선</b><span><code>rb.angularVelocity = Vector3.Cross(transform.up, Vector3.up) * strength;</code> — 넘어진 물체 일으키기와 같은 수법</span>
+    <b>더 보기</b><span><a href="https://dev-jsb.github.io/study-notes/game-math/torque-skewer.html">꼬챙이로 보는 torque</a> — N·V 평면에 수직으로 꽂는 꼬챙이(외적), 앞뒤는 내적 부호. 3D로 돌려 보기</span>
   </div>
 </section>
 
