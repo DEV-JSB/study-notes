@@ -15,7 +15,12 @@
       'font:14px/1.55 var(--sans,system-ui,sans-serif);background:var(--fg,#1b2230);color:var(--bg,#fff);' +
       'pointer-events:none;opacity:0;transition:opacity .08s;white-space:normal}' +
       '#ct-pop.show{opacity:1}' +
-      '#ct-pop b{font-weight:500;font-family:var(--mono,monospace)}';
+      '#ct-pop b{font-weight:500;font-family:var(--mono,monospace)}' +
+      '.ct-off .ct{text-decoration:none;cursor:auto;background:none}' +
+      '#ct-toggle{position:fixed;right:16px;bottom:16px;z-index:40;font:13px var(--sans,system-ui,sans-serif);padding:6px 12px;border-radius:999px;' +
+      'border:1px solid var(--line,#d9dde4);background:var(--panel,#fff);color:var(--fg,#1b2230);cursor:pointer}' +
+      '#ct-toggle:hover{border-color:var(--muted,#5d6676)}' +
+      '#ct-toggle:focus-visible{outline:2px solid var(--fwd,#2f6fd0);outline-offset:2px}';
     document.head.appendChild(s);
   }
 
@@ -58,8 +63,30 @@
     let pop = document.getElementById('ct-pop');
     if (!pop) { pop = document.createElement('div'); pop.id = 'ct-pop'; pop.setAttribute('role', 'tooltip'); document.body.appendChild(pop); }
     let cur = null;
+    let off = false;
+    try { off = localStorage.getItem('codeTipsOff') === '1'; } catch (e) {}
+
+    const btn = document.createElement('button');
+    btn.id = 'ct-toggle';
+    btn.type = 'button';
+    function paint() {
+      document.body.classList.toggle('ct-off', off);
+      btn.textContent = off ? '코드 설명 꺼짐' : '코드 설명 켜짐';
+      btn.setAttribute('aria-pressed', String(!off));
+      document.querySelectorAll('.ct').forEach(function (s) { s.tabIndex = off ? -1 : 0; });
+    }
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      off = !off;
+      try { localStorage.setItem('codeTipsOff', off ? '1' : '0'); } catch (err) {}
+      hide();
+      paint();
+    });
+    document.body.appendChild(btn);
+    paint();
 
     function show(sp) {
+      if (off) return;
       if (cur && cur !== sp) cur.classList.remove('on');
       cur = sp;
       sp.classList.add('on');
