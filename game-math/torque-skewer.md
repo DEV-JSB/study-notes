@@ -4,9 +4,42 @@
 
 **N과 V가 놓인 평면에 수직으로 꼬챙이(외적)를 꽂는다. 종이는 그 꼬챙이를 중심으로 평면 안에서 돈다. 꼬챙이를 앞으로 꽂을지 뒤로 꽂을지는 내적의 부호가 정한다. → N은 V와 −V 중 더 가까운 쪽으로 돈다.**
 
+## 이 노트가 나온 코드
+
+ProjectF 종이 모듈 `PaperAero`의 ③ 회전 속도 덩어리 ([PaperAero 한 장 지도](../projectf/paper-aero-map.html) ③)
+
 ```hlsl
-float3 torque = dot(N, v) * cross(N, v) * FlipStrength;
+float3 v = Vel * 0.01f;                                    // cm/s → m/s
+float3 torque = dot(N, v) * cross(N, v) * FlipStrength;    // ← 이 노트의 주인공
+float keepSpin = max(0.0f, 1.0f - SpinDrag * DeltaTime);
+float air = 1.0f - Landed;
+float3 flatN = float3(0.0f, 0.0f, step(0.0f, N.z) * 2.0f - 1.0f);
+float3 settle = cross(N, flatN) * SettleSpeed;
+OutAngVel = (AngVel + torque * DeltaTime) * keepSpin * air + settle * Landed;
 ```
+
+| 줄 | 하는 일 |
+|---|---|
+| `torque` | 떨어지며 맞는 공기가 종이를 **어느 꼬챙이로 얼마나 세게** 비트나 (외적 = 꼬챙이, 내적 = 앞뒤와 세기) |
+| `AngVel + torque * DeltaTime` | 그 비틀림을 회전 속도에 조금씩 **더한다** (속도에 중력을 더하는 것과 같은 모양) |
+| `* keepSpin` | 회전 브레이크 |
+| `* air + settle * Landed` | 공중이면 torque 쪽, 바닥이면 눕히기 쪽 (0/1 곱해서 고르기) |
+| 그다음 ④ | `OutAngVel`만큼 이번 프레임 종이를 실제로 돌림 |
+
+## torque가 있으면, 없으면
+
+같은 높이(3m), 기울기 15°에서 떨어뜨림. 공기저항·중력은 똑같고 torque 줄만 다름 (NormalDrag 8, PlaneDrag 0.5, FlipStrength 30, SpinDrag 3, 중력 980). 그림으로 겹쳐 보는 건 [torque-skewer.html](torque-skewer.html) 실험 1
+
+| | torque 줄 | 떨어지는 시간 | 옆으로 간 거리 | 모습 |
+|---|---|---|---|---|
+| 있음 | `dot(N, v) * cross(N, v) * FlipStrength` | 약 2.0초 | 좌우로 왔다 갔다 (−5 ~ +18cm) | **펄럭임** |
+| 없음 | `0` (FlipStrength 0과 같음) | 약 1.9초 | 한쪽으로 약 290cm | 기운 채 쭉 미끄러짐 |
+| 외적만 | `cross(N, v) * FlipStrength` (내적 뺌) | 약 1.4초 | 약 40cm | 통째로 뒤집히며 굴러떨어짐 |
+
+- **있음**: 기울면 판을 따라 미끄러짐 → 넓은 면이 공기를 정면으로 받으려고 **더 가까운 쪽**으로 돎 → 지나쳐서 반대로 기움 → 반복
+- **없음**: 돌게 하는 게 없어서 기울기가 그대로. ② 공기저항만 남아 판을 따라 활강
+- **외적만**: 내적이 없으면 언제나 N → v 쪽. 하늘을 보던 N이 떨어지는 방향(아래)까지 **먼 길로 반 바퀴** 돌아감
+- 시작 기울기 0°면 셋 다 똑같이 곧게 떨어짐 — N과 v가 일직선이라 외적 0 ("평평한 종이는 안 펄럭임")
 
 ## 50°와 130°: 외적만으로는 똑같다
 

@@ -78,8 +78,67 @@ ul{margin:0;padding-left:20px}
   <p class="def">N과 V가 놓인 평면에 <b>수직으로 꼬챙이(외적)</b>를 꽂는다. 종이는 그 꼬챙이를 중심으로 평면 안에서 돈다. 꼬챙이를 앞으로 꽂을지 뒤로 꽂을지는 <b>내적의 부호</b>가 정한다. → N은 V와 −V 중 <b>더 가까운 쪽</b>으로 돈다.</p>
 </section>
 
+<section aria-labelledby="l0">
+  <h2 id="l0">이 노트가 나온 코드</h2>
+  <p>ProjectF 종이 모듈 <code>PaperAero</code>의 ③ 회전 속도 덩어리입니다 (<a href="../projectf/paper-aero-map.html">PaperAero 한 장 지도</a> ③).</p>
+  <pre style="margin-top:8px">float3 v = Vel * 0.01f;                                    // cm/s → m/s
+float3 torque = dot(N, v) * cross(N, v) * FlipStrength;    // ← 이 노트의 주인공
+float keepSpin = max(0.0f, 1.0f - SpinDrag * DeltaTime);
+float air = 1.0f - Landed;
+float3 flatN = float3(0.0f, 0.0f, step(0.0f, N.z) * 2.0f - 1.0f);
+float3 settle = cross(N, flatN) * SettleSpeed;
+OutAngVel = (AngVel + torque * DeltaTime) * keepSpin * air + settle * Landed;</pre>
+  <div class="tbl" style="margin-top:10px">
+  <table>
+    <thead><tr><th>줄</th><th>하는 일</th></tr></thead>
+    <tbody>
+      <tr><td><code>torque</code></td><td>떨어지며 맞는 공기가 종이를 <b>어느 꼬챙이로 얼마나 세게</b> 비트나 (외적 = 꼬챙이, 내적 = 앞뒤와 세기)</td></tr>
+      <tr><td><code>AngVel + torque * DeltaTime</code></td><td>그 비틀림을 회전 속도에 조금씩 <b>더한다</b> (속도에 중력을 더하는 것과 같은 모양)</td></tr>
+      <tr><td><code>* keepSpin</code></td><td>회전 브레이크. 매 프레임 조금씩 줄여서 영원히 돌지 않게</td></tr>
+      <tr><td><code>* air + settle * Landed</code></td><td>공중이면 torque 쪽, 바닥이면 눕히기 쪽 (0/1 곱해서 고르기)</td></tr>
+      <tr><td>그다음 ④</td><td><code>OutAngVel</code>만큼 이번 프레임 종이를 실제로 돌림</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="lab" aria-labelledby="l0b">
+  <h2 id="l0b">실험 1 · torque가 있으면, 없으면</h2>
+  <p class="sub">같은 높이(3m), 같은 기울기에서 종이 세 장을 동시에 떨어뜨립니다. 공기저항(②)·중력은 셋 다 똑같고 <b>torque 줄만 다릅니다.</b> 옆에서 본 모습이고, 종이의 작은 눈금이 N(윗면) 쪽입니다. 값은 실제 모듈과 같습니다 (NormalDrag 8, PlaneDrag 0.5, FlipStrength 30, SpinDrag 3, 중력 980).</p>
+  <svg id="cmp" viewBox="0 0 720 350" role="img" aria-label="torque 있음, 없음, 외적만 세 가지 종이가 떨어지는 궤적을 옆에서 겹쳐 그린 그림"></svg>
+  <div class="ctrl"><label for="cTilt">시작 기울기</label><input id="cTilt" type="range" min="0" max="40" step="1" value="15"><span class="num" id="oTilt" style="min-width:44px">15°</span></div>
+  <div class="btns">
+    <button id="cPlay">떨어뜨리기</button>
+    <label class="chk"><input type="checkbox" id="cSlow"> 느리게 (0.3배)</label>
+    <label class="chk"><input type="checkbox" id="sFull" checked> torque 있음</label>
+    <label class="chk"><input type="checkbox" id="sNone" checked> torque 없음</label>
+    <label class="chk"><input type="checkbox" id="sCross" checked> 외적만</label>
+  </div>
+  <div class="tbl">
+  <table>
+    <thead><tr><th></th><th>torque 줄</th><th>떨어지는 시간</th><th>옆으로 간 거리</th><th>좌우 흔들림</th><th>위아래 뒤집힘</th></tr></thead>
+    <tbody>
+      <tr><td style="color:var(--fin)">■ 있음</td><td><code>dot(N, v) * cross(N, v) * FlipStrength</code></td><td class="num" id="rFt"></td><td class="num" id="rFx"></td><td class="num" id="rFs"></td><td class="num" id="rFf"></td></tr>
+      <tr><td style="color:var(--sk)">■ 없음</td><td><code>0</code> (FlipStrength 0과 같음)</td><td class="num" id="rNt"></td><td class="num" id="rNx"></td><td class="num" id="rNs"></td><td class="num" id="rNf"></td></tr>
+      <tr><td style="color:var(--v)">■ 외적만</td><td><code>cross(N, v) * FlipStrength</code> (내적 뺌)</td><td class="num" id="rCt"></td><td class="num" id="rCx"></td><td class="num" id="rCs"></td><td class="num" id="rCf"></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>모습</th><th>왜</th></tr></thead>
+    <tbody>
+      <tr><td><b style="color:var(--fin)">있음</b>: 좌우로 왔다 갔다 하며 내려옴 (펄럭임)</td><td>기울면 판을 따라 미끄러짐 → 넓은 면이 공기를 정면으로 받으려고 <b>더 가까운 쪽</b>으로 돎 → 지나쳐서 반대로 기움 → 반복</td></tr>
+      <tr><td><b style="color:var(--sk)">없음</b>: 기운 채 한쪽으로 쭉 미끄러짐</td><td>돌게 하는 게 없어서 기울기가 그대로. ② 공기저항만 남아 판을 따라 활강</td></tr>
+      <tr><td><b style="color:var(--v)">외적만</b>: 통째로 뒤집히며 굴러떨어짐</td><td>내적이 없으면 언제나 N → v 쪽. 하늘을 보던 N이 떨어지는 방향(아래)까지 <b>먼 길로 반 바퀴</b> 돌아감 (꼬챙이를 뒤집어 줄 내적이 없음)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub">해 볼 것: 시작 기울기를 0°로 → 셋 다 똑같이 곧게 떨어짐. N과 v가 일직선이라 외적이 0 — "평평하게 떨어지는 종이는 안 펄럭임"이 이것입니다 (4단계에서 발이 기울여 주며 해결).</p>
+</section>
+
 <section class="lab" aria-labelledby="l1">
-  <h2 id="l1">실험 1 · 평면과 꼬챙이</h2>
+  <h2 id="l1">실험 2 · 평면과 꼬챙이</h2>
   <p class="sub">그림을 끌어서 시점을 돌릴 수 있어요. 종이는 처음에 하늘을 보고 누워 있습니다(N = 위).</p>
   <div class="stage">
     <svg id="view" viewBox="0 0 400 360" role="img" aria-label="법선 N, 속도 V, 두 화살표가 놓인 평면, 외적 꼬챙이와 내적을 곱한 꼬챙이를 3D로 보여 주는 그림">
@@ -320,6 +379,88 @@ torque      = (0, −12, 0) × FlipStrength → 꼬챙이가 뒤집혀 −V 쪽�
   const end=()=>{drag=null;view.style.cursor='grab';};
   view.addEventListener('pointerup',end);view.addEventListener('pointercancel',end);
   sync();draw();
+})();
+</script>
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const NS='http://www.w3.org/2000/svg';
+  const el=(t,a,txt)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;return e;};
+  const MODES=[{k:'full',col:'var(--fin)',chk:'sFull',r:'F'},{k:'none',col:'var(--sk)',chk:'sNone',r:'N'},{k:'cross',col:'var(--v)',chk:'sCross',r:'C'}];
+  const DT=1/60,G=980,ND=8,PD=0.5,FS=30,SD=3,H0=300;
+  function sim(mode,tilt){
+    let x=0,z=H0,vx=0,vz=0,th=tilt*Math.PI/180,w=0,t=0;
+    const st=[[x,z,th]];let sway=0,flip=0,ps=Math.sign(Math.sin(th))||1,pc=Math.sign(Math.cos(th))||1;
+    while(z>0&&t<6){
+      const Nx=Math.sin(th),Nz=Math.cos(th);
+      const dn=vx*Nx+vz*Nz,vnx=dn*Nx,vnz=dn*Nz,vtx=vx-vnx,vtz=vz-vnz;
+      const kn=Math.max(0,1-ND*DT),kt=Math.max(0,1-PD*DT);
+      vx=vnx*kn+vtx*kt;vz=vnz*kn+vtz*kt;
+      const ax=vx*0.01,az=vz*0.01,d=Nx*ax+Nz*az,c=Nz*ax-Nx*az;
+      const tq=mode==='full'?d*c*FS:mode==='cross'?c*FS:0;
+      w=(w+tq*DT)*Math.max(0,1-SD*DT);
+      th+=w*DT;
+      vz-=G*DT;x+=vx*DT;z+=vz*DT;t+=DT;
+      const s=Math.sign(Math.sin(th)),c2=Math.sign(Math.cos(th));
+      if(s&&s!==ps){sway++;ps=s;}
+      if(c2&&c2!==pc){flip++;pc=c2;}
+      st.push([x,Math.max(z,0),th]);
+    }
+    return {st,t,x,sway,flip};
+  }
+  const X0=200,Y0=20,S=1,FY=Y0+H0*S;
+  const px=x=>X0+x*S, py=z=>FY-z*S;
+  let runs={},frame=0,anim=null,last=0,acc=0;
+  function paper(g,s,col,op,wid){
+    const [x,z,th]=s,Nx=Math.sin(th),Nz=Math.cos(th),hx=Nz*15,hz=-Nx*15;
+    g.appendChild(el('line',{x1:px(x-hx),y1:py(z-hz),x2:px(x+hx),y2:py(z+hz),stroke:col,'stroke-width':wid,'stroke-linecap':'round',opacity:op}));
+    g.appendChild(el('line',{x1:px(x),y1:py(z),x2:px(x+Nx*6),y2:py(z+Nz*6),stroke:col,'stroke-width':wid*0.7,opacity:op}));
+  }
+  function draw(){
+    const g=$('cmp');g.innerHTML='';
+    g.appendChild(el('line',{x1:10,y1:FY,x2:710,y2:FY,stroke:'var(--line)','stroke-width':2}));
+    g.appendChild(el('text',{x:14,y:FY-6,'font-size':11,fill:'var(--muted)'},'바닥'));
+    g.appendChild(el('line',{x1:X0,y1:Y0,x2:X0,y2:FY,stroke:'var(--line)','stroke-width':1,'stroke-dasharray':'3 4'}));
+    g.appendChild(el('text',{x:X0+4,y:Y0+10,'font-size':11,fill:'var(--muted)'},'출발 (3m)'));
+    for(let x=-100;x<=500;x+=100){if(x===0)continue;g.appendChild(el('text',{x:px(x),y:FY+16,'font-size':10,fill:'var(--muted)','text-anchor':'middle'},(x>0?'+':'')+x+'cm'));}
+    MODES.forEach(m=>{
+      if(!$(m.chk).checked)return;
+      const st=runs[m.k].st,n=Math.min(frame,st.length-1);
+      for(let i=0;i<n;i+=8)paper(g,st[i],m.col,0.28,2);
+      paper(g,st[n],m.col,1,3.5);
+    });
+  }
+  function stats(){
+    MODES.forEach(m=>{
+      const r=runs[m.k];
+      $('r'+m.r+'t').textContent=r.t.toFixed(2)+'초';
+      $('r'+m.r+'x').textContent=Math.round(r.x)+'cm';
+      $('r'+m.r+'s').textContent=r.sway+'번';
+      $('r'+m.r+'f').textContent=r.flip+'번';
+    });
+  }
+  function build(){
+    const tilt=+$('cTilt').value;$('oTilt').textContent=tilt+'°';
+    MODES.forEach(m=>runs[m.k]=sim(m.k,tilt));
+    stats();
+  }
+  function maxLen(){return Math.max(...MODES.map(m=>runs[m.k].st.length));}
+  function stop(){if(anim){cancelAnimationFrame(anim);anim=null;}}
+  function play(){
+    stop();frame=0;last=0;acc=0;
+    const step=now=>{
+      if(!last)last=now;
+      acc+=(now-last)/1000*($('cSlow').checked?0.3:1);last=now;
+      while(acc>=DT){acc-=DT;frame++;}
+      draw();
+      if(frame<maxLen())anim=requestAnimationFrame(step);else anim=null;
+    };
+    anim=requestAnimationFrame(step);
+  }
+  $('cTilt').addEventListener('input',()=>{stop();build();frame=maxLen();draw();});
+  $('cPlay').addEventListener('click',play);
+  ['sFull','sNone','sCross'].forEach(id=>$(id).addEventListener('change',draw));
+  build();frame=maxLen();draw();
 })();
 </script>
 </body>
