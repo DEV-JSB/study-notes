@@ -75,6 +75,9 @@ ul{margin:0;padding-left:20px}
       <tr><td><code>Cannot resolve symbol 'override'</code></td><td><a href="#override">override 위치</a></td></tr>
       <tr><td>UE_LOG가 컴파일 안 되거나 글자가 깨진다</td><td><a href="#uelog">TEXT() 괄호와 *</a></td></tr>
       <tr><td>에셋이 LFS로 들어가는지 모르겠다</td><td><a href="#lfs">.gitattributes 확인</a></td></tr>
+      <tr><td>PIE 중 Details의 값이 안 바뀐다</td><td><a href="#details-live">Details는 실시간이 아니다</a></td></tr>
+      <tr><td>뼈·소켓 위치가 엉뚱하게 캐릭터 발밑 중앙이다</td><td><a href="#socket-name">없는 소켓 이름</a></td></tr>
+      <tr><td>빌드 에러 <code>MSB4019 … Rider … VC\v180</code></td><td><a href="#rider-msbuild">Rider의 MSBuild 선택</a></td></tr>
     </tbody>
   </table>
   </div>
@@ -316,6 +319,36 @@ void ATurret::BeginPlay()
 git lfs status                                                 # add 후, 커밋 전에
 git lfs ls-files                                               # 커밋 후</pre>
   <p class="src"><code>.gitattributes</code>는 에셋보다 먼저(같은 커밋이면 OK) 들어가야 한다</p>
+</article>
+
+<article class="card" id="details-live">
+  <h2>PIE 중 Details는 실시간이 아니다</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>BP가 매 Tick 값을 넣는데, PIE 중 Details의 숫자가 처음 값 그대로다 (<code>BP_PaperField</code>의 User Parameters)</dd>
+    <dt>처음 의심</dt><dd>Tick이 한 번만 돈다 / Set 노드가 BeginPlay 줄에 붙었다</dd>
+    <dt>원인</dt><dd>Details 패널이 PIE 중 값을 매 프레임 다시 그리지 않는다. 값은 실제로 바뀌고 있었다</dd>
+    <dt>해결</dt><dd>Outliner에서 다른 액터를 눌렀다 다시 선택하면 갱신. 확실히 보려면 <code>Print String</code>(Key 고정, Duration 0)</dd>
+  </dl>
+  <p class="src">화면에 보이는 값이 안 바뀐다 ≠ 값이 안 바뀐다. 가설 셋을 세우고 하나씩 지움 (2026-10-30)</p>
+</article>
+
+<article class="card" id="socket-name">
+  <h2>없는 소켓 이름은 조용히 틀린다</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd><code>GetSocketLocation</code> 결과가 뼈가 아니라 메시 컴포넌트 위치(캐릭터 발밑 중앙)</dd>
+    <dt>원인</dt><dd>이름이 틀리면 에러 없이 컴포넌트 위치를 돌려준다</dd>
+    <dt>해결</dt><dd>BeginPlay에서 <code>DoesSocketExist(BoneName)</code>로 확인하고 로그. 뼈 이름도 이걸로 확인된다. 뼈 이름은 메시 → Skeleton 탭 → Skeleton Tree</dd>
+  </dl>
+</article>
+
+<article class="card" id="rider-msbuild">
+  <h2>Rider의 MSBuild 선택</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd><code>MSB4019 … JetBrains Rider 2026.2 … \tools\MSBuild\Microsoft\VC\v180\Microsoft.Cpp.Default.props</code>을 찾을 수 없음</dd>
+    <dt>원인</dt><dd>Rider가 VS 2022 대신 자기 번들 MSBuild로 빌드 → v180을 찾음. VS 2022에는 v170까지, UE 5.4는 VS 2022(v170)</dd>
+    <dt>해결</dt><dd>Rider Settings → Build, Execution, Deployment → Toolset and Build → MSBuild version = VS 2022의 <code>MSBuild\Current\Bin\MSBuild.exe</code></dd>
+  </dl>
+  <p class="src">코드 에러가 아니라 도구 에러. Intermediate 지우기·VS 재설치부터 하지 않기</p>
 </article>
 
 <!-- 12 -->

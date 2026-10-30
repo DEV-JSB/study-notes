@@ -19,6 +19,9 @@
 | `Cannot resolve symbol 'override'` | override 위치 |
 | UE_LOG가 컴파일 안 되거나 글자가 깨진다 | TEXT() 괄호와 * |
 | 에셋이 LFS로 들어가는지 모르겠다 | .gitattributes |
+| PIE 중 Details의 값이 안 바뀐다 | Details는 실시간이 아니다 |
+| 뼈·소켓 위치가 엉뚱하게 캐릭터 발밑 중앙이다 | 없는 소켓 이름 |
+| 빌드 에러 `MSB4019 … Rider … VC\v180 … 찾을 수 없습니다` | Rider의 MSBuild 선택 |
 
 ## 생성자에서 `AddDynamic` → 조용히 안 불림
 
@@ -112,6 +115,28 @@ UE_LOG(LogTemp, Warning, TEXT("Enter(%s)"), *Other->GetName());
 
 - GitHub 기본(`* text=auto`)뿐이었음 → `*.uasset`/`*.umap`/바이너리 LFS 규칙 + `git lfs install`
 - 확인: `git check-attr filter -- <파일>` → `filter: lfs`, add 후 `git lfs status`
+
+## PIE 중 Details는 실시간이 아니다
+
+- **증상**: BP가 매 Tick 값을 넣는데, PIE 중 Details의 숫자가 처음 값 그대로다 (2026-10-30, `BP_PaperField`의 User Parameters)
+- **처음 의심**: Tick이 한 번만 돈다 / 연결이 BeginPlay 줄에 붙었다
+- **원인**: Details 패널이 PIE 중 값을 매 프레임 다시 그리지 않음. 값은 실제로 바뀌고 있었다
+- **해결**: Outliner에서 다른 액터를 눌렀다가 다시 선택하면 갱신됨. 확실히 보려면 `Print String`(Key 고정, Duration 0)이나 화면 로그로
+- 화면에 보이는 값이 안 바뀐다 ≠ 값이 안 바뀐다. 가설을 셋 세우고 하나씩 지웠다
+
+## 없는 소켓 이름은 조용히 틀린다
+
+- **증상**: `GetSocketLocation` 결과가 뼈가 아니라 메시 컴포넌트 위치(캐릭터 발밑 중앙)
+- **원인**: 이름이 틀리면 에러 없이 컴포넌트 위치를 돌려준다
+- **해결**: BeginPlay에서 `DoesSocketExist(BoneName)`로 확인하고 로그. 뼈 이름도 이걸로 확인된다 (`PaperToucherComponent`)
+- 뼈 이름은 메시 → Skeleton 탭 → Skeleton Tree에서 (`foot_l`, `foot_r`)
+
+## Rider의 MSBuild 선택
+
+- **증상**: `MSB4019 … JetBrains Rider 2026.2 … \tools\MSBuild\Microsoft\VC\v180\Microsoft.Cpp.Default.props을 찾을 수 없습니다`
+- **원인**: Rider가 VS 2022 대신 **자기 번들 MSBuild**로 빌드 → v180을 찾음. VS 2022에는 v170까지, UE 5.4는 VS 2022(v170)
+- **해결**: Rider Settings → Build, Execution, Deployment → Toolset and Build → MSBuild version = `C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe`
+- 코드 에러가 아니라 도구 에러. Intermediate 지우기·VS 재설치부터 하지 않기
 
 ## 작은 것들
 

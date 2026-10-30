@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>발에 반응하는 종이</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: one reading column; the pipeline first, then two labs (how wide the sphere reaches the floor, where the kick sends a paper), then the code in three chunks with hand checks */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --fwd:#2f6fd0; --foot:#178a66; --kick:#d2552a; --up:#7a4cc8; --paper:#e9a07a; --hit:#d2552a; --floor:#b9bfc9;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --foot:#4cc79c; --kick:#f08a5d; --up:#b48cf0; --paper:#c98463; --hit:#f08a5d; --floor:#4a5361; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --foot:#4cc79c; --kick:#f08a5d; --up:#b48cf0; --paper:#c98463; --hit:#f08a5d; --floor:#4a5361; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0 0 8px;text-wrap:balance}
+h3{font-size:16px;font-weight:500;margin:10px 0 4px}
+p{margin:0;max-width:65ch}
+a{color:var(--foot)}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.def{border-left:3px solid var(--kick);padding:4px 0 4px 16px;font-size:18px}
+.lab{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctrl label{font-size:14px;color:var(--muted);min-width:130px}
+.ctrl input[type=range]{flex:1;min-width:160px;accent-color:var(--kick)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+svg{width:100%;height:auto;display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.card{background:var(--bg);border-radius:8px;padding:10px 12px}
+.card .k{font-size:13px;color:var(--muted)}
+.card .v{font-size:19px;font-weight:500;font-family:var(--mono)}
+.sub{font-size:14px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0;overflow-x:auto;line-height:1.6}
+ul{margin:0;padding-left:20px}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.box b{font-weight:500}
+.box .s{font-size:13px;color:var(--muted)}
+input:focus-visible{outline:2px solid var(--fwd);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">ProjectF · 4-1a · 2026-10-30</span>
+  <h1>발에 반응하는 종이</h1>
+  <p class="lead">달리는 발이 지나가면 근처 종이가 떠올라 뒤집힙니다. 새로 만든 건 "발 근처 종이의 속도를 바꾸기"뿐이고, 뒤집히는 건 3단계에서 만든 공기저항·펄럭임이 해 줍니다.</p>
+</header>
+
+<section>
+  <p class="def">발 구 안에 있고 발이 움직이면, 종이 속도를 <b>발 방향 × PushStrength + 위쪽 × 발 빠르기 × LiftStrength</b>로 바꾼다. 서 있는 발은 빠르기가 0이라 아무것도 안 한다.</p>
+</section>
+
+<section aria-labelledby="l0">
+  <h2 id="l0">전체 흐름</h2>
+  <div class="flow">
+    <div class="box"><b>UPaperToucherComponent</b><span class="s">C++ · 캐릭터마다</span><span>발 위치 <code>GetSocketLocation("foot_l")</code><br>발 속도 <code>(지금 − 이전) / DeltaTime</code></span></div>
+    <div class="box"><b>BP_PaperField</b><span class="s">BP · 종이 쪽</span><span>매 Tick, 플레이어의 Toucher 값을 읽어 <code>Set Niagara Variable</code></span></div>
+    <div class="box"><b>USER FootPos / FootVel</b><span class="s">Niagara 바깥 → 안</span><span>스택에서 <code>PaperInfluence</code>의 INPUT에 Link</span></div>
+    <div class="box"><b>PaperInfluence</b><span class="s">Particle Update 맨 위</span><span>닿았나 → 얼마나 → 어디로. 속도만 바꿈</span></div>
+    <div class="box"><b>PaperAero → PaperSim</b><span class="s">3단계 그대로</span><span>떠오른 종이를 torque로 뒤집고, 떨어뜨리고, 눕힘</span></div>
+  </div>
+  <div class="tbl" style="margin-top:12px">
+  <table>
+    <thead><tr><th>왜 이렇게 나눴나</th><th>출처</th></tr></thead>
+    <tbody>
+      <tr><td>조작 가능한 캐릭터가 3명(같은 클래스) → 발 계산은 붙이는 부품(Actor Component)으로. 재사용 부품은 C++, 연결은 BP</td><td>Epic 공식 권장</td></tr>
+      <tr><td><b>종이가 몸을 감지</b>한다. 캐릭터는 종이를 모르고 자기 발 정보만 든다 (10-24 "바닥이 종이한테 알려 주는 건 이상하다"와 같은 방향)</td><td>취향 · 바꿔도 됨</td></tr>
+      <tr><td>모듈은 INPUT으로 받고 스택에서 User에 Link → 4-1b에서 모듈을 6번 쌓고 Link만 다르게</td><td>취향 · 바꿔도 됨</td></tr>
+      <tr><td>새 모듈은 <b>맨 위</b>: 바꾼 속도를 PaperAero·PaperSim이 같은 프레임에 받아 처리</td><td>취향 · 바꿔도 됨</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="lab" aria-labelledby="l1">
+  <h2 id="l1">실험 1 · 구는 바닥에 얼마나 닿나</h2>
+  <p class="sub">발목 뼈(<code>foot_l</code>)는 바닥에서 약 8.7cm 위(PIE에서 FootPos Z로 확인). 판정은 종이 <b>가운데 점</b>으로 하니, 바닥 높이에서 구가 덮는 폭 안에 가운데가 들어온 종이만 걸립니다.</p>
+  <div class="ctrl"><label for="rad">FootRadius</label><input id="rad" type="range" min="5" max="40" step="1" value="20"><span class="num" id="oRad" style="min-width:60px"></span></div>
+  <div class="ctrl"><label for="ank">발목 높이</label><input id="ank" type="range" min="0" max="30" step="0.1" value="8.7"><span class="num" id="oAnk" style="min-width:60px"></span></div>
+  <svg id="reach" viewBox="0 0 680 220" role="img" aria-label="옆에서 본 발목 구와 바닥, 구가 바닥에 닿는 폭과 그 안에 가운데가 들어온 종이"></svg>
+  <div class="cards">
+    <div class="card"><div class="k">바닥에서 닿는 폭</div><div class="v" id="cW"></div></div>
+    <div class="card"><div class="k">계산</div><div class="v" id="cF" style="font-size:14px"></div></div>
+  </div>
+  <p class="sub">피타고라스: 반폭 = √(반지름² − 높이²). 반지름 15 → 약 12cm, 20 → 약 18cm. 반지름이 발목 높이보다 작으면 바닥 종이는 영영 안 걸립니다.</p>
+</section>
+
+<section class="lab" aria-labelledby="l2">
+  <h2 id="l2">실험 2 · 차인 종이는 어디로 가나</h2>
+  <div class="ctrl"><label for="fs">발 빠르기 (cm/s)</label><input id="fs" type="range" min="0" max="600" step="10" value="300"><span class="num" id="oFs" style="min-width:60px"></span></div>
+  <div class="ctrl"><label for="ps">PushStrength</label><input id="ps" type="range" min="0" max="1.5" step="0.05" value="0.5"><span class="num" id="oPs" style="min-width:60px"></span></div>
+  <div class="ctrl"><label for="ls">LiftStrength</label><input id="ls" type="range" min="0" max="1.5" step="0.05" value="0.6"><span class="num" id="oLs" style="min-width:60px"></span></div>
+  <svg id="kick" viewBox="0 0 680 240" role="img" aria-label="종이에서 출발하는 앞쪽 성분, 위쪽 성분, 둘을 이어 붙인 kick 화살표"></svg>
+  <div class="cards">
+    <div class="card"><div class="k">앞으로 = 빠르기 × Push</div><div class="v" id="kF"></div></div>
+    <div class="card"><div class="k">위로 = 빠르기 × Lift</div><div class="v" id="kU"></div></div>
+    <div class="card"><div class="k">튀는 각도</div><div class="v" id="kA"></div></div>
+    <div class="card"><div class="k">대략 높이 (v² ÷ 2g)</div><div class="v" id="kH"></div></div>
+  </div>
+  <p class="sub">앞과 위는 <b>나눠 갖는 게 아니라 각자</b> 정합니다. 각도는 Lift ÷ Push 비율, 세기는 두 값의 크기. 높이는 중력 980, 공기저항 무시한 대략값 — 실제로는 3단계 <code>NormalDrag</code>가 판에 수직인 속도를 깎아서 더 낮게 뜹니다. 발 빠르기를 0으로 하면 전부 0: 서 있으면 반응 없음.</p>
+</section>
+
+<section aria-labelledby="l3">
+  <h2 id="l3">코드: 세 덩어리</h2>
+  <pre>// ① 닿았나?
+float dist = length(FootPos - Pos);
+float inside = step(dist, FootRadius);
+
+// ② 얼마나 반응하나? (서 있으면 0)
+float footSpeed = length(FootVel);
+float moving = clamp(footSpeed / WakeSpeed, 0.0f, 1.0f);
+float w = inside * moving;
+
+// ③ 어디로 보내나?
+float3 kick = FootVel * PushStrength + float3(0.0f, 0.0f, 1.0f) * footSpeed * LiftStrength;
+OutVel = lerp(Vel, kick, w);
+Touched = w;</pre>
+  <div class="tbl" style="margin-top:12px">
+  <table>
+    <thead><tr><th>줄</th><th>연산</th><th>왜</th></tr></thead>
+    <tbody>
+      <tr><td><code>length(FootPos - Pos)</code></td><td>떼어내기 → 길이</td><td>종이에서 발까지 거리 (미사일 <code>FVector::Dist</code>)</td></tr>
+      <tr><td><code>step(dist, FootRadius)</code></td><td>0/1</td><td>구 안이면 1. CPU VM은 <code>if</code> 안 벡터 대입이 안 돼서 숫자로</td></tr>
+      <tr><td><code>clamp(footSpeed / WakeSpeed, 0, 1)</code></td><td>비율</td><td>서 있으면 0, WakeSpeed 이상이면 1</td></tr>
+      <tr><td><code>FootVel * PushStrength</code></td><td>늘이고 줄이기</td><td>발 방향으로</td></tr>
+      <tr><td><code>(0,0,1) * footSpeed * LiftStrength</code></td><td>방향(길이 1) × 숫자</td><td>위쪽. <code>footSpeed</code>가 없으면 늘 0.6cm/s라 안 뜸. 3단계 <code>vn = dot(Vel, N) * N</code>과 같은 모양</td></tr>
+      <tr><td><code>lerp(Vel, kick, w)</code></td><td>섞기</td><td>w = 0 그대로, 1 kick으로 <b>바꿈</b>. 더하면 발이 지나가는 여러 프레임 동안 쌓여 폭발</td></tr>
+      <tr><td><code>Touched = w</code></td><td></td><td>확인용(Attribute Spreadsheet). 아무 모듈도 안 읽음</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <h3>손 계산 (FootRadius 20, WakeSpeed 100, Push 0.5, Lift 0.6)</h3>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>상황</th><th>①</th><th>②</th><th>③ 결과</th></tr></thead>
+    <tbody>
+      <tr><td>종이 (100,0,0), 발 (110,0,9), 발 속도 (300,0,0)</td><td>거리 √181 ≈ 13.5 → inside 1</td><td>300 ÷ 100 = 3 → 1 → w 1</td><td>(150, 0, 180)으로 튐</td></tr>
+      <tr><td>같은 자리, <b>서 있는 발</b></td><td>inside 1</td><td>빠르기 0 → w 0</td><td>원래 속도 그대로</td></tr>
+      <tr><td>거리 50인 종이</td><td>inside 0</td><td>w 0</td><td>그대로</td></tr>
+      <tr><td>천천히 걷는 발 (빠르기 50)</td><td>inside 1</td><td>0.5 → w 0.5</td><td>원래 속도와 kick의 중간</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section aria-labelledby="l4">
+  <h2 id="l4">HLSL이 낯설면: 같은 계산을 C++로</h2>
+  <pre>FVector PaperInfluence(const FVector&amp; Pos, const FVector&amp; Vel, const FVector&amp; FootPos, const FVector&amp; FootVel,
+                       float FootRadius, float PushStrength, float LiftStrength, float WakeSpeed, float&amp; OutTouched)
+{
+	if (FVector::Dist(FootPos, Pos) &gt; FootRadius)    // ① 구 밖이면 그대로
+	{
+		OutTouched = 0.f;
+		return Vel;
+	}
+	float FootSpeed = FootVel.Size();                  // ②
+	float W = FMath::Clamp(FootSpeed / WakeSpeed, 0.f, 1.f);
+	FVector Kick = FootVel * PushStrength + FVector::UpVector * FootSpeed * LiftStrength;   // ③
+	OutTouched = W;
+	return FMath::Lerp(Vel, Kick, W);
+}
+// Niagara가 해 주는 것: for (종이 150장) { 위 함수 }</pre>
+  <div class="tbl" style="margin-top:12px">
+  <table>
+    <thead><tr><th>HLSL</th><th>UE C++</th><th>Unity C#</th></tr></thead>
+    <tbody>
+      <tr><td><code>float3</code></td><td><code>FVector</code></td><td><code>Vector3</code></td></tr>
+      <tr><td><code>length(a - b)</code></td><td><code>FVector::Dist(a, b)</code></td><td><code>Vector3.Distance</code></td></tr>
+      <tr><td><code>length(v)</code></td><td><code>v.Size()</code></td><td><code>v.magnitude</code></td></tr>
+      <tr><td><code>clamp(x, 0, 1)</code></td><td><code>FMath::Clamp</code></td><td><code>Mathf.Clamp01</code></td></tr>
+      <tr><td><code>lerp(a, b, t)</code></td><td><code>FMath::Lerp</code></td><td><code>Vector3.Lerp</code></td></tr>
+      <tr><td><code>step</code> + 곱하기</td><td><code>if</code></td><td><code>if</code></td></tr>
+      <tr><td>PARTICLES</td><td>반복문 안 <code>Paper.</code> 값</td><td>오브젝트마다 필드</td></tr>
+      <tr><td>INPUT / USER</td><td>반복문 바깥에서 모두에게 같은 값</td><td>매니저가 넘기는 값</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section aria-labelledby="l5">
+  <h2 id="l5">값과 디버깅 기록</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>INPUT</th><th>값</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td><code>FootPos (Position)</code>, <code>FootVel (Vector)</code></td><td>User에 Link</td><td>위치만 Position, 속도는 Vector</td></tr>
+      <tr><td><code>FootRadius (float)</code></td><td>20</td><td>15에서 "대부분 반응 안 함" → 바닥 폭 12cm가 원인. 20으로 18cm</td></tr>
+      <tr><td><code>PushStrength (float)</code></td><td>0.5</td><td>처음 이름 KickStrength</td></tr>
+      <tr><td><code>LiftStrength (float)</code></td><td>0.6</td><td>처음 이름 LiftRatio — 1보다 커도 되는데 "비율"처럼 읽혀서 짝 맞춰 개명</td></tr>
+      <tr><td><code>WakeSpeed (float)</code></td><td>100</td><td>0이면 0으로 나누기</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul style="margin-top:10px">
+    <li>"대부분 반응 안 함" 가설: ① 구가 작다 ② 디딘 발은 멈춰 있고 빠른 발은 공중 ③ NormalDrag가 위쪽 속도를 깎음 → <b>①부터 하나씩</b> 바꿔서 ①로 확인</li>
+    <li>떠오른 종이가 뒤집히는 건 새 코드가 아니라 3단계 torque — 10-29에 예측한 그대로</li>
+    <li>Details 값이 PIE 중 안 바뀌어 보였던 건 화면 갱신 문제 → <a href="../unreal/pitfalls.html">언리얼 함정 모음</a></li>
+  </ul>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="paper-aero-map.html">PaperAero 한 장 지도</a> — 뒤집기를 맡은 ③ torque</li>
+    <li><a href="../game-math/torque-skewer.html">꼬챙이로 보는 torque</a></li>
+    <li><a href="../game-math/distance-speed-time.html">거리 · 속력 · 시간</a> — 발 속도 = (지금 − 이전) / DeltaTime</li>
+    <li><a href="https://github.com/DEV-JSB/study-notes/blob/main/projectf/devlog/2026-10-30-ProjectF.md">2026-10-30 개발 일지</a></li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const NS='http://www.w3.org/2000/svg';
+  const el=(t,a,txt)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;return e;};
+  function reach(){
+    const r=+$('rad').value,h=+$('ank').value;
+    $('oRad').textContent=r+' cm';$('oAnk').textContent=h.toFixed(1)+' cm';
+    const g=$('reach');g.innerHTML='';
+    const S=4,cx=340,fy=180,cy=fy-h*S;
+    g.appendChild(el('line',{x1:20,y1:fy,x2:660,y2:fy,stroke:'var(--floor)','stroke-width':2}));
+    const half=r>h?Math.sqrt(r*r-h*h):0;
+    for(let i=-9;i<=9;i++){
+      const px=cx+i*8*S;
+      const dx=Math.abs(px-cx)/S;
+      const hit=half>0&&dx<=half;
+      g.appendChild(el('circle',{cx:px,cy:fy-3,r:hit?5:3.5,fill:hit?'var(--hit)':'var(--paper)'}));
+    }
+    g.appendChild(el('text',{x:24,y:fy-12,'font-size':11,fill:'var(--muted)'},'점 = 종이 가운데 (8cm 간격)'));
+    g.appendChild(el('circle',{cx:cx,cy:cy,r:r*S,fill:'none',stroke:'var(--foot)','stroke-width':1.5,'stroke-dasharray':'5 4'}));
+    g.appendChild(el('circle',{cx:cx,cy:cy,r:4,fill:'var(--foot)'}));
+    g.appendChild(el('text',{x:cx+8,y:cy-6,'font-size':12,fill:'var(--foot)'},'foot_l'));
+    g.appendChild(el('line',{x1:cx-22,y1:cy,x2:cx-22,y2:fy,stroke:'var(--muted)','stroke-width':1}));
+    g.appendChild(el('text',{x:cx-28,y:(cy+fy)/2+4,'font-size':11,fill:'var(--muted)','text-anchor':'end'},h.toFixed(1)));
+    if(half>0){
+      g.appendChild(el('line',{x1:cx-half*S,y1:fy+12,x2:cx+half*S,y2:fy+12,stroke:'var(--hit)','stroke-width':2}));
+      g.appendChild(el('text',{x:cx,y:fy+30,'font-size':12,fill:'var(--hit)','text-anchor':'middle'},'닿는 폭 '+(2*half).toFixed(1)+' cm'));
+    } else {
+      g.appendChild(el('text',{x:cx,y:fy+30,'font-size':12,fill:'var(--hit)','text-anchor':'middle'},'바닥에 안 닿음'));
+    }
+    $('cW').textContent=half>0?(2*half).toFixed(1)+' cm':'0 (안 닿음)';
+    $('cF').textContent=half>0?'2 × √('+r+'² − '+h.toFixed(1)+'²)':'반지름 ≤ 높이';
+  }
+  ['rad','ank'].forEach(id=>$(id).addEventListener('input',reach));reach();
+
+  function kick(){
+    const s=+$('fs').value,p=+$('ps').value,l=+$('ls').value;
+    $('oFs').textContent=s;$('oPs').textContent=p.toFixed(2);$('oLs').textContent=l.toFixed(2);
+    const f=s*p,u=s*l;
+    const g=$('kick');g.innerHTML='';
+    g.appendChild(el('defs',{})).innerHTML='<marker id="mk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--kick)"/></marker><marker id="mf" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--fwd)"/></marker><marker id="mu" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--up)"/></marker>';
+    const ox=80,oy=210,S=0.35;
+    g.appendChild(el('line',{x1:20,y1:oy,x2:660,y2:oy,stroke:'var(--floor)','stroke-width':2}));
+    g.appendChild(el('line',{x1:ox-30,y1:oy-2,x2:ox+30,y2:oy-2,stroke:'var(--paper)','stroke-width':4,'stroke-linecap':'round'}));
+    if(f>0.5)g.appendChild(el('line',{x1:ox,y1:oy,x2:ox+f*S,y2:oy,stroke:'var(--fwd)','stroke-width':2,'stroke-dasharray':'5 4','marker-end':'url(#mf)'}));
+    if(u>0.5)g.appendChild(el('line',{x1:ox+f*S,y1:oy,x2:ox+f*S,y2:oy-u*S,stroke:'var(--up)','stroke-width':2,'stroke-dasharray':'5 4','marker-end':'url(#mu)'}));
+    if(f+u>0.5)g.appendChild(el('line',{x1:ox,y1:oy,x2:ox+f*S,y2:oy-u*S,stroke:'var(--kick)','stroke-width':3,'marker-end':'url(#mk)'}));
+    else g.appendChild(el('text',{x:ox+40,y:oy-20,'font-size':13,fill:'var(--muted)'},'kick = 0 → 그대로'));
+    if(f>20)g.appendChild(el('text',{x:ox+f*S/2,y:oy+18,'font-size':12,fill:'var(--fwd)','text-anchor':'middle'},'앞 '+Math.round(f)));
+    if(u>20)g.appendChild(el('text',{x:ox+f*S+8,y:oy-u*S/2,'font-size':12,fill:'var(--up)'},'위 '+Math.round(u)));
+    $('kF').textContent=Math.round(f);
+    $('kU').textContent=Math.round(u);
+    $('kA').textContent=(f+u>0.5)?Math.round(Math.atan2(u,f)*180/Math.PI)+'°':'—';
+    $('kH').textContent=Math.round(u*u/1960)+' cm';
+  }
+  ['fs','ps','ls'].forEach(id=>$(id).addEventListener('input',kick));kick();
+})();
+</script>
+</body>
+</html>
