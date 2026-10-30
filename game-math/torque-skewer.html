@@ -463,5 +463,39 @@ torque      = (0, −12, 0) × FlipStrength → 꼬챙이가 뒤집혀 −V 쪽�
   build();frame=maxLen();draw();
 })();
 </script>
+<script src="../assets/code-tips.js"></script>
+<script>
+CodeTips({
+  "N": "종이 법선. 종이 윗면이 가리키는 방향, 길이 1인 화살표. 누워 있으면 (0, 0, 1). PaperAero ①에서 회전값(쿼터니언)으로 구함",
+  "N.z": "N의 위쪽 성분. 윗면이 하늘 쪽이면 +, 땅 쪽이면 −",
+  "v": "종이 속도를 m/s로 줄인 것 (Vel × 0.01). 중력 때문에 떨어지는 중이면 아래를 향함. 중력 자체가 아니라 그 결과로 생긴 속도",
+  "V": "종이 속도 (손 계산용). 떨어지는 중이면 Z가 −",
+  "Vel": "종이 속도 (cm/s). PARTICLES Velocity. PaperSim이 중력을 더해 갱신",
+  "dot": "내적. 두 화살표가 같은 쪽을 보는 정도 = 숫자 하나. 길이 1끼리면 cos(사이 각도). 부호가 앞(+)/뒤(−)를 고름",
+  "cross": "외적. 두 화살표가 놓인 평면에 수직으로 꽂는 꼬챙이(화살표). 첫째를 둘째 쪽으로 돌리는 축. 순서를 바꾸면 반대 방향. 길이는 sin(사이 각도)",
+  "torque": "비틀림. 떨어지며 맞는 공기가 종이를 비트는 축 화살표. 방향 = 꼬챙이, 길이 = 세기. 회전 속도에 조금씩 더해짐",
+  "FlipStrength": "비트는 세기 (INPUT, 지금 30). 크면 더 세게 펄럭임, 0이면 torque가 사라짐",
+  "keepSpin": "회전 브레이크 비율 (0~1). 매 프레임 회전 속도에 곱해서 조금씩 줄임",
+  "SpinDrag": "회전 브레이크 세기 (INPUT, 지금 3). 크면 흔들림이 빨리 잦아듦",
+  "DeltaTime": "이번 프레임에 걸린 시간 (60fps면 약 0.016초). ENGINE DeltaTime",
+  "max": "max(a, b) = 둘 중 큰 값. 여기서는 0 아래로 안 내려가게 막는 용도",
+  "air": "공중이면 1, 바닥이면 0 (= 1 − Landed). 곱해서 공중 쪽 계산만 켜고 끔",
+  "Landed": "바닥에 닿았으면 1, 공중이면 0. PaperSim이 써 둔 PARTICLES 값",
+  "flatN": "눕힐 목표 방향. N이 위쪽이면 (0, 0, 1), 아래쪽이면 (0, 0, −1) — 더 가까운 쪽",
+  "step": "step(a, x) = x가 a 이상이면 1, 아니면 0. if 대신 0/1을 만드는 함수",
+  "settle": "바닥에서 종이를 평평하게 눕히는 회전 속도. cross(N, flatN) × SettleSpeed",
+  "SettleSpeed": "눕는 세기 (INPUT, 지금 8). 크면 빨리 눕지만 60을 넘으면 떨림 위험",
+  "OutAngVel": "이번 프레임의 최종 회전 속도(축 화살표). 다음 덩어리 ④가 이만큼 종이를 실제로 돌림",
+  "AngVel": "지난 프레임까지의 회전 속도(축 화살표). PARTICLES AngVel",
+  "float3": "숫자 세 개짜리 (x, y, z). HLSL의 화살표 = UE의 FVector, Unity의 Vector3",
+  "GetSafeNormal": "길이를 1로 맞춰 방향만 남김. 길이가 0이면 (0, 0, 0)을 돌려줘서 0으로 나누기를 피함",
+  "Acos": "cos 값 → 각도(라디안). 내적에서 사이 각도를 꺼낼 때. 입력은 −1~1이어야 해서 Clamp와 같이 씀",
+  "FMath::Acos": "cos 값 → 각도(라디안). 내적에서 사이 각도를 꺼낼 때",
+  "FMath::Atan2": "Atan2(sin 쪽, cos 쪽) → 각도. 외적 길이와 내적을 같이 써서 각도를 정확히",
+  "FMath::Clamp": "값을 최소~최대 사이로 자름",
+  "FVector::CrossProduct": "UE C++의 외적. HLSL의 cross와 같음",
+  "PaperAero": "ProjectF 종이의 Niagara 스크래치 모듈. ① 방향 → ② 공기저항 → ③ 회전 속도 → ④ 돌리기"
+});
+</script>
 </body>
 </html>
