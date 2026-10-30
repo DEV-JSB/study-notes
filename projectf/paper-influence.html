@@ -99,7 +99,9 @@ input:focus-visible{outline:2px solid var(--fwd);outline-offset:2px}
   <svg id="reach" viewBox="0 0 680 220" role="img" aria-label="옆에서 본 발목 구와 바닥, 구가 바닥에 닿는 폭과 그 안에 가운데가 들어온 종이"></svg>
   <div class="cards">
     <div class="card"><div class="k">바닥에서 닿는 폭</div><div class="v" id="cW"></div></div>
-    <div class="card"><div class="k">계산</div><div class="v" id="cF" style="font-size:14px"></div></div>
+    <div class="card"><div class="k">반지름 (FootRadius)</div><div class="v" id="cR"></div></div>
+    <div class="card"><div class="k">발목 높이</div><div class="v" id="cH"></div></div>
+    <div class="card" style="grid-column:1/-1"><div class="k">계산</div><div class="v" id="cF" style="font-size:15px"></div></div>
   </div>
   <p class="sub">피타고라스: 반폭 = √(반지름² − 높이²). 반지름 15 → 약 12cm, 20 → 약 18cm. 반지름이 발목 높이보다 작으면 바닥 종이는 영영 안 걸립니다.</p>
   <p><b>이 폭은 코드에 없습니다.</b> 코드는 <code>length(FootPos - Pos) ≤ FootRadius</code>, 즉 3D 거리만 봅니다. 바닥 종이는 높이가 0이라 그 3D 거리 안에 발목 높이 8.7이 섞여 있고, 풀어 쓰면 "옆으로 √(20² − 8.7²) ≈ 18cm 이내"가 됩니다. 반지름을 고를 때 쓰는 손 계산이에요. 공중에 뜬 종이는 그냥 3D 구 안이면 걸립니다.</p>
@@ -251,16 +253,21 @@ Touched = w;</pre>
     g.appendChild(el('circle',{cx:cx,cy:cy,r:r*S,fill:'none',stroke:'var(--foot)','stroke-width':1.5,'stroke-dasharray':'5 4'}));
     g.appendChild(el('circle',{cx:cx,cy:cy,r:4,fill:'var(--foot)'}));
     g.appendChild(el('text',{x:cx+8,y:cy-6,'font-size':12,fill:'var(--foot)'},'foot_l'));
-    g.appendChild(el('line',{x1:cx-22,y1:cy,x2:cx-22,y2:fy,stroke:'var(--muted)','stroke-width':1}));
-    g.appendChild(el('text',{x:cx-28,y:(cy+fy)/2+4,'font-size':11,fill:'var(--muted)','text-anchor':'end'},h.toFixed(1)));
+    g.appendChild(el('line',{x1:cx,y1:cy,x2:cx,y2:fy,stroke:'var(--muted)','stroke-width':1.5}));
+    g.appendChild(el('text',{x:cx-6,y:(cy+fy)/2+4,'font-size':11,fill:'var(--muted)','text-anchor':'end'},'높이 '+h.toFixed(1)));
     if(half>0){
+      g.appendChild(el('line',{x1:cx,y1:cy,x2:cx+half*S,y2:fy,stroke:'var(--foot)','stroke-width':2}));
+      g.appendChild(el('text',{x:cx+half*S/2+8,y:(cy+fy)/2-4,'font-size':11,fill:'var(--foot)'},'반지름 '+r));
       g.appendChild(el('line',{x1:cx-half*S,y1:fy+12,x2:cx+half*S,y2:fy+12,stroke:'var(--hit)','stroke-width':2}));
-      g.appendChild(el('text',{x:cx,y:fy+30,'font-size':12,fill:'var(--hit)','text-anchor':'middle'},'닿는 폭 '+(2*half).toFixed(1)+' cm'));
+      g.appendChild(el('text',{x:cx+half*S/2,y:fy+26,'font-size':11,fill:'var(--hit)','text-anchor':'middle'},'반폭 '+half.toFixed(1)));
+      g.appendChild(el('text',{x:cx,y:fy+40,'font-size':12,fill:'var(--hit)','text-anchor':'middle'},'닿는 폭 '+(2*half).toFixed(1)+' cm'));
     } else {
       g.appendChild(el('text',{x:cx,y:fy+30,'font-size':12,fill:'var(--hit)','text-anchor':'middle'},'바닥에 안 닿음'));
     }
     $('cW').textContent=half>0?(2*half).toFixed(1)+' cm':'0 (안 닿음)';
-    $('cF').textContent=half>0?'2 × √('+r+'² − '+h.toFixed(1)+'²)':'반지름 ≤ 높이';
+    $('cR').textContent=r+' cm';
+    $('cH').textContent=h.toFixed(1)+' cm';
+    $('cF').textContent=half>0?'2 × √('+r+'² − '+h.toFixed(1)+'²) = 2 × '+half.toFixed(1)+' = '+(2*half).toFixed(1):'반지름 ≤ 높이 → 0';
   }
   ['rad','ank'].forEach(id=>$(id).addEventListener('input',reach));reach();
 
