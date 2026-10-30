@@ -294,5 +294,58 @@ Touched = w;</pre>
   ['fs','ps','ls'].forEach(id=>$(id).addEventListener('input',kick));kick();
 })();
 </script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "FootPos": "발 위치 (cm). 캐릭터 foot_l 뼈 위치를 USER 파라미터로 받아 이 INPUT에 Link. 자료형 Position",
+  "FootVel": "발 속도 (cm/s) = (지금 위치 − 이전 위치) / DeltaTime. USER 파라미터로 받아 Link. 자료형 Vector",
+  "Pos": "종이 가운데 점의 위치 (cm). 닿았나 판정은 이 한 점으로 함",
+  "Vel": "종이의 지금 속도 (cm/s). PARTICLES Velocity",
+  "dist": "종이에서 발까지 거리 (cm) = length(FootPos − Pos). 떼어내기 → 길이",
+  "length": "화살표 길이(숫자 하나). UE는 Size()·FVector::Dist, Unity는 magnitude·Vector3.Distance",
+  "inside": "발 구 안이면 1, 밖이면 0. step으로 만든 스위치",
+  "step": "step(a, x) = x가 a 이상이면 1, 아니면 0. 여기선 dist ≤ FootRadius면 1. if 대신 0/1을 만드는 함수 (CPU VM은 if 안 벡터 대입이 안 됨)",
+  "FootRadius": "발 구 반지름 (INPUT, 지금 20cm). 발목이 바닥에서 약 8.7cm 위라 바닥 종이는 옆으로 약 18cm까지 걸림",
+  "footSpeed": "발 빠르기 (cm/s) = FootVel의 길이. 서 있으면 0",
+  "FootSpeed": "C++ 버전의 footSpeed. 발 빠르기 (cm/s)",
+  "moving": "발이 얼마나 움직이나 (0~1) = footSpeed ÷ WakeSpeed를 0~1로 자른 것. 서 있으면 0",
+  "WakeSpeed": "반응이 꽉 차는 발 빠르기 (INPUT, 지금 100cm/s). 이 이상이면 moving 1. 0이면 0으로 나누기",
+  "w": "반응 세기 (0~1) = inside × moving. 구 밖이거나 발이 서 있으면 0",
+  "W": "C++ 버전의 w. 반응 세기 (0~1)",
+  "clamp": "clamp(x, 최소, 최대) = 범위 밖이면 끝 값으로 자름. UE FMath::Clamp, Unity Mathf.Clamp",
+  "FMath::Clamp": "UE C++의 clamp. 값을 최소~최대 사이로 자름",
+  "Mathf.Clamp01": "Unity: 값을 0~1 사이로 자름",
+  "kick": "차인 종이에 줄 새 속도 = 발 방향 × PushStrength + 위쪽 × footSpeed × LiftStrength (늘이고 줄이기 → 이어 붙이기). 발 (300, 0, 0)이면 (150, 0, 180)",
+  "Kick": "C++ 버전의 kick. 차인 종이에 줄 새 속도",
+  "PushStrength": "발 방향으로 미는 세기 (INPUT, 지금 0.5). FootVel에 곱함. 처음 이름 KickStrength",
+  "LiftStrength": "위로 띄우는 세기 (INPUT, 지금 0.6). 발 빠르기에 곱해 위쪽 속도를 만듦. 처음 이름 LiftRatio",
+  "float3": "숫자 세 개짜리 (x, y, z). HLSL의 화살표 = UE의 FVector, Unity의 Vector3. float3(0, 0, 1)은 위쪽 방향",
+  "OutVel": "바뀐 종이 속도. PARTICLES Velocity로 나감. 같은 프레임에 아래의 PaperAero·PaperSim이 이어 받아 뒤집고 떨어뜨림",
+  "lerp": "lerp(a, b, t) = a에서 b 쪽으로 t만큼 섞기. t = 0이면 a, 1이면 b. 여기선 w만큼 Vel을 kick으로 바꿈 (더하지 않음)",
+  "FMath::Lerp": "UE C++의 lerp. 두 값을 비율만큼 섞음",
+  "Vector3.Lerp": "Unity의 lerp. 두 화살표를 비율만큼 섞음",
+  "Touched": "확인용 출력 = w. Attribute Spreadsheet에서 값을 보려고 둔 것. 아무 모듈도 안 읽음",
+  "OutTouched": "C++ 버전의 Touched. 확인용, 아무도 안 읽음",
+  "GetSocketLocation": "UE: 스켈레탈 메시의 소켓·뼈 월드 위치를 돌려줌. 여기선 foot_l 뼈 = 발 위치",
+  "foot_l": "캐릭터 왼발 뼈 이름. 발목 쪽이라 바닥에서 약 8.7cm 위",
+  "DeltaTime": "이번 프레임에 걸린 시간(초). 발 위치 변화를 이것으로 나눠 발 속도(cm/s)를 구함",
+  "Set Niagara Variable": "BP 노드. Niagara 컴포넌트의 USER 파라미터(FootPos, FootVel)에 매 Tick 값을 넣음",
+  "PaperInfluence": "이번에 새로 만든 스크래치 모듈 (Particle Update 맨 위). 발 근처 종이의 속도만 바꿈. C++ 쪽은 같은 계산을 함수로 쓴 것",
+  "FVector": "UE C++의 화살표(숫자 세 개). HLSL의 float3, Unity의 Vector3",
+  "Vector3": "Unity의 화살표(숫자 세 개). UE의 FVector",
+  "FVector::Dist": "UE C++: 두 점 사이 거리. HLSL length(a − b), Unity Vector3.Distance",
+  "Vector3.Distance": "Unity: 두 점 사이 거리",
+  "FVector::UpVector": "(0, 0, 1). UE의 위쪽 방향 상수. HLSL의 float3(0, 0, 1)",
+  "FootVel.Size": "FootVel의 길이 = 발 빠르기. HLSL의 length(FootVel)",
+  "v.Size": "UE C++: 화살표 v의 길이",
+  "v.magnitude": "Unity: 화살표 v의 길이",
+  "NormalDrag": "3단계 PaperAero의 면을 뚫는 쪽 브레이크 (지금 8). 판에 수직인 속도를 깎아서 차인 종이가 손 계산보다 낮게 뜸",
+  "vn": "3단계 PaperAero의 면을 뚫는 속도 조각. 방향(길이 1) × 숫자 모양이 kick의 위쪽 성분과 같음",
+  "dot": "내적(그림자). 두 화살표가 같은 쪽을 보는 정도 = 숫자 하나",
+  "N": "3단계의 종이 법선. 종이 윗면 방향, 길이 1",
+  "Position": "Niagara 자료형. 위치 전용 벡터. FootPos처럼 위치에만 씀",
+  "Vector": "Niagara 자료형. 숫자 세 개짜리 화살표. FootVel처럼 위치가 아닌 값(속도)에 씀"
+});
+</script>
 </body>
 </html>

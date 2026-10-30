@@ -32,8 +32,10 @@
     if (!keys.length) return;
     const re = new RegExp('(?<![A-Za-z0-9_.])(' + keys.map(esc).join('|') + ')(?![A-Za-z0-9_])', 'g');
 
-    document.querySelectorAll('pre, code').forEach(function (root) {
-      if (root.tagName === 'CODE' && root.closest('pre')) return;
+    let off = false;
+    try { off = localStorage.getItem('codeTipsOff') === '1'; } catch (e) {}
+
+    function wrapRoot(root) {
       const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
       const nodes = [];
       while (walker.nextNode()) nodes.push(walker.currentNode);
@@ -49,7 +51,7 @@
           if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
           const sp = document.createElement('span');
           sp.className = 'ct';
-          sp.tabIndex = 0;
+          sp.tabIndex = off ? -1 : 0;
           sp.dataset.key = m[1];
           sp.textContent = m[1];
           frag.appendChild(sp);
@@ -58,13 +60,40 @@
         if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
         tn.parentNode.replaceChild(frag, tn);
       });
+    }
+    function codeRoot(node) {
+      const el = node.nodeType === 1 ? node : node.parentElement;
+      if (!el) return null;
+      return el.closest('pre') || el.closest('code');
+    }
+
+    document.querySelectorAll('pre, code').forEach(function (root) {
+      if (root.tagName === 'CODE' && root.closest('pre')) return;
+      wrapRoot(root);
     });
+
+    // pages that redraw code text (sliders, step buttons) get tips again
+    const pending = new Set();
+    let queued = false;
+    new MutationObserver(function (list) {
+      list.forEach(function (m) {
+        const r = codeRoot(m.target);
+        if (r && !(m.target.classList && m.target.classList.contains('ct'))) pending.add(r);
+      });
+      if (pending.size && !queued) {
+        queued = true;
+        requestAnimationFrame(function () {
+          queued = false;
+          const roots = Array.from(pending);
+          pending.clear();
+          roots.forEach(function (r) { if (r.isConnected) wrapRoot(r); });
+        });
+      }
+    }).observe(document.body, { subtree: true, childList: true, characterData: true });
 
     let pop = document.getElementById('ct-pop');
     if (!pop) { pop = document.createElement('div'); pop.id = 'ct-pop'; pop.setAttribute('role', 'tooltip'); document.body.appendChild(pop); }
     let cur = null;
-    let off = false;
-    try { off = localStorage.getItem('codeTipsOff') === '1'; } catch (e) {}
 
     const btn = document.createElement('button');
     btn.id = 'ct-toggle';

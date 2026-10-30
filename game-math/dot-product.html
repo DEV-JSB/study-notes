@@ -224,3 +224,21 @@ pm.textContent=a>0.9?'누워서 떨어짐 → 저항 최대, 팔랑':a<0.15?'칼
 ts.addEventListener('input',v);v();
 })();
 </script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "dot": "내적. B를 A 위에 비췄을 때 떨어지는 그림자 길이 = 숫자 하나. 길이 1끼리면 같은 방향 1, 직각 0, 정반대 −1",
+  "A": "실험 1의 파란 화살표 (오른쪽 고정, 길이 1). 그림자가 떨어지는 기준",
+  "B": "실험 1의 주황 화살표 (슬라이더로 돌림, 길이 1). A 위에 그림자를 드리우는 쪽",
+  "drag": "공기저항 세기 = 내적의 절댓값. 0이면 칼날처럼 서서 휙, 1이면 누워서 팔랑",
+  "abs": "절댓값. 부호를 버림. 종이는 앞뒤가 같아서 −1도 1과 같은 저항으로 침. Unity의 Mathf.Abs",
+  "N": "종이 법선. 종이에 꽂은 이쑤시개처럼 종이 면에 수직인 길이 1 화살표",
+  "normalize": "길이를 1로 맞춰 방향만 남김. 안 하면 dot이 −500처럼 망가짐. 길이가 0이면 0으로 나누기가 됨. Unity의 .normalized",
+  "Vel": "종이 속도 (cm/s). 크기가 500 같은 큰 값이라 normalize로 떨어지는 방향만 꺼내 씀",
+  "Vector3.Dot": "Unity C#의 내적. HLSL의 dot, UE의 FVector::DotProduct와 같음",
+  "Mathf.Abs": "Unity C#의 절댓값. HLSL의 abs",
+  "v.normalized": "Unity C#에서 v를 길이 1로 맞춘 것. HLSL의 normalize(v)",
+  "transform.forward": "Unity에서 내 앞 방향 화살표 (길이 1)",
+  "toEnemy": "나에서 적 쪽을 가리키는 화살표. 앞 방향과의 내적이 0보다 크면 적이 내 앞쪽"
+});
+</script>

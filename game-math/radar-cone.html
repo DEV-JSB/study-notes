@@ -361,5 +361,46 @@ DrawDebugLine(GetWorld(), Start, Start + PlusEdge * DetectRadius, FColor::Red, f
   requestAnimationFrame(frame);
 })();
 </script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "CheckFireTarget": "터렛이 '타겟이 탐지 구 안이고 앞 원뿔 안인가'를 판단하는 함수. 빼기 → 정규화 → 내적 → 비교",
+  "DetectDeg": "원뿔 반폭 (도). 정면에서 한쪽 경계까지의 각도. 실험 기본값 45",
+  "DetectCos": "판정 기준값 = cos(DetectDeg). BeginPlay에서 한 번 계산. 45°면 0.707, 60°면 0.5",
+  "Result": "타겟 방향과 터렛 정면의 내적 = 그림자 길이 = cos(사이 각도). −1(뒤) ~ 1(정면)",
+  "cos": "각도가 아니라 그림자 길이(비율). −1 ~ 1. 각도가 작을수록(정면일수록) 큼",
+  "BeginPlay": "액터가 게임에 등장할 때 한 번 불리는 함수. 기준값을 미리 계산해 두는 자리. Unity의 Start",
+  "FMath::Cos": "라디안을 받아 cos(그림자 길이)를 돌려줌. 도를 넣으면 틀린 값. Unity의 Mathf.Cos",
+  "FMath::DegreesToRadians": "도 → 라디안. 단위만 바꿈 (45° → 0.785). Unity에서는 Mathf.Deg2Rad를 곱하는 것",
+  "DegreesToRadians": "도 → 라디안. 단위만 바꿈",
+  "Cos": "라디안 → cos(그림자 길이)",
+  "Forward": "터렛 정면 방향 (길이 1). 도는 터렛이라 GetActorForwardVector()로 얻음",
+  "Forward.RotateAngleAxis": "터렛 정면을 축 기준으로 주어진 도만큼 돌린 새 벡터. 원뿔 경계선 방향을 만듦",
+  "RotateAngleAxis": "(각도(도), 축)으로 벡터를 돌린 새 벡터를 돌려줌. 원본·길이는 그대로. FQuat(라디안)과 단위가 다르니 섞지 않기",
+  "PlusEdge": "정면을 +DetectDeg 돌린 경계선 방향 (실험 그림의 빨강). 왼쪽/오른쪽은 에디터에서 확인 후 이름 바꾸기",
+  "MinusEdge": "정면을 −DetectDeg 돌린 경계선 방향 (실험 그림의 파랑)",
+  "LeftEdge": "PlusEdge/MinusEdge를 에디터에서 확인한 뒤 붙이기를 권하는 이름",
+  "RightEdge": "PlusEdge/MinusEdge를 에디터에서 확인한 뒤 붙이기를 권하는 이름",
+  "FVector": "UE의 3D 벡터 (x, y, z). Unity의 Vector3",
+  "FVector::UpVector": "월드 위 방향 (0, 0, 1) 상수. Yaw(좌우 회전)의 경첩 축. 이 터렛은 Yaw로만 돌아서 이걸로 충분",
+  "FVector::RightVector": "월드 오른쪽 (0, 1, 0) 상수. 터렛이 돌아도 같이 안 돎",
+  "FVector::ForwardVector": "언제나 (1, 0, 0)인 월드 상수. 도는 터렛의 정면이 아님",
+  "GetActorForwardVector": "액터의 지금 정면 방향 (길이 1). 터렛과 같이 돎. Unity의 transform.forward",
+  "GetActorRightVector": "액터의 지금 오른쪽 방향. 위아래(Pitch) 경계를 돌릴 때의 경첩 축. Unity의 transform.right",
+  "DrawDebugLine": "화면에 디버그 선을 그림. 인자: 월드, 시작점, 끝점, 색, 계속 남길지, 유지 시간, 깊이 우선순위, 두께",
+  "GetWorld": "이 액터가 들어 있는 월드. DrawDebugLine 같은 함수가 어디에 그릴지 알려 줌",
+  "Start": "디버그 선의 시작점. 끝점은 Start + 방향 × DetectRadius",
+  "DetectRadius": "탐지 구 반지름 (cm). 이보다 멀면 원뿔 안이어도 탐지 안 됨. 실험 그림에서는 1000cm",
+  "FColor::Red": "빨간색 상수. 디버그 선 색",
+  "FQuat": "UE의 쿼터니언(회전값). FQuat(Axis, Angle)의 각도는 라디안",
+  "Axis": "FQuat의 회전 축",
+  "Angle": "FQuat의 회전 각도 (라디안)",
+  "TargetPos": "타겟의 월드 위치. 여기서 터렛 위치를 빼면 터렛 → 타겟 화살표",
+  "GetActorLocation": "터렛(이 액터)의 월드 위치. 출발점. Unity의 transform.position",
+  ".GetSafeNormal": "길이 1로 맞춘 새 벡터를 돌려줌. 거리 정보를 떼고 방향만. 길이가 0이면 (0, 0, 0). Unity의 .normalized",
+  "FVector::DotProduct": "UE C++의 내적. 길이 1끼리면 그림자 길이 = cos(사이 각도). Unity의 Vector3.Dot",
+  "Dir": "터렛에서 타겟으로 가는 방향 (길이 1). TargetPos − GetActorLocation()을 GetSafeNormal한 것"
+});
+</script>
 </body>
 </html>

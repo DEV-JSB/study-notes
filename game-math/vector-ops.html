@@ -459,3 +459,30 @@ function handle(pl,col,name,get,move,snap=1){
   label(s,[P(out)[0]+8,P(out)[1]+12],'OutVel',C('res'),'start');
 })();
 </script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "Vel": "종이 속도 화살표 (전체). 6번 예시에서는 아래로 150",
+  "vn": "Vel의 뚫는 쪽 조각 = N 방향 그림자. dot(Vel, N) × N (내적으로 숫자 → 늘이고 줄이기로 화살표)",
+  "vt": "Vel에서 vn을 떼어낸 나머지 = 비탈 쪽 조각 (종이 면을 따라가는 쪽)",
+  "N": "종이 법선. 길이가 딱 1이라 N 방향 줄자로 쓸 수 있음",
+  "dot": "내적. 화살표 두 개 → 숫자 하나(그림자 길이). 이 노트의 연산 중 숫자가 나오는 건 이것뿐",
+  "keepN": "뚫는 쪽 조각(vn)을 남길 비율. 예시에서 0.3 → 많이 줄어듦. max(0, …)로 음수를 막음",
+  "keepT": "비탈 쪽 조각(vt)을 남길 비율. 예시에서 0.9 → 조금 줄어듦",
+  "NormalDrag": "뚫는 쪽 공기저항 세기. 크면 keepN이 작아져 vn이 더 많이 줄어듦",
+  "dt": "이번 프레임에 걸린 시간 (= DeltaTime)",
+  "max": "max(a, b) = 둘 중 큰 값. max(0, …)로 keep이 음수가 되어 속도 조각이 뒤집히는 걸 막음",
+  "OutVel": "공기저항을 거친 새 속도. 줄인 vn과 vt를 이어 붙인 것. 서로 다른 비율로 줄여서 원래 Vel보다 비탈 쪽으로 꺾임",
+  "Velocity": "종이 속도 (PaperSim). 매 프레임 중력 화살표를 이어 붙여 갱신",
+  "Gravity": "중력 화살표 (아래 방향). DeltaTime을 곱하면 이번 프레임에 이어 붙일 작은 아래 화살표",
+  "DeltaTime": "이번 프레임에 걸린 시간(초). 곱하면 '1초 몫'이 '이번 프레임 몫'으로 줄어듦",
+  "float3": "숫자 세 개짜리 화살표 (x, y, z). Niagara HLSL 이름. UE의 FVector, Unity의 Vector3",
+  "FVector": "UE C++의 화살표 (X 앞, Y 오른쪽, Z 위). HLSL의 float3, Unity의 Vector3",
+  "Vector3": "Unity C#의 화살표. UE의 FVector, HLSL의 float3",
+  "FVector::DotProduct": "UE C++의 내적. 결과는 숫자. HLSL의 dot, Unity의 Vector3.Dot",
+  "Vector3.Dot": "Unity C#의 내적. 결과는 숫자. UE의 FVector::DotProduct",
+  "length": "HLSL에서 화살표의 길이(숫자). UE의 A.Size(), Unity의 a.magnitude",
+  "A.Size": "UE C++에서 화살표 A의 길이(숫자). HLSL의 length",
+  "a.magnitude": "Unity C#에서 화살표 a의 길이(숫자). HLSL의 length"
+});
+</script>

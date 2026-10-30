@@ -420,5 +420,38 @@ float3 vt = Vel - vn;          // 그림자를 떼어낸 나머지 → sin 쪽 (
   draw2(0.5);
 })();
 </script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "dot": "내적. 두 화살표가 같은 쪽을 보는 정도 = 숫자 하나. 길이 1끼리면 cos(사이 각도) = 그림자 조각",
+  "cross": "외적. 두 화살표 모두에 수직으로 꽂는 꼬챙이(축 화살표). 방향 = 어느 쪽으로 돌지, 길이 = sin(사이 각도)",
+  "float3": "숫자 세 개짜리 화살표 (x, y, z). HLSL 이름. UE의 FVector, Unity의 Vector3",
+  "Vel": "종이 속도 화살표. PaperAero ②에서 vn과 vt로 쪼개는 전체",
+  "N": "종이 법선. 종이 윗면이 가리키는 방향, 길이 1인 화살표",
+  "vn": "Vel의 N 방향 그림자 조각 = dot(Vel, N) × N. 실험 1의 초록(cos 쪽)",
+  "vt": "Vel에서 vn을 떼어낸 나머지 = 실험 1의 주황(sin 쪽). 화살표 길이가 1이면 vt 길이가 정확히 sin",
+  "v": "종이 속도 화살표 (떨어지는 쪽). torque에서 N과 내적·외적을 함",
+  "torque": "종이를 비트는 축 화살표. 외적이 축을 정하고, 내적의 부호가 축을 뒤집어 더 가까운 쪽(v 또는 −v)으로 돌게 함",
+  "FlipStrength": "비트는 세기 (INPUT). 크면 더 세게 펄럭임",
+  "Acos": "cos 값 → 각도(라디안). 내적에서 사이 각도를 꺼냄. cos는 0°~180°에서 값마다 각도가 하나라 헷갈림이 없음",
+  "FMath::Acos": "UE C++의 Acos. 내적 값(cos) → 사이 각도(라디안). Unity는 Mathf.Acos",
+  "FMath::Clamp": "값을 최소~최대 사이로 자름. 여기서는 내적을 −1~1로 묶어 Acos 입력 범위를 지킴",
+  "Clamp": "값을 최소~최대 사이로 자름. Acos 입력은 −1~1이어야 해서 같이 씀",
+  "DotResult": "미사일 앞 방향과 목표 방향의 내적 값(cos). 미사일 코드의 변수",
+  "FVector::CrossProduct": "UE C++의 외적. 결과는 축 화살표(FVector). HLSL의 cross, Unity의 Vector3.Cross",
+  "ForwardVector": "미사일의 앞 방향 화살표 (길이 1)",
+  "ToTarget": "미사일에서 타겟 쪽을 가리키는 방향 화살표",
+  ".GetSafeNormal": "길이를 1로 맞춰 방향만 남김. 외적의 길이(sin)는 버리고 축 방향만 씀. 길이가 0이면 (0, 0, 0)을 돌려줌",
+  "FMath::Atan2": "Atan2(sin 쪽, cos 쪽) → 각도(라디안). 외적 길이와 내적을 같이 써서 30°/150°도 가르고 Clamp도 필요 없음",
+  "Cross.Size": "외적 화살표의 길이. 길이 1끼리면 sin(사이 각도)",
+  "Dot": "내적 값. 길이 1끼리면 cos(사이 각도)",
+  "A.X": "첫째 화살표 A의 X 칸 숫자",
+  "A.Y": "첫째 화살표 A의 Y 칸 숫자",
+  "A.Z": "첫째 화살표 A의 Z 칸 숫자",
+  "B.X": "둘째 화살표 B의 X 칸 숫자",
+  "B.Y": "둘째 화살표 B의 Y 칸 숫자",
+  "B.Z": "둘째 화살표 B의 Z 칸 숫자"
+});
+</script>
 </body>
 </html>

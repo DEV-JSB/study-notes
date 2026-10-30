@@ -313,5 +313,21 @@ Details:  X(Roll)=0   Y(Pitch)=90   Z(Yaw)=0
   render();
 })();
 </script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "FRotator": "UE의 회전 값. 세 동작의 각도(도)를 (Pitch, Yaw, Roll) 순서로 받음. Details 칸 순서(Roll, Pitch, Yaw)와 다름",
+  "Pitch": "끄덕 — 옆 축으로 고개 들고 숙이기. 언리얼 +90은 위, 유니티 +90은 아래",
+  "Yaw": "도리도리 — 위 축으로 좌우 돌기. +90이면 두 엔진 모두 오른쪽",
+  "Roll": "갸우뚱 — 앞 축으로 고개 기울이기. 언리얼 Details에서는 X 칸",
+  "Details": "언리얼 에디터 Details 패널의 Rotation 칸. X / Y / Z = Roll / Pitch / Yaw (축 순서)",
+  "Quaternion.Euler": "Unity에서 각도(도) 세 개로 회전을 만듦. (x, y, z) = (Pitch, Yaw, Roll). Pitch 부호가 언리얼과 반대",
+  "GetActorForwardVector": "액터의 앞 방향 화살표(길이 1). Z가 +1이면 위, −1이면 아래를 봄 — 회전을 값으로 확인할 때",
+  "AddActorLocalRotation": "액터를 자기 기준으로 더 돌림. 각도 단위는 도. 터렛 제자리 회전에 씀",
+  "Vector.RotateAngleAxis": "화살표를 축 둘레로 각도(도)만큼 돌린 화살표를 돌려줌. 레이더 경계선에 씀",
+  "RotateAngleAxis": "화살표를 축 둘레로 각도(도)만큼 돌린 화살표를 돌려줌. 레이더 경계선에 씀",
+  "FQuat": "UE 쿼터니언. 축 하나 + 각도(라디안)로 회전을 만듦. 외적으로 구한 임의의 축으로 미사일을 돌릴 때 씀. Unity의 Quaternion"
+});
+</script>
 </body>
 </html>

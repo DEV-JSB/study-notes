@@ -270,5 +270,17 @@ input:focus-visible{outline:2px solid var(--fwd);outline-offset:2px}
   if(!reduce)requestAnimationFrame(tick);
 })();
 </script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "DeltaTime": "한 프레임에 걸린 시간(초). 60fps면 약 0.016초, 30fps면 약 0.033초. 이걸로 나누면 '1초에 얼마'(속력)가 됨",
+  "OutPos": "종이 위치 (PaperSim). 매 프레임 OutVel × DeltaTime만큼 이어 붙여 움직임",
+  "OutVel": "종이 속도 (cm/s, 1초 기준). DeltaTime을 곱하면 이번 프레임에 갈 거리",
+  "FootVel": "4단계에서 만들 발 속도 (cm/s). 한 프레임 이동 ÷ DeltaTime",
+  "FootPos": "발의 지금 위치",
+  "PrevFootPos": "지난 프레임의 발 위치. 첫 프레임엔 (0,0,0)이라 속도가 폭발하므로 BeginPlay에서 지금 위치로 맞춰 둠",
+  "Vel": "종이 속도 (cm/s). 발 속도도 1초 단위로 구해야 이것과 단위가 맞음"
+});
+</script>
 </body>
 </html>

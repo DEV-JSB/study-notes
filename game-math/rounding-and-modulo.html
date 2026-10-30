@@ -507,5 +507,59 @@ CurrentIndex = (CurrentIndex + 1) % Num;</pre>
   render();
 })();
 </script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "x": "어림할 실수. 실험 1의 슬라이더 값 (−3.5 ~ 3.5)",
+  "X": "어림하거나 나눌 실수 (언리얼 쪽 이름). 격자 예에서는 월드 좌표 X (예: −30), 체크무늬에서는 칸 좌표",
+  "Y": "체크무늬 예의 칸 좌표 Y",
+  "F": "RoundToInt 안에서 반올림할 실수. 0.5를 더한 뒤 내림해서 .5가 언제나 큰 쪽으로 감",
+  "floor": "내림 ⌊x⌋. 수직선 왼쪽 정수로 (0 쪽이 아님)",
+  "a": "나눠지는 수. 시계 실험에서는 0에서 이동할 칸 수 (음수면 거꾸로)",
+  "b": "나누는 수 (Unity 쪽 이름)",
+  "A": "나눠지는 수 (언리얼 쪽 이름)",
+  "B": "나누는 수 (언리얼 쪽 이름)",
+  "N": "시계 칸 수 = 나누는 수. 모듈로 답은 항상 0 ~ N-1. 'N프레임마다'에서는 몇 프레임마다인지",
+  "n": "시계 칸 수 (Unity 쪽 이름)",
+  "i": "지금 무기 슬롯 번호 (0부터)",
+  "mod": "모듈로. a mod N = 칸이 N개인 시계에서 a는 몇 번 칸인가. 답은 0 ~ N-1",
+  "CurrentIndex": "지금 고른 무기 슬롯 번호 (0부터). 다음 무기로 넘길 때 1씩 늘어남",
+  "Num": "무기 리스트 개수. 이 페이지 예에서는 4 (권총·소총·샷건·저격총). 칸 번호는 0~3",
+  "CellSize": "격자 한 칸의 크기. 예에서는 100. 월드 좌표를 이걸로 나눠 내림하면 칸 번호",
+  "FrameCount": "지금까지 지난 프레임 수. % N == 0이면 N프레임마다 한 번",
+  "FMath::RoundToInt": "UE 반올림 → 정수. 안에서 FloorToInt(F + 0.5f)라서 .5는 언제나 큰 쪽(오른쪽). Unity와 다름",
+  "RoundToInt": "반올림 → 정수. UE는 .5 → 큰 쪽, Unity는 .5 → 짝수 쪽",
+  "Mathf.RoundToInt": "Unity 반올림 → 정수. .5는 짝수 쪽 (2.5 → 2, 3.5 → 4). UE의 FMath::RoundToInt와 경계값에서 다름",
+  "Mathf.Round": "Unity 반올림 (실수 그대로). .5는 짝수 쪽 (은행가 반올림). UE의 FMath::RoundHalfToEven",
+  "Math.Round": "C#(.NET) 반올림. 기본은 .5 → 짝수 쪽. MidpointRounding을 주면 방식을 고를 수 있음",
+  "MidpointRounding.AwayFromZero": "Math.Round에 주는 옵션. .5를 0에서 먼 쪽으로 (2.5 → 3, −2.5 → −3)",
+  "std::round": "C++ 표준 반올림. .5는 0에서 먼 쪽 (−2.5 → −3)",
+  "FMath::FloorToInt": "내림 → 정수. 수직선 왼쪽으로 (−2.7 → −3). Unity의 Mathf.FloorToInt",
+  "FloorToInt": "내림 → 정수. 수직선 왼쪽으로. 음수 좌표를 격자 칸으로 바꿀 때 (int) 대신 써야 맞음",
+  "Mathf.FloorToInt": "Unity 내림 → 정수. UE의 FMath::FloorToInt",
+  "FMath::Floor": "내림, 결과는 실수 그대로 (2.7 → 2.0). Unity의 Mathf.Floor",
+  "Mathf.Floor": "Unity 내림, 결과는 실수. UE의 FMath::Floor",
+  "FMath::CeilToInt": "올림 → 정수. 수직선 오른쪽으로 (−2.7 → −2). Unity의 Mathf.CeilToInt",
+  "CeilToInt": "올림 → 정수. 필요한 개수 세기 (총알 23발, 탄창 10발 → 3개)",
+  "Mathf.CeilToInt": "Unity 올림 → 정수. UE의 FMath::CeilToInt",
+  "FMath::CeilToFloat": "올림, 결과는 실수 그대로. Unity의 Mathf.Ceil",
+  "Mathf.Ceil": "Unity 올림, 결과는 실수. UE의 FMath::CeilToFloat",
+  "FMath::RoundHalfFromZero": "반올림, .5를 0에서 먼 쪽으로 (−2.5 → −3). C++ std::round와 같은 방식",
+  "FMath::RoundHalfToEven": "반올림, .5를 짝수 쪽으로 (은행가 반올림). Unity Mathf.Round와 같은 방식",
+  "FMath::TruncToInt": "버림 → 정수. 소수점을 떼어 0 쪽으로 (−2.7 → −2). (int32)X와 같음. floor가 아님",
+  "FMath::Fmod": "실수 나머지. C++은 float에 %를 쓰면 컴파일 에러라 이걸 씀. 부호는 A를 따름",
+  "Mathf.Repeat": "Unity: t를 0 ~ length 범위로 둥글게 감음. floor 쪽 식(시계 나머지)으로 만들어져 음수에서도 안 깨짐",
+  "t": "Mathf.Repeat에 넣는 실수 값",
+  "length": "Mathf.Repeat의 한 바퀴 길이. 답은 0 ~ length 사이",
+  "FMath::Wrap": "Min과 Max를 같은 점으로 보는 감기 (각도의 −180°와 180°처럼). Wrap(4, 0, 4)가 4를 돌려줘서 배열 인덱스용이 아님",
+  "Wrap": "FMath::Wrap. Min과 Max를 둘 다 포함하고 같은 점으로 봄. 인덱스에는 ((A % N) + N) % N",
+  "Min": "Wrap 범위의 아래 끝",
+  "Max": "Wrap 범위의 위 끝. Min과 같은 점으로 취급됨",
+  "GenericPlatformMath.h": "UE 엔진 소스 헤더. FMath::RoundToInt가 FloorToInt(F + 0.5f)인 것을 여기서 확인",
+  "UnrealMathUtility.h": "UE 엔진 소스 헤더. FMath::Wrap 구현을 여기서 확인",
+  "UE_LOG": "언리얼 출력 로그(Output Log)에 값을 찍는 매크로. Unity의 Debug.Log",
+  "IDIV": "x86 CPU의 부호 있는 정수 나눗셈 명령. 몫을 0 쪽으로 버림"
+});
+</script>
 </body>
 </html>

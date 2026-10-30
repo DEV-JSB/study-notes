@@ -448,5 +448,62 @@ const float Angle = FMath::RadiansToDegrees(Radian);   // 도</pre>
   requestAnimationFrame(frame);
 })();
 </script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "TargetChaseRotateSpeedDeg": "미사일이 1초에 돌 수 있는 최대 각도 (도/초). 실험 기본값 180. DeltaTime을 곱해야 이번 프레임 최대(도)가 됨. 이 숫자 하나로 미사일 성격이 정해짐",
+  "ForwardVector": "①에서 구해 둔 미사일 앞 방향 (길이 1). 돌기 전 방향이라 ⑥ 이동에는 쓰지 않고 앞 방향을 다시 부름",
+  "Forward": "미사일 앞 방향 (ForwardVector를 줄여 쓴 것). 외적의 첫째 자리에 와야 타겟 쪽으로 도는 축이 나옴",
+  "ToTarget": "미사일에서 타겟으로 가는 방향. 도착 − 출발로 구한 뒤 Normalize로 길이 1",
+  "Target": "①에서는 쫓아갈 타겟 액터 (-> 로 접근하는 포인터). FInterpConstantTo 안에서는 도달할 목표 숫자",
+  "DotResult": "앞 방향과 타겟 방향의 내적(그림자)을 −1~1로 자른 값 = cos(남은 각도). 1이면 정면, −1이면 정반대",
+  "Dot": "내적 값. Acos에 넣기 전에 −1~1로 Clamp함",
+  "Radian": "남은 각도를 라디안으로. Acos가 돌려준 그대로",
+  "Angle": "타겟까지 남은 각도 (도). 이미 '양'이라 dt를 곱하지 않고, Min으로 이번 프레임 최대와 비교함",
+  "DeltaTime": "이번 프레임에 걸린 시간 (초). 60fps면 약 0.016. '초당 값'에만 곱함",
+  "dt": "DeltaTime을 줄여 쓴 것. 이번 프레임에 걸린 시간 (초)",
+  "Rotate": "⑤에서 FQuat의 축 자리에 들어가는 값. ②에서 외적으로 구하고 길이 1로 맞춘 회전 축",
+  "RotateSpeed": "⑤에서 FQuat의 각도 자리에 들어가는 값 (도). 이번 프레임에 돌 각도라서 DegreesToRadians로 라디안으로 바꿔 넣음",
+  "CurrentSpeed": "미사일의 지금 속력. 매 프레임 Acceleration × DeltaTime만큼 커짐",
+  "Acceleration": "가속도. 1초마다 속력이 얼마나 늘어나는지",
+  "Velocity": "이번 속도 화살표 = 돌고 난 앞 방향 × CurrentSpeed. DeltaTime을 곱해 이번 프레임 이동 거리로 만듦",
+  "FVector::CrossProduct": "UE C++의 외적. 두 방향에 수직인 경첩 축(꼬챙이)을 돌려줌. 순서를 바꾸면 축이 반대. Unity의 Vector3.Cross",
+  "CrossProduct": "외적 (FVector::CrossProduct). 첫째를 둘째 쪽으로 돌리는 축. 순서를 바꾸면 반대 방향",
+  "FVector::DotProduct": "UE C++의 내적. 길이 1끼리면 cos(사이 각도) = 그림자 길이. Unity의 Vector3.Dot",
+  "FMath::Clamp": "값을 최소~최대 사이로 자름. 여기서는 내적을 −1~1로 잘라 Acos의 NaN을 막음. Unity의 Mathf.Clamp",
+  "Clamp": "값을 최소~최대 사이로 자름 (FMath::Clamp). Acos 앞에서 −1~1로",
+  "FMath::Acos": "cos 값 → 각도(라디안). 범위를 검사하지 않아서 1을 조금만 넘어도 NaN. 그래서 앞에 Clamp. Unity의 Mathf.Acos",
+  "Acos": "cos 값을 거꾸로 각도(라디안)로 되돌리는 함수. 입력은 −1~1이어야 함",
+  "FMath::RadiansToDegrees": "라디안 → 도. Unity에서는 Mathf.Rad2Deg를 곱하는 것",
+  "RadiansToDegrees": "라디안 → 도 (FMath::RadiansToDegrees)",
+  "FMath::DegreesToRadians": "도 → 라디안. FQuat이 라디안을 받으므로 도로 적은 회전 각도를 바꿔 넣음. Unity에서는 Mathf.Deg2Rad를 곱하는 것",
+  "FMath::Min": "둘 중 작은 값. 남은 각도와 이번 프레임 최대 중 작은 쪽만큼만 돌아서 지나치지 않게 함. Unity의 Mathf.Min",
+  "Min": "둘 중 작은 값 (FMath::Min). 곱하기를 쓰면 남은 각도보다 더 돌아 좌우로 떨림",
+  "FQuat": "UE의 쿼터니언(회전값). FQuat(축, 라디안)으로 만들며 축이 길이 1이라고 믿고 계산함. Unity의 Quaternion",
+  "AddActorWorldRotation": "액터를 월드 기준으로 주어진 회전만큼 더 돌림. ⑤ 돌리기",
+  "AddActorWorldOffset": "액터를 월드 기준으로 주어진 거리만큼 옮김. ⑥ 이동",
+  "GetActorForwardVector": "액터의 지금 앞 방향 (길이 1). ⑥에서 돌고 난 뒤 다시 부름. Unity의 transform.forward",
+  "GetActorLocation": "액터의 월드 위치. Unity의 transform.position",
+  "Normalize": "벡터를 그 자리에서 길이 1로 바꿈. 거리 정보를 떼고 방향만 남김",
+  ".GetSafeNormal": "길이 1로 맞춘 새 벡터를 돌려줌. 길이가 0이면 (0, 0, 0)이라 0으로 나누기를 피함. 축에서 길이를 떼고 방향만 남길 때. Unity의 .normalized",
+  "Quaternion.AngleAxis": "Unity: (각도(도), 축)으로 회전을 만듦. 축을 안에서 정규화해 줌. UE의 FQuat(축, 라디안)",
+  "Vector3.Cross": "Unity의 외적. UE의 FVector::CrossProduct",
+  "Vector3.Angle": "Unity: 두 방향 사이 각도(도, 0~180). 안에서 Clamp → Acos를 해 줌",
+  "FMath::FInterpConstantTo": "숫자 하나를 초당 InterpSpeed씩 Target 쪽으로, 지나치지 않게 옮김. Min(남은 양, 최대 × dt)와 같은 일. Unity의 Mathf.MoveTowards",
+  "Mathf.MoveTowards": "Unity: 숫자를 목표 쪽으로 최대 한 걸음만큼 옮기고 지나치지 않음. UE의 FMath::FInterpConstantTo",
+  "Quaternion.RotateTowards": "Unity: 회전을 목표 회전 쪽으로 최대 각도(도)만큼만 돌림. 이 페이지에서 손으로 짠 유도 회전과 같은 일",
+  "Vector3.RotateTowards": "Unity: 방향 벡터를 목표 방향 쪽으로 최대 각도(라디안)만큼만 돌림",
+  "Current": "FInterpConstantTo의 지금 값",
+  "InterpSpeed": "FInterpConstantTo가 1초에 움직이는 최대 양",
+  "cross": "HLSL의 외적. 종이 코드에서 cross(N, flatN)은 종이 면을 평평한 쪽으로 넘어뜨릴 축",
+  "N": "종이 법선. 종이 윗면이 가리키는 방향, 길이 1. 미사일의 앞 방향 자리",
+  "flatN": "종이를 눕힐 목표 방향 (위 또는 아래). 미사일의 타겟 방향 자리",
+  "PaperSim": "ProjectF 종이의 Niagara 모듈. 중력 → 속도 → 위치를 계산",
+  "OutVel.z": "PaperSim이 갱신하는 종이 속도의 위아래(Z) 성분",
+  "Gravity": "중력 가속도. 매 프레임 Gravity × DeltaTime만큼 아래 방향 속도가 늘어남",
+  "Deg": "이름 끝에 붙이는 '도' 표시. 단위를 이름으로 알 수 있게",
+  "Rad": "이름 끝에 붙이는 '라디안' 표시"
+});
+</script>
 </body>
 </html>

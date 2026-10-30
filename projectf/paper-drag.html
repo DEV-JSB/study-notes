@@ -386,3 +386,25 @@ $('lPlay').onclick=()=>{cancelAnimationFrame(raf);st=null;lastA=0;if(matchMedia(
 ld(TEND);
 })();
 </script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "N": "종이 법선. 종이 면이 바라보는 방향, 길이 1인 화살표. PaperAero ①에서 회전값(쿼터니언)으로 구함",
+  "Vel": "종이의 지금 속도 (cm/s). PARTICLES Velocity. PaperSim이 중력을 더해 갱신",
+  "dot": "내적(그림자). Vel을 N 줄에 비춘 그림자 길이 = N 쪽으로 몇 cm/s인가, 숫자 하나. 면을 아래로 뚫고 가면 음수",
+  "vn": "뚫는 쪽 조각 = dot(Vel, N) × N (그림자 → 늘이고 줄이기). NormalDrag로 많이 깎음",
+  "vt": "비탈 쪽 조각 = Vel − vn (떼어내기). 종이 면과 나란함. PlaneDrag로 조금 깎음",
+  "keepN": "이번 프레임에 vn을 남길 비율 (0~1). NormalDrag 8, 60fps면 약 0.87 (약 13% 깎임)",
+  "keepT": "이번 프레임에 vt를 남길 비율 (0~1). PlaneDrag 0.5, 60fps면 약 0.99",
+  "max": "max(a, b) = 둘 중 큰 값. 여기서는 남길 비율이 음수가 되어 속도가 뒤집히는 것만 막음",
+  "NormalDrag": "면을 뚫는 쪽 브레이크 세기 (INPUT, 지금 8). 크면 더 둥둥, 옆으로 더 미끄러짐. 0이면 돌멩이처럼 뚝",
+  "PlaneDrag": "비탈 쪽 브레이크 세기 (INPUT, 지금 0.5). 크면 덜 미끄러짐. 0이면 미끄러지는 속력에 한계 없음",
+  "DeltaTime": "이번 프레임에 걸린 시간 (60fps면 약 0.016초). ENGINE DeltaTime",
+  "OutVel": "따로 깎은 두 조각을 다시 이어 붙인 새 속도 = vn × keepN + vt × keepT. PARTICLES Velocity로 나감. 다음 프레임은 여기서 시작",
+  "float3": "숫자 세 개짜리 (x, y, z). HLSL의 화살표 = UE의 FVector, Unity의 Vector3",
+  "PaperSim": "Particle Update 아래쪽 스크래치 모듈. 중력(Gravity 980) → 속도 → 위치, 발밑 바닥 감지와 착지",
+  "PaperAero": "Particle Update 위쪽 스크래치 모듈. ① 방향 → ② 공기저항(이 노트) → ③ 회전 속도 → ④ 돌리기",
+  "Rigidbody.drag": "Unity Rigidbody의 공기저항. 속도 전체를 같은 비율로 깎아서 방향은 그대로, 길이만 줄어듦",
+  "FlipStrength": "비트는 세기 (INPUT, 지금 30). 흔들림(왔다 갔다) 담당. 이 노트의 두 drag와는 따로"
+});
+</script>
