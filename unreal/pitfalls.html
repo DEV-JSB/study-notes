@@ -78,6 +78,8 @@ ul{margin:0;padding-left:20px}
       <tr><td>PIE 중 Details의 값이 안 바뀐다</td><td><a href="#details-live">Details는 실시간이 아니다</a></td></tr>
       <tr><td>뼈·소켓 위치가 엉뚱하게 캐릭터 발밑 중앙이다</td><td><a href="#socket-name">없는 소켓 이름</a></td></tr>
       <tr><td>빌드 에러 <code>MSB4019 … Rider … VC\v180</code></td><td><a href="#rider-msbuild">Rider의 MSBuild 선택</a></td></tr>
+      <tr><td>배열에서 GET했는데 그 타입의 변수·함수가 검색에 안 나온다</td><td><a href="#wildcard-get">와일드카드 GET이 Object로 굳음</a></td></tr>
+      <tr><td><code>Can't parse default value 'None'</code> 경고</td><td><a href="#array-default">배열로 바꾼 변수의 기본값</a></td></tr>
     </tbody>
   </table>
   </div>
@@ -351,6 +353,30 @@ git lfs ls-files                                               # 커밋 후</pre
   <p class="src">코드 에러가 아니라 도구 에러. Intermediate 지우기·VS 재설치부터 하지 않기</p>
 </article>
 
+<article class="card" id="wildcard-get">
+  <h2>와일드카드 GET을 거꾸로 끌어내면 Object로 굳는다</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>배열 <code>Touchers</code>(Paper Toucher Component)에서 꺼낸 <code>GET [1]</code>로 끌어내도 <code>Part Pos</code>가 안 나온다. 메뉴 제목이 <code>Actions taking a(n) Object Reference</code> (2026-10-31, <code>BP_PaperField</code>)</dd>
+    <dt>처음 의심</dt><dd>검색어 / 엔진 버그 / "와일드카드는 처음 들어온 배열로 타입을 정한다"(→ 작업자가 빈 GET으로 재현해 보니 <b>틀림</b>)</dd>
+    <dt>원인</dt><dd><code>Is Valid</code>의 <code>Input Object</code>(Object) 핀에서 <b>거꾸로</b> 끌어내 GET을 만들면 출력이 Object로 정해진다. 나중에 배열을 꽂아도 자식 타입이라 "호환됨"으로 보고 다시 정하지 않는다 (작업자가 재현으로 확정)</dd>
+    <dt>해결</dt><dd>GET을 지우고 잘 되는 GET을 복사(Ctrl+C/V)하거나, 배열 쪽에서 끌어내 새로 만든다. 출력 핀 툴팁으로 타입 확인</dd>
+  </dl>
+  <pre>GET [0] 툴팁:  Paper Toucher Component Object Reference   ← 정상
+GET [1] 툴팁:  Object Reference                           ← 굳음
+Current value = None  은 둘 다 같다 (게임이 안 돌 때는 원래 None)</pre>
+  <p class="src">와일드카드 노드(<code>Get (a copy)</code>, <code>Select</code>, <code>Make Array</code>, <code>For Each Loop</code>)는 <b>값을 주는 쪽(입력)부터</b> 연결. 타입이 정해진 노드는 거꾸로 끌어내도 괜찮다</p>
+</article>
+
+<article class="card" id="array-default">
+  <h2>변수를 배열로 바꾸면 <code>Can't parse default value 'None'</code></h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>Compile 경고 <code>Can't parse default value 'None' for Touchers. Property: Touchers.</code></dd>
+    <dt>원인</dt><dd>단일 오브젝트일 때 저장된 기본값 문자열 <code>None</code>이 배열로 바꾼 뒤에도 남음. 배열은 그 글자를 못 읽는다</dd>
+    <dt>해결</dt><dd>Details → Default Value에서 원소를 ⊕로 하나 추가했다가 🗑로 지움 → 빈 배열로 다시 저장됨. 크기를 정하는 게 아님 (배열 크기는 BeginPlay의 SET이 통째로 바꿈)</dd>
+  </dl>
+  <p class="src">변수 타입을 바꿨다면, 그 변수를 쓰는 노드와 기본값을 다시 한 번 의심한다. 경고는 0개로 유지</p>
+</article>
+
 <!-- 12 -->
 <article class="card">
   <h2>작은 것들</h2>
@@ -465,6 +491,9 @@ CodeTips({
   "git lfs install": "LFS 필터 설정과 push 훅을 설치. 레포에서 한 번 실행",
   "git check-attr": "특정 파일에 어떤 .gitattributes 규칙이 적용되는지 확인. filter: lfs가 나오면 LFS 대상",
   "BP_PaperField": "ProjectF 종이 필드 블루프린트. 매 Tick 몸 부위 위치를 Niagara User Parameter로 넘김",
+  "Touchers": "BP_PaperField의 배열 변수. 캐릭터에 붙은 PaperToucherComponent 전부 (지금은 양발 2개)",
+  "Part Pos": "PaperToucherComponent가 매 Tick 계산한 부위 위치 (BP에서 보이는 이름)",
+  "Input Object": "Is Valid 노드의 입력 핀. 타입이 Object(모든 오브젝트의 부모)라서 여기서 거꾸로 끌어내면 와일드카드가 Object로 굳음",
   "Print String": "블루프린트 디버그 출력 노드. Key를 고정하면 같은 줄을 덮어써서 매 프레임 값을 보기 좋음",
   "GetSocketLocation": "소켓(또는 뼈) 이름으로 월드 위치를 얻음. 이름이 틀리면 에러 없이 컴포넌트 위치를 돌려줌",
   "DoesSocketExist": "그 이름의 소켓·뼈가 있는지 true/false. BeginPlay에서 확인하고 로그로 남기기",

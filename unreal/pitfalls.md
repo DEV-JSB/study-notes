@@ -22,6 +22,8 @@
 | PIE 중 Details의 값이 안 바뀐다 | Details는 실시간이 아니다 |
 | 뼈·소켓 위치가 엉뚱하게 캐릭터 발밑 중앙이다 | 없는 소켓 이름 |
 | 빌드 에러 `MSB4019 … Rider … VC\v180 … 찾을 수 없습니다` | Rider의 MSBuild 선택 |
+| 배열에서 GET했는데 그 타입의 변수·함수가 검색에 안 나온다 | 와일드카드 GET이 Object로 굳음 |
+| `Can't parse default value 'None'` 경고 | 배열로 바꾼 변수의 기본값 |
 
 ## 생성자에서 `AddDynamic` → 조용히 안 불림
 
@@ -137,6 +139,21 @@ UE_LOG(LogTemp, Warning, TEXT("Enter(%s)"), *Other->GetName());
 - **원인**: Rider가 VS 2022 대신 **자기 번들 MSBuild**로 빌드 → v180을 찾음. VS 2022에는 v170까지, UE 5.4는 VS 2022(v170)
 - **해결**: Rider Settings → Build, Execution, Deployment → Toolset and Build → MSBuild version = `C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe`
 - 코드 에러가 아니라 도구 에러. Intermediate 지우기·VS 재설치부터 하지 않기
+
+## 와일드카드 GET을 거꾸로 끌어내면 Object로 굳는다
+
+- **증상**: 배열 `Touchers`(Paper Toucher Component)에서 꺼낸 `GET [1]`로 끌어내도 `Part Pos`가 안 나온다. 메뉴 제목이 `Actions taking a(n) Object Reference` (2026-10-31, `BP_PaperField`)
+- **처음 의심**: 검색어 / 엔진 버그 / "와일드카드는 처음 들어온 배열로 타입을 정한다" → 작업자가 빈 GET으로 재현해 보니 **틀림**
+- **원인**: `Is Valid`의 `Input Object`(Object) 핀에서 **거꾸로** 끌어내 GET을 만들면 출력이 Object로 정해진다. 나중에 배열을 꽂아도 자식 타입이라 호환된다고 보고 다시 정하지 않는다 (작업자가 재현으로 확정)
+- **해결**: GET을 지우고 잘 되는 GET을 복사하거나 배열 쪽에서 끌어내 새로 만든다. 출력 핀 툴팁으로 타입 확인 (`Current value = None`은 게임이 안 돌 때 원래 그렇다 — 볼 줄은 타입 줄)
+- 와일드카드 노드(`Get (a copy)`, `Select`, `Make Array`, `For Each Loop`)는 **입력부터** 연결. 타입이 정해진 노드는 거꾸로 끌어내도 괜찮다
+
+## 변수를 배열로 바꾸면 `Can't parse default value 'None'`
+
+- **증상**: Compile 경고 `Can't parse default value 'None' for Touchers. Property: Touchers.`
+- **원인**: 단일 오브젝트일 때 저장된 기본값 문자열 `None`이 배열로 바꾼 뒤에도 남음
+- **해결**: Details → Default Value에서 원소를 ⊕로 추가했다가 🗑로 지움 → 빈 배열로 다시 저장. 크기를 정하는 게 아님 (BeginPlay의 SET이 통째로 바꿈)
+- 변수 타입을 바꿨다면, 그 변수를 쓰는 노드와 기본값을 다시 의심한다. 경고는 0개로 유지
 
 ## 작은 것들
 
