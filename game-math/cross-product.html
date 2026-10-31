@@ -401,6 +401,36 @@ AddActorWorldRotation(FQuat(Rotate, FMath::DegreesToRadians(RotateSpeed)));</pre
   </table></div>
 </section>
 
+<section aria-labelledby="s11">
+  <h2 id="s11">덤 · 회전을 담는 그릇 — 지금 내가 아는 만큼 (2026-11-01)</h2>
+  <p class="sub">복습 끝에 "축 하나로 실제로 어떻게 돌리지? → 쿼터니언"으로 이어진 이야기. 다음에 꼭 할 주제라는 뜻이 아니라, 지금 이해한 정도를 적어 두는 칸이에요.</p>
+  <div class="quote" style="margin-top:10px">
+    <q>쿼터니언은 결국 행렬을 쓰기 위한 거고… 축 소멸? 축 하나가 소멸이 될 수 있어서 그냥 행렬로 한 번에 회전시킨다? 행렬 특성상 연산에도 더 유리하고, 렌더링 파이프라인에서도 행렬을 쓰니까 그래픽카드가 하기 딱 좋은 방식.</q>
+    <span class="verdict half">반쯤 맞음 — 두 이야기가 한 덩어리로 섞여 있었음.</span>
+    <ul class="sub">
+      <li>맞음: "축 소멸" = <b>짐벌 락(Gimbal lock)</b>. Pitch·Yaw·Roll을 차례로 돌릴 때, 예를 들어 Pitch 90°에서 축 두 개가 겹쳐 돌릴 방향 하나가 사라짐</li>
+      <li>맞음: GPU는 4×4 행렬 하나로 이동·회전·크기를 한꺼번에 처리</li>
+      <li>틀림: 쿼터니언은 행렬이 아니라 <b>다른 그릇</b>. 짐벌 락은 오일러 각만의 문제라 행렬로도 쿼터니언으로도 피할 수 있음</li>
+      <li>빠짐: 게임 로직에서는 쿼터니언으로 들고 다니고(저장·합치기·부드러운 보간), 그리기 직전에 행렬로 바꿔 GPU에 넘김. 경쟁이 아니라 이어 달리기</li>
+    </ul>
+  </div>
+  <p style="margin-top:12px">"각"이 아니라 <b>"회전(방향)"</b>을 표기하는 수단이다. 각은 숫자 하나(30°), 3D 회전은 "어느 축으로 얼마나"라 숫자 하나로 못 담는다.</p>
+  <div class="tbl" style="margin-top:10px"><table>
+    <thead><tr><th>표기 방법</th><th>담는 방식</th><th>UE</th><th>내가 만난 곳</th></tr></thead>
+    <tbody>
+      <tr><td>오일러 각 (Euler angles)</td><td>Pitch·Yaw·Roll 각도 3개</td><td><code>FRotator</code></td><td>Details 패널 Rotation 칸, <a href="rotation-pyr.html">회전 노트</a>. 짐벌 락 있음</td></tr>
+      <tr><td>축-각 (Axis-Angle)</td><td>축 벡터 1개 + 각도 1개</td><td>축과 각도를 따로 들고 있음</td><td>오늘 복습: 외적 = 축, 내적 = 각도</td></tr>
+      <tr><td>쿼터니언 (Quaternion)</td><td>숫자 4개 (x, y, z, w)</td><td><code>FQuat</code></td><td>미사일 <code>FQuat(Rotate, 라디안)</code>. <code>FTransform</code>도 회전을 이걸로 저장</td></tr>
+      <tr><td>회전 행렬 (Rotation matrix)</td><td>3×3 숫자 9개 (이동·크기까지 4×4)</td><td><code>FMatrix</code></td><td>아직 직접 쓴 적 없음 (렌더링 쪽)</td></tr>
+    </tbody>
+  </table></div>
+  <ul style="margin-top:10px">
+    <li>내 미사일은 외적·내적으로 <b>축-각</b>을 만들고, <code>FQuat(축, 각도)</code>로 <b>쿼터니언으로 바꿔서</b> 돌린다. 그래서 짐벌 락 걱정이 없었다.</li>
+    <li>각도 단위 함정: UE <code>FQuat(Axis, Angle)</code>는 <b>라디안</b>, Unity <code>Quaternion.AngleAxis(angle, axis)</code>는 <b>도</b>.</li>
+    <li>아직 모르는 것: 쿼터니언 숫자 4개가 각각 무엇인지, 왜 각도의 절반이 들어가는지.</li>
+  </ul>
+</section>
+
 <section aria-labelledby="s10">
   <h2 id="s10">더 보기</h2>
   <ul>
