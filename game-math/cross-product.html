@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>외적은 벡터 하나</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: one reading column; 3D cross lab first (result is one vector), then why length = sin, then the "turn by cross length" lab, then the missile code and my questions */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --fwd:#2f6fd0; --cos:#178a66; --sin:#d2552a;
+  --a:#6a5acd; --b:#b8740f; --c:#c73f78;
+  --ax:#d24040; --ay:#4f8f1f; --az:#2f6fd0;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --cos:#4cc79c; --sin:#f08a5d;
+  --a:#a99cf2; --b:#e9a94a; --c:#f07aaa;
+  --ax:#f07272; --ay:#8cc75a; --az:#6aa3f0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --cos:#4cc79c; --sin:#f08a5d;
+  --a:#a99cf2; --b:#e9a94a; --c:#f07aaa;
+  --ax:#f07272; --ay:#8cc75a; --az:#6aa3f0; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0 0 8px;text-wrap:balance}
+h3{font-size:16px;font-weight:500;margin:16px 0 6px}
+p{margin:0;max-width:65ch}
+a{color:var(--cos)}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.def{border-left:3px solid var(--c);padding:4px 0 4px 16px;font-size:18px}
+.lab{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctrl label{font-size:14px;color:var(--muted)}
+.ctrl input[type=range]{flex:1;min-width:160px;accent-color:var(--c)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;padding:4px 12px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--fwd);outline-offset:2px}
+svg{width:100%;height:auto;display:block}
+.sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.srow{display:grid;grid-template-columns:20px minmax(0,1fr) 52px;align-items:center;gap:8px;font-size:14px}
+.srow span:last-child{text-align:right}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.card .big{font-size:18px;font-weight:500}
+.sub{font-size:14px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+td.num{white-space:nowrap}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0;overflow-x:auto;line-height:1.6}
+ul,ol{margin:0;padding-left:20px}
+li+li{margin-top:4px}
+.quote{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.quote q{font-size:17px}
+.verdict{font-size:14px;font-weight:500}
+.ok{color:var(--cos)} .half{color:var(--sin)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+.c-a{color:var(--a)} .c-b{color:var(--b)} .c-c{color:var(--c)} .c-cos{color:var(--cos)} .c-sin{color:var(--sin)}
+.stage{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:640px){.stage{grid-template-columns:minmax(0,1fr)}}
+.read{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:4px;font-size:14px}
+.row span:first-child{color:var(--muted)}
+.msg{font-size:16px;font-weight:500}
+#sv3{touch-action:none;cursor:grab;border:1px solid var(--line);border-radius:10px}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">GameMathLab · 과정 1 · 내적·외적 복습 · 2026-10-31</span>
+  <h1>외적은 벡터 하나: 방향은 축, 길이는 sin</h1>
+  <p class="lead">미사일을 다 만들고 며칠 뒤 내적·외적을 다시 짚어 보다가, "외적은 숫자야 벡터야?", "결과가 두 개 나오나?", "그럼 외적으로 돌리면 왜 안 돼?"에서 한참 헤맨 날의 정리예요. 헤맨 순서대로 풀어 둡니다.</p>
+</header>
+
+<section>
+  <p class="def">외적 → <b>어느 축으로</b> 돌지. 내적 → <b>얼만큼</b> 돌지.<br>외적 크기(sin)로 얼만큼을 구하면, 타겟이 <b>뒤쪽</b>일 때 덜 돈다.</p>
+  <p class="sub" style="margin-top:10px">이 두 줄이 이 노트의 전부예요. 아래는 이 두 줄이 왜 맞는지 값으로 확인하는 부분이에요.</p>
+</section>
+
+<section aria-labelledby="s1">
+  <h2 id="s1">1 · 외적의 결과는 언제나 벡터 하나</h2>
+  <p>헷갈림의 시작은 "내적은 소수로 말하고, 외적은 벡터로 말하더니, 그림에선 또 외적 길이가 소수네?"였어요. 정리하면 이래요.</p>
+  <div class="tbl" style="margin-top:10px"><table>
+    <thead><tr><th>UE C++</th><th>Unity C#</th><th>결과 자료형</th><th>예: 앞 (1,0,0)과 앞 30° 목표</th></tr></thead>
+    <tbody>
+      <tr><td><code>FVector::DotProduct(A, B)</code></td><td><code>Vector3.Dot(a, b)</code></td><td>숫자</td><td class="num">0.87</td></tr>
+      <tr><td><code>FVector::CrossProduct(A, B)</code></td><td><code>Vector3.Cross(a, b)</code></td><td><b>벡터</b></td><td class="num">(0, 0, 0.5)</td></tr>
+      <tr><td><code>C.Size()</code></td><td><code>c.magnitude</code></td><td>숫자 (외적 벡터의 <b>길이</b>)</td><td class="num">0.5</td></tr>
+      <tr><td><code>C.GetSafeNormal()</code></td><td><code>c.normalized</code></td><td>벡터 (외적 벡터의 <b>방향</b>만)</td><td class="num">(0, 0, 1)</td></tr>
+    </tbody>
+  </table></div>
+  <ul style="margin-top:10px">
+    <li>내적은 처음부터 숫자. 외적은 처음부터 벡터.</li>
+    <li>외적 벡터 하나에 <b>방향 칸(회전축)</b>과 <b>길이 칸(sin)</b>이 같이 들어 있고, 필요한 칸을 꺼내 쓴다.</li>
+    <li>미사일 코드는 <code>GetSafeNormal()</code>로 <b>방향 칸만</b> 썼다. 길이 칸은 버렸다.</li>
+  </ul>
+</section>
+
+<section class="lab" aria-labelledby="l1">
+  <h2 id="l1">실험 1 · 3D에서 외적을 하면 어떤 벡터가 나오나</h2>
+  <p class="sub">언리얼과 같은 축이에요 (X 앞, Y 오른쪽, Z 위). 카드의 값은 <code>FVector::CrossProduct</code>로 계산한 값과 같아요. 그림을 드래그하면 시점이 돌아가요.</p>
+  <div class="btns">
+    <button data-p="xy">① X × Y</button>
+    <button id="swap">② A, B 순서 바꾸기</button>
+    <button data-p="30">③ 앞 30°</button>
+    <button data-p="150">④ 뒤 150°</button>
+    <button data-p="180">⑤ 정반대 180°</button>
+    <button data-p="tilt">기울어진 예</button>
+    <button id="rv">시점 초기화</button>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--a)"></i>A (첫 번째 인자)</span>
+    <span><i style="background:var(--b)"></i>B (두 번째 인자)</span>
+    <span><i style="background:var(--c)"></i>C = CrossProduct(A, B)</span>
+    <span>옅은 면 = A와 B가 펼친 평행사변형</span>
+  </div>
+  <svg id="sv3" viewBox="0 0 640 420" role="img" aria-label="언리얼 축에서 A, B, 그리고 둘 모두에 수직인 외적 C를 3D로 보여 주는 그림. 드래그로 시점 회전">
+    <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <g id="grid"></g>
+    <polygon id="para" points="" fill="var(--a)" fill-opacity="0.12" stroke="var(--a)" stroke-opacity="0.4" stroke-width="1"/>
+    <line id="ax" stroke="var(--ax)" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <line id="ay" stroke="var(--ay)" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <line id="az" stroke="var(--az)" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <text id="lx" fill="var(--ax)" font-size="13" text-anchor="middle">X 앞</text>
+    <text id="ly" fill="var(--ay)" font-size="13" text-anchor="middle">Y 오른쪽</text>
+    <text id="lz" fill="var(--az)" font-size="13" text-anchor="middle">Z 위</text>
+    <line id="va" stroke="var(--a)" stroke-width="3" marker-end="url(#ah)"/>
+    <line id="vb" stroke="var(--b)" stroke-width="3" marker-end="url(#ah)"/>
+    <line id="vc" stroke="var(--c)" stroke-width="3.5" marker-end="url(#ah)"/>
+    <text id="ta" fill="var(--a)" font-size="14" font-weight="500" text-anchor="middle">A</text>
+    <text id="tb" fill="var(--b)" font-size="14" font-weight="500" text-anchor="middle">B</text>
+    <text id="tc" fill="var(--c)" font-size="14" font-weight="500" text-anchor="middle">C</text>
+  </svg>
+  <div class="sliders">
+    <div>
+      <div class="sub c-a" style="font-weight:500">A (첫 번째 인자)</div>
+      <div class="srow"><span>x</span><input type="range" min="-1" max="1" step="0.01" id="a0" aria-label="A x"><span class="num" id="a0o"></span></div>
+      <div class="srow"><span>y</span><input type="range" min="-1" max="1" step="0.01" id="a1" aria-label="A y"><span class="num" id="a1o"></span></div>
+      <div class="srow"><span>z</span><input type="range" min="-1" max="1" step="0.01" id="a2" aria-label="A z"><span class="num" id="a2o"></span></div>
+    </div>
+    <div>
+      <div class="sub c-b" style="font-weight:500">B (두 번째 인자)</div>
+      <div class="srow"><span>x</span><input type="range" min="-1" max="1" step="0.01" id="b0" aria-label="B x"><span class="num" id="b0o"></span></div>
+      <div class="srow"><span>y</span><input type="range" min="-1" max="1" step="0.01" id="b1" aria-label="B y"><span class="num" id="b1o"></span></div>
+      <div class="srow"><span>z</span><input type="range" min="-1" max="1" step="0.01" id="b2" aria-label="B z"><span class="num" id="b2o"></span></div>
+    </div>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <span class="sub">CrossProduct(A, B) 결과 — 벡터 하나</span>
+      <span class="big num c-c" id="cv"></span>
+      <span class="sub">.Size() 길이 <b class="num" id="cs" style="color:var(--fg)"></b></span>
+      <span class="sub">.GetSafeNormal() 방향 <b class="num" id="cn" style="color:var(--fg)"></b></span>
+    </div>
+    <div class="card">
+      <span class="sub">값으로 확인 — C가 A, B 모두에 수직인가</span>
+      <span>DotProduct(C, A) = <b class="num" id="ca"></b></span>
+      <span>DotProduct(C, B) = <b class="num" id="cb"></b></span>
+      <span class="sub" id="cmsg"></span>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="s2">
+  <h2 id="s2">실험 1에서 버튼 순서대로 볼 것</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>버튼</th><th>보이는 것</th><th>뜻</th></tr></thead>
+    <tbody>
+      <tr><td>① X × Y</td><td>C = (0, 0, 1), 위로 섬</td><td>앞 × 오른쪽 = 위. C는 A에도 B에도 수직</td></tr>
+      <tr><td>② 순서 바꾸기</td><td>C = (0, 0, −1), 아래로 뒤집힘</td><td>길이는 같고 방향만 정반대. 10-28 미사일이 반대로 도망간 실험</td></tr>
+      <tr><td>③ 앞 30°</td><td>C = (0, 0, 0.5)</td><td>길이 0.5 = sin 30°</td></tr>
+      <tr><td>④ 뒤 150°</td><td>C = (0, 0, 0.5)</td><td>③과 <b>벡터 전체가 똑같다</b>. 길이도 방향도 같음</td></tr>
+      <tr><td>⑤ 정반대 180°</td><td>C = (0, 0, 0), 축 없음</td><td>뒤를 보는 축은 무수히 많아서 하나로 못 정함</td></tr>
+    </tbody>
+  </table></div>
+  <h3>"외적을 하면 값이 2개 나오나?" → 아니요, 하나</h3>
+  <ul>
+    <li><code>CrossProduct</code>를 한 번 부르면 결과는 <b>벡터 하나</b>.</li>
+    <li>③과 ④는 하나의 외적에서 나온 두 값이 아니라, <b>타겟 위치가 다른 두 상황</b>이 우연히 같은 결과를 낸 것.</li>
+    <li>인자 순서를 바꾸면 결과가 두 개가 되는 게 아니라 <b>방향이 정반대인 벡터</b>가 나온다. 순서는 내가 고르는 것이고, 고른 순서마다 답은 하나. 미사일은 <code>CrossProduct(Forward, ToTarget)</code> 순서.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="s3">
+  <h2 id="s3">2 · C의 길이가 왜 sin인가 — 옅은 면의 넓이</h2>
+  <p>A와 B가 둘 다 길이 1이면 <b>C의 길이 = sin(A와 B 사이 각도)</b>. 길이가 1이 아니면 그 길이들이 곱해진다: <b>C의 길이 = A 길이 × B 길이 × sin(사이 각도)</b>.</p>
+  <ul style="margin-top:8px">
+    <li>C의 길이는 실험 1의 <b>옅은 면(평행사변형)의 넓이</b>와 같다.</li>
+    <li>평행사변형 넓이 = 밑변 × 높이 (초등 5학년)</li>
+    <li>밑변 = A의 길이 = 1, 높이 = B 끝이 A 선에서 수직으로 떨어진 거리 = B의 <b>옆 조각</b> = sin(사이 각도) (sin은 중3 삼각비)</li>
+    <li>그래서 넓이 = 1 × sin = <b>sin</b>. B를 A 쪽으로 눕힐수록 면이 납작해지고 C가 짧아진다.</li>
+  </ul>
+  <div class="tbl" style="margin-top:10px"><table>
+    <thead><tr><th>실험 1 버튼</th><th>사이 각도</th><th>.Size()</th><th>sin(각도)</th><th>옅은 면</th></tr></thead>
+    <tbody>
+      <tr><td>① X × Y</td><td class="num">90°</td><td class="num">1.00</td><td class="num">1</td><td>가장 넓음 (정사각형)</td></tr>
+      <tr><td>③ 앞 30°</td><td class="num">30°</td><td class="num">0.50</td><td class="num">0.5</td><td>납작함</td></tr>
+      <tr><td>④ 뒤 150°</td><td class="num">150°</td><td class="num">0.50</td><td class="num">0.5</td><td>③과 같은 넓이</td></tr>
+      <tr><td>⑤ 정반대 180°</td><td class="num">180°</td><td class="num">0.00</td><td class="num">0</td><td>완전히 납작 (선)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="sub" style="margin-top:8px">미사일 코드에서는 이 길이를 쓰지 않는다. 알아 두면 좋은 사실이고, 지금 기능에서는 C의 방향(축)만 쓴다.</p>
+</section>
+
+<section aria-labelledby="s4">
+  <h2 id="s4">3 · 미사일에게 숫자 하나만 알려 준다면</h2>
+  <p>이 표에서 "아, 이거구나" 했던 설명이에요. 미사일이 타겟을 직접 못 보고, 계산된 숫자 하나만 전달받는다고 해 보면:</p>
+  <div class="tbl" style="margin-top:10px"><table>
+    <thead><tr><th>미사일이 받은 숫자</th><th>타겟이 있을 수 있는 곳</th><th>하나로 정해지나</th></tr></thead>
+    <tbody>
+      <tr><td>외적 길이 = 0.5</td><td>앞쪽 30° <b>또는</b> 뒤쪽 150°</td><td>✕ 두 곳</td></tr>
+      <tr><td>내적 = +0.87</td><td>앞쪽 30°</td><td>○ 한 곳</td></tr>
+      <tr><td>내적 = −0.87</td><td>뒤쪽 150°</td><td>○ 한 곳</td></tr>
+    </tbody>
+  </table></div>
+  <ul style="margin-top:10px">
+    <li>외적 길이는 "타겟이 옆으로 얼마나 떨어져 있나"만 말한다. 앞쪽 30°도 뒤쪽 150°도 옆으로 0.5.</li>
+    <li>내적은 "앞쪽인가 뒤쪽인가, 얼마나"를 말한다. +면 앞, −면 뒤.</li>
+  </ul>
+  <h3>그럼 외적 벡터의 방향은 못 믿나? → 믿어도 된다</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>외적 벡터의 칸</th><th>꺼내는 코드</th><th>알려 주는 것</th><th>믿어도 되나</th></tr></thead>
+    <tbody>
+      <tr><td>방향</td><td><code>.GetSafeNormal()</code></td><td>어느 쪽으로 돌지 (회전축)</td><td>○ (정확히 앞·뒤일 때만 비어 있음)</td></tr>
+      <tr><td>길이</td><td><code>.Size()</code></td><td>옆으로 얼마나 (sin)</td><td>△ 30°와 150°가 같아서 "얼만큼"으로는 못 씀</td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin-top:8px">30°와 150° 타겟은 실제로 <b>같은 쪽</b>에 있어서 돌아야 하는 쪽도 같다. 외적이 둘에 같은 벡터를 준 건 틀린 게 아니라 맞는 답이다. 다른 건 <b>양</b>뿐이고, 그걸 내적이 채운다.</p>
+</section>
+
+<section class="lab" aria-labelledby="l2">
+  <h2 id="l2">실험 2 · 외적 크기로 '얼만큼'을 구해서 한 번에 돌리면</h2>
+  <p class="sub">위에서 내려다본 그림이에요. 회전축은 둘 다 외적 방향(화면에 수직)으로 같고, <b>돌리는 양</b>만 다르게 구해요. 초록은 <code>Acos(내적)</code>만큼, 주황은 <code>Asin(외적 크기)</code>만큼 앞 방향을 돌린 결과예요.</p>
+  <div class="ctrl">
+    <label for="tg">타겟 각도</label>
+    <input type="range" id="tg" min="0" max="180" step="1" value="150">
+    <span id="tgOut" class="num" style="min-width:44px">150°</span>
+  </div>
+  <div class="btns">
+    <button data-t="30">30°</button>
+    <button data-t="60">60°</button>
+    <button data-t="90">90°</button>
+    <button data-t="120">120°</button>
+    <button data-t="150">150°</button>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--fwd)"></i>처음 앞 방향</span>
+    <span><i style="background:var(--fg)"></i>타겟 방향</span>
+    <span><i style="background:var(--cos)"></i>Acos(내적)만큼 돈 뒤</span>
+    <span><i style="background:var(--sin)"></i>Asin(외적 크기)만큼 돈 뒤</span>
+  </div>
+  <div class="stage">
+    <svg id="sv2" viewBox="0 0 420 250" role="img" aria-label="앞 방향을 내적으로 구한 각도와 외적 크기로 구한 각도만큼 각각 돌렸을 때 타겟과 얼마나 맞는지 비교">
+      <defs><marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+      <path d="M 60 210 A 150 150 0 0 1 360 210" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+      <line x1="40" y1="210" x2="380" y2="210" stroke="var(--line)" stroke-width="1"/>
+      <path id="gap" d="" fill="none" stroke="var(--sin)" stroke-width="6" stroke-opacity="0.25"/>
+      <line x1="210" y1="210" x2="360" y2="210" stroke="var(--fwd)" stroke-width="2.5" marker-end="url(#ah2)"/>
+      <line id="tgt" x1="210" y1="210" x2="210" y2="210" stroke="var(--fg)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ah2)"/>
+      <line id="rAs" x1="210" y1="210" x2="210" y2="210" stroke="var(--sin)" stroke-width="3" marker-end="url(#ah2)"/>
+      <line id="rAc" x1="210" y1="210" x2="210" y2="210" stroke="var(--cos)" stroke-width="3" marker-end="url(#ah2)"/>
+      <circle cx="210" cy="210" r="4" fill="var(--fg)"/>
+      <text x="318" y="232" fill="var(--fwd)" font-size="12">처음 앞</text>
+    </svg>
+    <div class="read">
+      <div class="row"><span>실제 타겟 각도</span><span class="num" id="r0"></span></div>
+      <div class="row"><span class="c-cos">Acos(내적)</span><span class="num" id="r1"></span></div>
+      <div class="row"><span class="c-sin">Asin(외적 크기)</span><span class="num" id="r2"></span></div>
+      <div class="row"><span class="c-cos">돈 뒤 어긋남 (Acos)</span><span class="num" id="r3"></span></div>
+      <div class="row"><span class="c-sin">돈 뒤 어긋남 (Asin)</span><span class="num" id="r4"></span></div>
+      <p class="msg" id="r5"></p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="s5">
+  <h2 id="s5">실험 2가 말해 주는 것 — 뒤쪽 타겟에서만 틀린다</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>실제 타겟 각도</th><th>외적 크기</th><th>Asin으로 구한 각도</th><th>맞나</th></tr></thead>
+    <tbody>
+      <tr><td class="num">30° (앞쪽)</td><td class="num">0.5</td><td class="num">30°</td><td>○</td></tr>
+      <tr><td class="num">60° (앞쪽)</td><td class="num">0.87</td><td class="num">60°</td><td>○</td></tr>
+      <tr><td class="num">120° (뒤쪽)</td><td class="num">0.87</td><td class="num">60°</td><td>✕ 60° 덜 돎</td></tr>
+      <tr><td class="num">150° (뒤쪽)</td><td class="num">0.5</td><td class="num">30°</td><td>✕ 120° 덜 돎</td></tr>
+    </tbody>
+  </table></div>
+  <ul style="margin-top:10px">
+    <li><code>Asin</code>은 <b>0°~90°</b> 답만 줄 수 있다. 그래서 타겟이 뒤쪽이면 "앞쪽 거울 위치에 있다"고 착각하고 그만큼만 돈다.</li>
+    <li><code>Acos</code>는 <b>0°~180°</b>를 다 구별한다. 그래서 얼만큼은 내적으로 구한다.</li>
+    <li><code>FMath::Asin</code>, <code>FMath::Acos</code>(Unity <code>Mathf.Asin</code>, <code>Mathf.Acos</code>)는 둘 다 <b>라디안</b>을 돌려준다.</li>
+    <li>참고: 미사일은 매 프레임 조금씩 돌고 다시 계산하니까 <code>Asin</code>을 썼어도 결국 타겟 쪽으로 가긴 했을 것. 그래도 "얼만큼"을 구하는 식으로는 틀린 값이다.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="s6">
+  <h2 id="s6">4 · 헷갈렸던 이유 — 서로 다른 두 이야기가 섞였다</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>이야기</th><th>무슨 문제인가</th><th>내 미사일 코드에 해당하나</th></tr></thead>
+    <tbody>
+      <tr><td>30° vs 150°</td><td>외적 <b>크기</b>로 '얼만큼'을 구하려 할 때만 생김</td><td>해당 없음 (얼만큼은 내적으로 구하니까)</td></tr>
+      <tr><td>180°</td><td>외적 <b>축</b> 자체가 (0, 0, 0)이 돼서 사라짐</td><td>타겟이 정확히 뒤에 있을 때만</td></tr>
+    </tbody>
+  </table></div>
+  <p class="sub" style="margin-top:8px">30°/150° 이야기는 내 코드의 버그가 아니라 "왜 이렇게 짰나"에 대한 설명이었다.</p>
+</section>
+
+<section aria-labelledby="s7">
+  <h2 id="s7">5 · 내 미사일 코드에서 외적과 내적의 역할</h2>
+  <p class="sub">GameMathLab <code>Missile.cpp</code>, 내가 짠 코드 그대로.</p>
+<pre>const FVector Rotate = FVector::CrossProduct(ForwardVector,ToTarget).GetSafeNormal();
+
+const float DotResult = FMath::Clamp(FVector::DotProduct(ForwardVector,ToTarget),-1.f,1.f);
+const float Radian = FMath::Acos(DotResult);
+const float Angle = FMath::RadiansToDegrees(Radian);
+
+const float RotateSpeed = FMath::Min(Angle , TargetChaseRotateSpeedDeg * DeltaTime);
+AddActorWorldRotation(FQuat(Rotate, FMath::DegreesToRadians(RotateSpeed)));</pre>
+  <div class="tbl" style="margin-top:10px"><table>
+    <thead><tr><th>줄</th><th>하는 일</th><th>쓰는 것</th></tr></thead>
+    <tbody>
+      <tr><td><code>Rotate</code></td><td>회전축 = 외적 벡터의 방향 칸 (길이 칸은 버림)</td><td>외적</td></tr>
+      <tr><td><code>DotResult</code> → <code>Angle</code></td><td>얼만큼 = Acos(내적), 라디안 → 도</td><td>내적</td></tr>
+      <tr><td><code>RotateSpeed</code></td><td>남은 각도보다 많이 돌지 않기. 없으면 목표 근처에서 좌우로 떨림</td><td>Min</td></tr>
+      <tr><td><code>FQuat(Rotate, …)</code></td><td>그 축으로 그 각도만큼 돌리기 (첫 칸 = 축, 둘째 칸 = 라디안)</td><td>둘을 합침</td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin-top:8px">외적은 문의 <b>경첩</b>이다. 문짝(앞 방향)은 옆으로 움직이지만, 돌려면 문짝에 수직으로 선 경첩이 필요하다. 외적이 경첩 방향을 주고, 내적이 문을 몇 도 열지 정한다.</p>
+</section>
+
+<section aria-labelledby="s8" style="display:flex;flex-direction:column;gap:12px">
+  <h2 id="s8">6 · 내가 던진 질문들 (2026-10-31)</h2>
+  <div class="quote">
+    <q>결국 외적을 통해서 얻은 벡터는 어느쪽으로 기울어야하나를 정하는거고, 얼만큼은 결국 내적을 통해서 알아내야하는거다.</q>
+    <span class="verdict ok">맞음.</span>
+    <span class="sub">"기울어야 하나"보다 "어느 축을 중심으로 도나"가 더 정확하다. 외적은 기울 방향이 아니라 회전축을 준다.</span>
+  </div>
+  <div class="quote">
+    <q>내적의 값을 소수로 말했고 외적의 값을 Vector로 말했단말이야… 근데 또 설명 자료에서는 외적 길이 소수야. 벡터 어디감?</q>
+    <span class="verdict half">좋은 의심.</span>
+    <span class="sub">외적은 언제나 벡터. "외적 길이"는 그 벡터에서 꺼낸 숫자(<code>.Size()</code>). 평면 그림에서는 외적 벡터가 화면에 수직으로 서 있어서 안 보였다 → 실험 1.</span>
+  </div>
+  <div class="quote">
+    <q>외적을 할 때는 2개의 값이 나온다는 건가? 뭘 인자로 먼저 넣느냐에 따라인 건가?</q>
+    <span class="verdict half">아니요, 하나.</span>
+    <span class="sub">30°와 150°는 다른 두 상황이 같은 결과를 낸 것. 인자 순서를 바꾸면 방향이 정반대인 벡터 하나가 나온다.</span>
+  </div>
+  <div class="quote">
+    <q>외적으로는 벡터도 나온다고 하지 않았어? 그 벡터가 곧 방향 아님?</q>
+    <span class="verdict ok">맞음.</span>
+    <span class="sub">방향 칸은 믿어도 된다. 못 믿는 건 길이 칸으로 "얼만큼"을 구하는 것.</span>
+  </div>
+  <div class="quote">
+    <q>C의 크기가 sin 값이라는 건가?</q>
+    <span class="verdict ok">맞음 (A, B가 길이 1일 때).</span>
+    <span class="sub">C의 길이 = A와 B가 펼친 평행사변형의 넓이 = 밑변 1 × 높이 sin.</span>
+  </div>
+  <div class="quote">
+    <q>그니까 외적으로 회전축도 구하고 얼만큼 회전을 시키려고 했을 때가 문제다?</q>
+    <span class="verdict ok">정확히 맞음.</span>
+    <span class="sub">30°/150° 이야기의 핵심을 설명 듣기 전에 먼저 집어냄.</span>
+  </div>
+  <div class="quote">
+    <q>걍 무시하고 외적의 값으로 진행시키면 타겟 위치가 30도에 있다는 가정의 타겟으로 가게 되나?</q>
+    <span class="verdict ok">맞음.</span>
+    <span class="sub">Asin(0.5) = 30°라서 올바른 쪽으로 30°만 돌고 멈춘다. 타겟과 120° 어긋남 → 실험 2.</span>
+  </div>
+</section>
+
+<section aria-labelledby="s9">
+  <h2 id="s9">7 · 다음에 복기할 때</h2>
+  <ol>
+    <li><b>이 노트를 보기 전에</b>, 빈 종이에 위 맨 처음 두 줄을 내 말로 먼저 써 본다. 막히는 곳이 오늘 다시 볼 곳이다.</li>
+    <li>실험 1에서 버튼을 ①→⑤ 순서대로 하나씩 누르고, 각 버튼마다 "왜 이렇게 나오지?"를 말로 해 본다. 답은 바로 아래 표에 있다.</li>
+    <li>실험 2에서 타겟을 30° → 150°로 옮기며 주황 화살표가 언제부터 틀리기 시작하는지 본다 (90°).</li>
+    <li>마지막으로 <code>Missile.cpp</code>를 열어 73~87번 줄을 보고, 줄마다 외적인지 내적인지 말해 본다.</li>
+  </ol>
+  <div class="tbl" style="margin-top:12px"><table>
+    <thead><tr><th>배웠다의 기준</th><th>2026-10-31 기준</th></tr></thead>
+    <tbody>
+      <tr><td>① Claude 없이 다시 만들기</td><td>미사일 유도는 이미 짰음. 빈 파일에서 다시는 아직 안 해 봄</td></tr>
+      <tr><td>② 조건이 바뀌면 어디를 고칠지</td><td>"외적 크기로 돌리면 뒤쪽에서 덜 돈다"를 스스로 예측함</td></tr>
+      <tr><td>③ 그림으로 설명하기</td><td>두 줄 정리를 말로 할 수 있음. 30°/150°를 그림 없이 설명하는 건 아직 흔들림</td></tr>
+      <tr><td>④ 다른 문제에서 알아보기</td><td>10-29 종이 torque에서 50°/130°로 같은 구조를 한 번 알아봄</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section aria-labelledby="s10">
+  <h2 id="s10">더 보기</h2>
+  <ul>
+    <li><a href="dot-cross.html">내적은 숫자, 외적은 화살표</a> — cos·sin을 그림자 조각·옆 조각으로, sin 곡선이 같은 값을 두 번 지나는 이유</li>
+    <li><a href="homing-turn.html">타겟 쪽으로 돌기</a> — 미사일 유도와 Min</li>
+    <li><a href="torque-skewer.html">꼬챙이로 보는 torque</a> — 외적 꼬챙이를 종이에서 3D로</li>
+    <li><a href="dot-product.html">내적은 그림자 길이다</a></li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const NS = 'http://www.w3.org/2000/svg';
+  function set(el, o){ for (const k in o) { el.setAttribute(k, o[k]); } }
+  function f(v){ const r = Math.round(v * 100) / 100; if (Math.abs(r) < 0.005) { return '0.00'; } return (r < 0 ? '−' : '') + Math.abs(r).toFixed(2); }
+  function fv(v){ return '(' + v.map(f).join(', ') + ')'; }
+
+  /* lab 1: 3D cross product, UE axes (X forward, Y right, Z up) */
+  const S = 120, CX = 320, CY = 265, D = 7;
+  const YAW0 = -45 * Math.PI / 180, PITCH0 = 25 * Math.PI / 180;
+  let yaw = YAW0, pitch = PITCH0;
+  let A = [1, 0, 0], B = [0, 1, 0];
+  function P(v){
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    const x1 = v[0] * c - v[1] * s, y1 = v[0] * s + v[1] * c, z1 = v[2];
+    const cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const up = z1 * cp + x1 * sp, dep = x1 * cp - z1 * sp;
+    const k = D / (D + dep);
+    return [CX + y1 * S * k, CY - up * S * k];
+  }
+  function L(id, a, b){ const p = P(a), q = P(b); set($(id), { x1: p[0], y1: p[1], x2: q[0], y2: q[1] }); }
+  function T(id, v, dy){ const p = P(v); set($(id), { x: p[0], y: p[1] + dy }); }
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const len = a => Math.sqrt(dot(a, a));
+  const grid = [];
+  for (let i = -3; i <= 3; i++) {
+    for (let j = 0; j < 2; j++) {
+      const l = document.createElementNS(NS, 'line');
+      set(l, { stroke: 'var(--muted)', 'stroke-width': 0.6, opacity: i === 0 ? 0.45 : 0.22 });
+      $('grid').appendChild(l);
+      grid.push([l, i * 0.5, j]);
+    }
+  }
+  function draw1(){
+    grid.forEach(([l, t, j]) => {
+      const a = j ? [t, -1.5, 0] : [-1.5, t, 0], b = j ? [t, 1.5, 0] : [1.5, t, 0];
+      const p = P(a), q = P(b);
+      set(l, { x1: p[0], y1: p[1], x2: q[0], y2: q[1] });
+    });
+    L('ax', [0, 0, 0], [1.7, 0, 0]); L('ay', [0, 0, 0], [0, 1.7, 0]); L('az', [0, 0, 0], [0, 0, 1.7]);
+    T('lx', [1.95, 0, 0], 4); T('ly', [0, 1.95, 0], 4); T('lz', [0, 0, 1.9], -2);
+    const C = cross(A, B);
+    const AB = [A[0] + B[0], A[1] + B[1], A[2] + B[2]];
+    $('para').setAttribute('points', [[0, 0, 0], A, AB, B].map(v => P(v).join(',')).join(' '));
+    L('va', [0, 0, 0], A); L('vb', [0, 0, 0], B); L('vc', [0, 0, 0], C);
+    const ext = v => { const n = len(v); return n < 1e-6 ? v : v.map(x => x * (n + 0.25) / n); };
+    T('ta', ext(A), 4); T('tb', ext(B), 4); T('tc', ext(C), 4);
+    $('tc').style.display = len(C) < 0.02 ? 'none' : '';
+    for (let i = 0; i < 3; i++) {
+      $('a' + i).value = A[i]; $('b' + i).value = B[i];
+      $('a' + i + 'o').textContent = f(A[i]); $('b' + i + 'o').textContent = f(B[i]);
+    }
+    const n = len(C);
+    $('cv').textContent = fv(C);
+    $('cs').textContent = f(n);
+    $('cn').textContent = n < 0.005 ? '(0, 0, 0) 축 없음' : fv(C.map(x => x / n));
+    $('ca').textContent = f(dot(C, A)); $('cb').textContent = f(dot(C, B));
+    $('cmsg').textContent = n < 0.005 ? 'C가 (0, 0, 0)이라 방향이 없어요 (A, B가 같은 선 위)' : '둘 다 0 → C는 A에도 B에도 수직';
+  }
+  for (let i = 0; i < 3; i++) {
+    $('a' + i).addEventListener('input', e => { A[i] = +e.target.value; draw1(); });
+    $('b' + i).addEventListener('input', e => { B[i] = +e.target.value; draw1(); });
+  }
+  const PRESET = { xy: [[1, 0, 0], [0, 1, 0]], '30': [[1, 0, 0], [0.87, 0.5, 0]], '150': [[1, 0, 0], [-0.87, 0.5, 0]], '180': [[1, 0, 0], [-1, 0, 0]], tilt: [[1, 0, 0], [0, 0.6, 0.8]] };
+  document.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => { const p = PRESET[b.dataset.p]; A = p[0].slice(); B = p[1].slice(); draw1(); }));
+  $('swap').addEventListener('click', () => { const t = A; A = B; B = t; draw1(); });
+  $('rv').addEventListener('click', () => { yaw = YAW0; pitch = PITCH0; draw1(); });
+  const sv = $('sv3');
+  let drag = null;
+  sv.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; sv.setPointerCapture(e.pointerId); sv.style.cursor = 'grabbing'; });
+  sv.addEventListener('pointermove', e => {
+    if (!drag) { return; }
+    yaw += (e.clientX - drag[0]) * 0.01;
+    pitch = Math.max(-1.3, Math.min(1.4, pitch + (e.clientY - drag[1]) * 0.01));
+    drag = [e.clientX, e.clientY];
+    draw1();
+  });
+  const endDrag = () => { drag = null; sv.style.cursor = 'grab'; };
+  sv.addEventListener('pointerup', endDrag);
+  sv.addEventListener('pointercancel', endDrag);
+  draw1();
+
+  /* lab 2: turn by Acos(dot) vs Asin(|cross|), top view */
+  const O = { x: 210, y: 210 }, R = 150;
+  const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+  const tip = d => [O.x + R * Math.cos(rad(d)), O.y - R * Math.sin(rad(d))];
+  function arc(d1, d2){
+    const r = R + 14, a = Math.min(d1, d2), b = Math.max(d1, d2);
+    if (b - a < 0.5) { return ''; }
+    const p = [O.x + r * Math.cos(rad(a)), O.y - r * Math.sin(rad(a))];
+    const q = [O.x + r * Math.cos(rad(b)), O.y - r * Math.sin(rad(b))];
+    return 'M ' + p[0] + ' ' + p[1] + ' A ' + r + ' ' + r + ' 0 0 0 ' + q[0] + ' ' + q[1];
+  }
+  function draw2(t){
+    const c = Math.cos(rad(t)), s = Math.sin(rad(t));
+    const byAcos = deg(Math.acos(Math.max(-1, Math.min(1, c))));
+    const byAsin = deg(Math.asin(Math.max(-1, Math.min(1, s))));
+    const p0 = tip(t), p1 = tip(byAcos), p2 = tip(byAsin);
+    set($('tgt'), { x2: p0[0], y2: p0[1] });
+    set($('rAc'), { x2: p1[0], y2: p1[1] });
+    set($('rAs'), { x2: p2[0], y2: p2[1] });
+    $('gap').setAttribute('d', arc(byAsin, t));
+    $('tgOut').textContent = t + '°';
+    $('r0').textContent = t + '°';
+    $('r1').textContent = byAcos.toFixed(0) + '°';
+    $('r2').textContent = byAsin.toFixed(0) + '°  (외적 크기 ' + s.toFixed(2) + ')';
+    $('r3').textContent = Math.abs(t - byAcos).toFixed(0) + '°';
+    $('r4').textContent = Math.abs(t - byAsin).toFixed(0) + '°';
+    $('r5').textContent = t <= 90 ? '앞쪽 타겟: 둘 다 정확히 타겟을 봄' : '뒤쪽 타겟: 외적 크기로 구하면 ' + Math.abs(t - byAsin).toFixed(0) + '° 덜 돎';
+  }
+  $('tg').addEventListener('input', e => draw2(+e.target.value));
+  document.querySelectorAll('[data-t]').forEach(b => b.addEventListener('click', () => { $('tg').value = b.dataset.t; draw2(+b.dataset.t); }));
+  draw2(150);
+})();
+</script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "FVector::CrossProduct": "UE C++의 외적. 결과는 벡터(FVector) 하나. 방향 = 회전축, 길이 = sin(사이 각도). Unity는 Vector3.Cross",
+  "FVector::DotProduct": "UE C++의 내적. 결과는 숫자 하나. 길이 1끼리면 cos(사이 각도). Unity는 Vector3.Dot",
+  "Vector3.Cross": "Unity C#의 외적. UE의 FVector::CrossProduct와 같은 공식",
+  "Vector3.Dot": "Unity C#의 내적. UE의 FVector::DotProduct",
+  ".GetSafeNormal": "길이를 1로 맞춰 방향만 남김. 외적에서는 길이 칸(sin)을 버리고 축 방향만 씀. 길이가 0이면 (0, 0, 0)",
+  "GetSafeNormal": "길이를 1로 맞춰 방향만 남김. 외적에서는 길이 칸(sin)을 버리고 축 방향만 씀. 길이가 0이면 (0, 0, 0)",
+  "C.GetSafeNormal": "외적 벡터 C의 방향 칸만 꺼냄 = 회전축",
+  "C.Size": "외적 벡터 C의 길이 칸 = A 길이 × B 길이 × sin(사이 각도)",
+  "c.magnitude": "Unity에서 벡터 길이. UE의 Size()",
+  "c.normalized": "Unity에서 길이 1로 맞춘 방향. UE의 GetSafeNormal()",
+  "FMath::Clamp": "값을 −1~1 사이로 자름. Acos 입력 범위를 지킴",
+  "FMath::Acos": "cos 값 → 각도(라디안). 0°~180°를 다 구별함. 내적에서 '얼만큼'을 꺼냄. Unity는 Mathf.Acos",
+  "FMath::RadiansToDegrees": "라디안 → 도",
+  "FMath::DegreesToRadians": "도 → 라디안. FQuat는 라디안을 받음",
+  "FMath::Min": "둘 중 작은 값. 남은 각도보다 많이 돌지 않게 함",
+  "FQuat": "회전 하나. FQuat(축, 라디안) = 그 축을 중심으로 그 각도만큼 도는 회전",
+  "AddActorWorldRotation": "액터를 월드 기준으로 주어진 회전만큼 더 돌림",
+  "ForwardVector": "미사일의 앞 방향 (길이 1)",
+  "ToTarget": "미사일에서 타겟 쪽을 가리키는 방향 (Normalize로 길이 1)",
+  "Rotate": "외적으로 구한 회전축 (길이 1). 이름은 TurnAxis가 더 뜻이 잘 보임",
+  "DotResult": "앞 방향과 타겟 방향의 내적 = cos(사이 각도)",
+  "Radian": "사이 각도 (라디안)",
+  "Angle": "사이 각도 (도). '얼만큼 돌지'",
+  "RotateSpeed": "이번 프레임에 실제로 돌 각도 (도)",
+  "TargetChaseRotateSpeedDeg": "초당 최대 회전 각도 (도). Details 패널에서 조절",
+  "DeltaTime": "지난 프레임부터 지난 시간 (초)"
+});
+</script>
+</body>
+</html>
