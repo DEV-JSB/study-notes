@@ -1,0 +1,64 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>경사면에 눕기 (faceSign)</title>
+<style>
+body{margin:0;padding:18px;background:#1e1e1e;color:#eee;font:15px/1.6 "Malgun Gothic",sans-serif}
+svg{display:block;width:100%;max-width:760px;background:#262626;border-radius:8px}
+.row{display:flex;align-items:center;gap:10px;max-width:760px;margin-top:8px}
+.row span:first-child{min-width:150px}
+#out{margin-top:12px;font-family:Consolas,monospace;font-size:14px;max-width:760px;background:#262626;padding:10px 12px;border-radius:8px;line-height:1.8}
+.k{color:#ffcc55}.g{color:#5fd38d}.r{color:#ff7a59}.b{color:#4aa3ff}
+</style></head><body><h2 style="margin:0 0 6px;font-size:20px">경사면에 눕기 — faceSign은 "덜 도는 쪽 고르기"</h2><p style="max-width:760px;color:#bbb;margin:0 0 10px">ProjectF · 2026-11-02 · PaperAero settle. 종이 각도를 20° → 160°로 밀어 보세요. 90°를 넘는 순간 목표(flatN)가 바닥 법선 반대쪽으로 뒤집힌다. 바닥 경사를 바꾸면 목표도 경사를 따라 기운다. 글 버전: <a style="color:#4aa3ff" href="slope-settle.md">slope-settle.md</a></p>
+<svg id="s" viewBox="0 0 760 360"></svg>
+<div class="row"><span>종이 각도</span><input type="range" id="pa" min="-180" max="180" value="20" style="flex:1"><span id="pal"></span></div>
+<div class="row"><span>바닥 경사</span><input type="range" id="fa" min="-35" max="35" value="0" style="flex:1"><span id="fal"></span></div>
+<div id="out"></div>
+<h3 style="margin:18px 0 6px;font-size:16px">누가 무엇을 정하나</h3>
+<pre style="max-width:760px;background:#262626;padding:12px;border-radius:8px;font:13px/1.7 Consolas,monospace;overflow-x:auto">float  faceSign = step(0.0f, dot(N, FloorN)) * 2.0f - 1.0f;  // 앞면/뒷면 중 덜 도는 쪽 (+1 / -1)
+float3 flatN    = FloorN * faceSign;                          // 목표: 바닥 법선 또는 그 반대
+float3 settle   = cross(N, flatN) * SettleSpeed;              // 축 = 외적 방향, 빠르기 = 외적 길이 × 8
+
+어느 축으로            cross(N, flatN)의 방향
+어느 쪽으로 (앞/뒷면)   faceSign  ← 10-29 꼬챙이 노트의 "내적 부호 = 앞뒤"와 같은 것
+얼마나 빨리            cross 길이(벌어질수록 김, 평행하면 0) × SettleSpeed → 다 누우면 저절로 멈춤
+이번 프레임에 얼마나    그 속도 × DeltaTime (쿼터니언 누적 줄)</pre>
+<p style="max-width:760px;color:#bbb">작업자 문장 (11-02): "종이 법선과 바닥 법선을 외적해서 돌릴 축을 정하고, faceSign으로 어느 쪽으로 돌릴지 정한다." — cross(N, FloorN × s) = s × cross(N, FloorN) 이라 코드와 같은 뜻.</p>
+<script>
+const cx=380,cy=230,L=110;
+const d2r=a=>a*Math.PI/180;
+function arrow(x1,y1,x2,y2,col,w){const a=Math.atan2(y2-y1,x2-x1),h=12;
+return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${w}"/><polygon points="${x2},${y2} ${x2-h*Math.cos(a-0.4)},${y2-h*Math.sin(a-0.4)} ${x2-h*Math.cos(a+0.4)},${y2-h*Math.sin(a+0.4)}" fill="${col}"/>`;}
+function T(x,y,t,c){return `<text x="${x}" y="${y}" fill="${c}" font-size="14" font-weight="bold">${t}</text>`;}
+function draw(){
+const pa=+document.getElementById('pa').value, fa=+document.getElementById('fa').value;
+document.getElementById('pal').textContent=pa+'°';document.getElementById('fal').textContent=fa+'°';
+// floor normal (2D: x right, y up)
+const F=[-Math.sin(d2r(fa)),Math.cos(d2r(fa))];
+// paper normal: rotate up by pa
+const N=[-Math.sin(d2r(pa)),Math.cos(d2r(pa))];
+const dot=N[0]*F[0]+N[1]*F[1];
+const sgn=dot>=0?1:-1;
+const flat=[F[0]*sgn,F[1]*sgn];
+const ang=Math.round(Math.acos(Math.max(-1,Math.min(1,N[0]*flat[0]+N[1]*flat[1])))*180/Math.PI);
+const angOther=180-ang;
+let s='';
+// floor
+const fx=Math.cos(d2r(fa)),fy=Math.sin(d2r(fa));
+s+=`<line x1="${cx-330*fx}" y1="${cy+40+330*fy}" x2="${cx+330*fx}" y2="${cy+40-330*fy}" stroke="#777" stroke-width="3"/>`;
+s+=T(30,340,'바닥','#999');
+// paper (perpendicular to N)
+const px=N[1],py=-N[0];
+s+=`<line x1="${cx-90*px}" y1="${cy+90*py}" x2="${cx+90*px}" y2="${cy-90*py}" stroke="#e8e4d8" stroke-width="6"/>`;
+// front face marker
+s+=`<line x1="${cx-90*px+5*N[0]}" y1="${cy+90*py-5*N[1]}" x2="${cx+90*px+5*N[0]}" y2="${cy-90*py-5*N[1]}" stroke="#5fd38d" stroke-width="3"/>`;
+// arrows
+s+=arrow(cx,cy,cx+F[0]*L*0.9,cy-F[1]*L*0.9,'#4aa3ff',3)+T(cx+F[0]*L*0.9+8,cy-F[1]*L*0.9,'FloorN','#4aa3ff');
+s+=arrow(cx,cy,cx+N[0]*L,cy-N[1]*L,'#5fd38d',4)+T(cx+N[0]*L+8,cy-N[1]*L+18,'N (앞면)','#5fd38d');
+s+=arrow(cx,cy,cx+flat[0]*L*1.3,cy-flat[1]*L*1.3,'#ff7a59',2)+T(cx+flat[0]*L*1.3+8,cy-flat[1]*L*1.3-6,'flatN (목표)','#ff7a59');
+document.getElementById('s').innerHTML=s;
+document.getElementById('out').innerHTML=
+`<span class="k">dot(N, FloorN)</span> = ${dot.toFixed(2)}  ← N의 그림자가 FloorN 쪽으로 얼마나 드리우나 (${dot>=0?'+ : 앞면이 바닥 위쪽을 봄':'− : 앞면이 바닥 쪽(아래)을 봄'})<br>`+
+`<span class="k">step(0, dot)</span> = ${dot>=0?1:0}  →  <span class="k">× 2 − 1</span> = <b>faceSign = ${sgn>0?'+1':'−1'}</b><br>`+
+`<span class="r">flatN = FloorN × ${sgn>0?'+1':'−1'}</span>  →  ${sgn>0?'바닥 법선 그대로 (앞면이 위로 누움)':'바닥 법선 반대 (뒷면이 위로 누움)'}<br>`+
+`N → flatN 까지 돌 각도: <b>${ang}°</b>   (faceSign이 없었다면 항상 FloorN으로 → <b>${sgn>0?ang:angOther}°</b>)<br>`+
+`<span style="color:#999">→ faceSign = "앞면으로 눕기 / 뒷면으로 눕기 중 덜 도는 쪽 고르기"</span>`;}
+document.getElementById('pa').oninput=draw;document.getElementById('fa').oninput=draw;draw();
+</script></body></html>

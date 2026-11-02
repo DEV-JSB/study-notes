@@ -1,0 +1,48 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>종이 휨 (WPO)</title>
+<style>
+body{margin:0;padding:20px;background:#1e1e1e;color:#eee;font:15px/1.6 "Malgun Gothic",sans-serif}
+h3{margin:18px 0 6px;font-size:16px;font-weight:600;color:#ddd}
+svg{display:block;width:100%;max-width:760px;background:#262626;border-radius:8px}
+.row{display:flex;align-items:center;gap:12px;max-width:760px;margin-top:10px}
+#tbl{margin-top:12px;font-family:Consolas,monospace;font-size:14px;max-width:760px;background:#262626;padding:10px 12px;border-radius:8px}
+.hint{color:#999;font-size:13px}
+</style></head><body><h2 style="margin:0 0 6px;font-size:20px">종이 휨 — 머티리얼 노드는 HLSL 다섯 줄</h2><p style="max-width:760px;color:#bbb;margin:0 0 10px">ProjectF · 2026-11-02 · M_Paper1의 World Position Offset. 점(꼭짓점)마다 "판의 어디쯤인가(U)"를 읽어서, 가운데는 그대로 두고 긴 쪽 양 끝만 판 법선 방향으로 들어 올린다. 글 버전: <a style="color:#4aa3ff" href="paper-bend.md">paper-bend.md</a></p>
+<h3>① 위에서 본 종이 — 점(꼭짓점)마다 "왼쪽 끝에서 몇 % 왔나" 번호표가 붙어 있음 = U</h3>
+<svg id="top" viewBox="0 0 760 210"></svg>
+<h3>② 옆에서 본 종이 — U로 "가운데냐 끝이냐"를 알면 끝만 들어 올릴 수 있음</h3>
+<svg id="side" viewBox="0 0 760 170"></svg>
+<div class="row"><span>휨 세기 (BendTest)</span><input type="range" id="b" min="-1" max="1" step="0.1" value="1" style="flex:1"><span id="bl">1.0</span></div>
+<div id="tbl"></div>
+<p class="hint">위 ① 그림의 점을 클릭하면 아래 숫자가 바뀌어요. 슬라이더로 휨 세기를 바꿔 보세요.</p>
+<h3>③ M_Paper1 노드 = HLSL 다섯 줄 (노드 하나가 한 줄)</h3>
+<pre style="max-width:760px;background:#262626;padding:12px;border-radius:8px;font:13px/1.7 Consolas,monospace;overflow-x:auto">float  u     = TexCoord.x;            // TexCoord → Mask(R)  : 이 점은 긴 쪽 어디쯤? (0~1)
+float  c     = (u - 0.5f) * 2.0f;     // ConstantBiasScale   : 가운데 0, 양 끝 ±1
+float  shape = c * c;                 // Multiply ①          : 가운데 0, 양 끝 1
+float  lift  = shape * Bend * 3.0f;   // Multiply ②③         : 몇 cm 들까 (Bend = Dynamic Parameter)
+float3 wpo   = lift * VertexNormalWS; // Multiply ④          : 판에 수직 방향으로 그만큼</pre>
+<h3>④ 어디서 오는 값인가</h3>
+<pre style="max-width:760px;background:#262626;padding:12px;border-radius:8px;font:13px/1.7 Consolas,monospace;overflow-x:auto">Particle Spawn   Set PARTICLES PaperBend = Random Range Float(-1, 1)      태어날 때 한 번
+Particle Update  Dynamic Material Parameters (맨 아래)
+                 Index 0 · Param1 = Particles.PaperBend * (1.0 - Particles.Landed)   바닥이면 0
+M_Paper1         Dynamic Parameter 첫 출력(Param1) → 위 Bend 자리</pre>
+<script>
+const N=7,U=[...Array(N)].map((_,i)=>i/(N-1));
+const x0=110,x1=650,xs=U.map(u=>x0+u*(x1-x0));let sel=1;
+const T=(x,y,t,a='middle',c='#bbb')=>`<text x="${x}" y="${y}" fill="${c}" font-size="13" text-anchor="${a}">${t}</text>`;
+function drawTop(){let s=`<rect x="${x0}" y="45" width="${x1-x0}" height="120" fill="#e8e4d8" opacity="0.12" stroke="#888"/>`;
+for(let r=0;r<5;r++)for(let i=0;i<N;i++){const y=45+r*30;s+=`<circle cx="${xs[i]}" cy="${y}" r="${i==sel?7:5}" fill="${i==sel?'#ff6a3d':'#aaa'}" style="cursor:pointer" onclick="pick(${i})"/>`;}
+for(let i=0;i<N;i++)s+=T(xs[i],30,'U='+(+U[i].toFixed(2)));
+s+=T(x0,195,'왼쪽 끝 (0)','start')+T((x0+x1)/2,195,'가운데 (0.5)')+T(x1,195,'오른쪽 끝 (1)','end');
+document.getElementById('top').innerHTML=s;}
+function side(){const b=+document.getElementById('b').value,base=105,amp=55;
+let s=`<line x1="${x0}" y1="${base}" x2="${x1}" y2="${base}" stroke="#666" stroke-dasharray="5 5"/>`+T(60,base+4,'원래 평평','middle','#888');
+let p=[];for(let k=0;k<=60;k++){const u=k/60,c=u*2-1;p.push((x0+u*(x1-x0))+','+(base-c*c*b*amp));}
+s+=`<polyline points="${p.join(' ')}" fill="none" stroke="#4aa3ff" stroke-width="3"/>`;
+for(let i=0;i<N;i++){const c=U[i]*2-1;s+=`<circle cx="${xs[i]}" cy="${base-c*c*b*amp}" r="${i==sel?7:5}" fill="${i==sel?'#ff6a3d':'#4aa3ff'}"/>`;}
+document.getElementById('side').innerHTML=s;
+const u=U[sel],c=u*2-1;
+document.getElementById('tbl').innerHTML=`빨간 점: U = ${u.toFixed(2)}<br>→ c = (U − 0.5) × 2 = ${c.toFixed(2)}   (가운데 0, 양 끝 ±1)<br>→ c² = ${(c*c).toFixed(2)}   (가운데 0, 양 끝 1)<br>→ 올라가는 높이 = c² × ${b.toFixed(1)} × 3cm = <b>${(c*c*b*3).toFixed(2)} cm</b>`;
+document.getElementById('bl').textContent=b.toFixed(1);}
+function pick(i){sel=i;drawTop();side();}
+document.getElementById('b').oninput=side;drawTop();side();
+</script></body></html>
