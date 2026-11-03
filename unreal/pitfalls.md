@@ -24,6 +24,9 @@
 | 빌드 에러 `MSB4019 … Rider … VC\v180 … 찾을 수 없습니다` | Rider의 MSBuild 선택 |
 | 배열에서 GET했는데 그 타입의 변수·함수가 검색에 안 나온다 | 와일드카드 GET이 Object로 굳음 |
 | `Can't parse default value 'None'` 경고 | 배열로 바꾼 변수의 기본값 |
+| `C1083 Cannot open include file: '….generated.h'` | IDE가 몰래 넣은 include |
+| 처음 Play엔 되던 게 두 번째부터 조용히 안 된다 | Details의 참조 칸이 None |
+| `TObjectPtr`와 `TWeakObjectPtr` 중 뭘 쓰나 / 가끔만 크래시 | 오브젝트 포인터 고르기 |
 
 ## 생성자에서 `AddDynamic` → 조용히 안 불림
 
@@ -154,6 +157,39 @@ UE_LOG(LogTemp, Warning, TEXT("Enter(%s)"), *Other->GetName());
 - **원인**: 단일 오브젝트일 때 저장된 기본값 문자열 `None`이 배열로 바꾼 뒤에도 남음
 - **해결**: Details → Default Value에서 원소를 ⊕로 추가했다가 🗑로 지움 → 빈 배열로 다시 저장. 크기를 정하는 게 아님 (BeginPlay의 SET이 통째로 바꿈)
 - 변수 타입을 바꿨다면, 그 변수를 쓰는 노드와 기본값을 다시 의심한다. 경고는 0개로 유지
+
+## IDE가 몰래 넣은 include → `C1083 … .generated.h`
+
+- **증상**: `AIBlueprintHelperLibrary.h(15): Error C1083 : Cannot open include file: 'AIBlueprintHelperLibrary.generated.h'` + `MSB3073 … 코드: 6` (2026-11-03, `Orbiter.cpp`)
+- **처음 의심**: 찍힌 파일이 엔진 파일이라 엔진 문제처럼 보인다
+- **원인**: `Orbiter.cpp`에 직접 쓰지 않은 `#include "Runtime/AIModule/Classes/Blueprint/AIBlueprintHelperLibrary.h"`가 있었다. 자동 완성에서 고른 이름 때문에 IDE가 넣은 것. AIModule이 `Build.cs` 의존 목록에 없어서 그 모듈의 `.generated.h` 경로가 안 열린다 (Epic 공식: 모듈 의존성은 `Build.cs`에)
+- **해결**: 안 쓰는 줄이라 지움. 정말 쓸 거면 `Build.cs`에 `"AIModule"` 추가
+- 에러는 **첫 번째만**. `MSB3073`은 결과일 뿐. 엔진 파일이 찍히면 **그걸 끌어온 내 파일**(바로 위 `Compile … Orbiter.cpp` 줄)로
+- `Runtime/…/Classes/…` 같은 긴 경로 include는 자동으로 들어간 걸 의심. 커밋 전에 `git diff`로 include 줄 보기
+
+## Details의 참조 칸이 None → 두 번째 Play부터 조용히 안 됨
+
+- **증상**: 선이 첫 Play에선 보였는데 두 번째부터 안 보인다. 코드는 한 글자도 안 바뀜 (2026-11-03, `AOrbitCenter`)
+- **원인**: 기둥 Details의 `Orbiter`(`TWeakObjectPtr<AActor>`)가 None → `IsValid() == false`로 `return`
+- **흔한 이유**: Play 중에 지정함(멈추면 사라짐, Epic 공식) / 지정하고 저장 안 한 채 에디터를 껐다 켬 / 헤더 변수 이름을 바꾼 뒤 다시 지정 안 함
+- **해결**: Play 멈춘 상태에서 지정 → Ctrl+S, 탭의 `*`가 없어지는지 확인
+- 디버깅 순서: ① 무엇이 바뀌었나 ② 코드가 그대로면 **데이터**(Details·저장)를 의심 ③ 그 결과가 나오는 길이 몇 개인가 ④ 가장 싼 확인부터
+- 레벨의 다른 액터는 **레벨에 놓인 인스턴스**의 Details에서만 고를 수 있다. 블루프린트 Class Defaults에서는 못 고름 (Epic 공식)
+
+## 오브젝트 포인터 고르기: `TObjectPtr` vs `TWeakObjectPtr`
+
+| | `TObjectPtr<T>` | `TWeakObjectPtr<T>` |
+|---|---|---|
+| 하는 일 | 강한 참조. `UPROPERTY`와 같이 쓰면 GC가 안 지움 | 약한 참조. 붙잡지 않음 |
+| 상대가 사라지면 | 바로 null이 안 될 수 있음 → `IsValid(Ptr)` | `.Get()`이 nullptr |
+| 주로 | 내 부품 (컴포넌트) | 남을 가리키기만 (타겟) |
+| 예 | 터렛 `DetectSphere` | 미사일 `TargetActor`, `AOrbitCenter::Orbiter` |
+
+- 기준: **붙잡아야 하나 / 살아 있으면 쓰고 없으면 그만인가**. UE5는 `UPROPERTY` 멤버에 맨 포인터 대신 `TObjectPtr` (Epic 공식)
+- 액터는 월드가 주인이라 `TObjectPtr`로 잡아도 `Destroy()`하면 사라진다 → 액터에선 **확인 방법**이 차이
+- **함정 ①** `UPROPERTY` 없는 맨 포인터 `AActor* Target;` — 상대가 사라져도 GC가 모르고 지워진 메모리를 가리킨 채 남음(dangling). **가끔만** 크래시라 원인 찾기가 제일 어렵다
+- **함정 ②** `TObjectPtr`를 `!= nullptr`로만 확인 — `Destroy()` 직후엔 아직 null이 아닐 수 있다. `IsValid()`로
+- 유니티 대조: `target != null`(Destroy되면 null처럼 보임) ↔ `IsValid`, C# `WeakReference` ↔ `TWeakObjectPtr`
 
 ## 작은 것들
 

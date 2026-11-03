@@ -80,6 +80,9 @@ ul{margin:0;padding-left:20px}
       <tr><td>빌드 에러 <code>MSB4019 … Rider … VC\v180</code></td><td><a href="#rider-msbuild">Rider의 MSBuild 선택</a></td></tr>
       <tr><td>배열에서 GET했는데 그 타입의 변수·함수가 검색에 안 나온다</td><td><a href="#wildcard-get">와일드카드 GET이 Object로 굳음</a></td></tr>
       <tr><td><code>Can't parse default value 'None'</code> 경고</td><td><a href="#array-default">배열로 바꾼 변수의 기본값</a></td></tr>
+      <tr><td><code>C1083 Cannot open include file: '….generated.h'</code></td><td><a href="#auto-include">IDE가 몰래 넣은 include</a></td></tr>
+      <tr><td>처음 Play엔 되던 게 두 번째부터 조용히 안 된다</td><td><a href="#ref-none">Details의 참조 칸이 None</a></td></tr>
+      <tr><td><code>TObjectPtr</code>와 <code>TWeakObjectPtr</code> 중 뭘 쓰나 / 가끔만 크래시</td><td><a href="#object-ptr">오브젝트 포인터 고르기</a></td></tr>
     </tbody>
   </table>
   </div>
@@ -377,6 +380,54 @@ Current value = None  은 둘 다 같다 (게임이 안 돌 때는 원래 None)<
   <p class="src">변수 타입을 바꿨다면, 그 변수를 쓰는 노드와 기본값을 다시 한 번 의심한다. 경고는 0개로 유지</p>
 </article>
 
+<article class="card" id="auto-include">
+  <h2>IDE가 몰래 넣은 include → <code>C1083 … .generated.h</code></h2>
+  <dl class="grid">
+    <dt>증상</dt><dd><code>AIBlueprintHelperLibrary.h(15): Error C1083 : Cannot open include file: 'AIBlueprintHelperLibrary.generated.h'</code> + <code>MSB3073 … 코드: 6</code> (2026-11-03, <code>Orbiter.cpp</code>)</dd>
+    <dt>처음 의심</dt><dd>찍힌 파일이 엔진 파일이라 엔진 문제처럼 보인다</dd>
+    <dt>원인</dt><dd>직접 쓰지 않은 <code>#include "Runtime/AIModule/Classes/Blueprint/AIBlueprintHelperLibrary.h"</code>를 IDE가 자동 완성 때 넣었다. AIModule이 <code>Build.cs</code> 의존 목록에 없어서 그 모듈의 <code>.generated.h</code> 경로가 안 열린다 (Epic 공식: 모듈 의존성은 <code>Build.cs</code>에)</dd>
+    <dt>해결</dt><dd>안 쓰는 줄이라 지움. 정말 쓸 거면 <code>Build.cs</code>에 <code>"AIModule"</code> 추가</dd>
+  </dl>
+  <pre>[1/8] Compile [x64] Orbiter.cpp            ← 끌어온 건 내 파일
+11>AIBlueprintHelperLibrary.h(15): Error C1083 ← 진짜 원인 (첫 번째 에러)
+11>… Error MSB3073 … (코드: 6)               ← 결과일 뿐</pre>
+  <p class="src"><code>Runtime/…/Classes/…</code> 같은 긴 경로 include는 자동으로 들어간 걸 의심. 커밋 전에 <code>git diff</code>로 include 줄 보기</p>
+</article>
+
+<article class="card" id="ref-none">
+  <h2>Details의 참조 칸이 None → 두 번째 Play부터 조용히 안 됨</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>선이 첫 Play에선 보였는데 두 번째부터 안 보인다. 코드는 한 글자도 안 바뀜 (2026-11-03, <code>AOrbitCenter</code>)</dd>
+    <dt>원인</dt><dd>기둥 Details의 <code>Orbiter</code>(<code>TWeakObjectPtr&lt;AActor&gt;</code>)가 None → <code>IsValid() == false</code>로 <code>return</code></dd>
+    <dt>흔한 이유</dt><dd>Play 중에 지정함(멈추면 사라짐, Epic 공식) / 지정하고 저장 안 한 채 에디터를 껐다 켬 / 헤더 변수 이름을 바꾼 뒤 다시 지정 안 함</dd>
+    <dt>해결</dt><dd>Play 멈춘 상태에서 지정 → Ctrl+S, 탭의 <code>*</code>가 없어지는지 확인</dd>
+  </dl>
+  <ul>
+    <li>① 무엇이 바뀌었나 → ② 코드가 그대로면 <b>데이터</b>(Details·저장)를 의심 → ③ 그 결과가 나오는 길이 몇 개인가 → ④ 가장 싼 확인부터</li>
+    <li>레벨의 다른 액터는 <b>레벨에 놓인 인스턴스</b>의 Details에서만 고를 수 있다. 블루프린트 Class Defaults에서는 못 고름 (Epic 공식)</li>
+  </ul>
+</article>
+
+<article class="card" id="object-ptr">
+  <h2>오브젝트 포인터 고르기: <code>TObjectPtr</code> vs <code>TWeakObjectPtr</code></h2>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th><code>TObjectPtr&lt;T&gt;</code></th><th><code>TWeakObjectPtr&lt;T&gt;</code></th></tr></thead>
+    <tbody>
+      <tr><td>하는 일</td><td>강한 참조. <code>UPROPERTY</code>와 같이 쓰면 GC가 안 지움</td><td>약한 참조. 붙잡지 않음</td></tr>
+      <tr><td>상대가 사라지면</td><td>바로 null이 안 될 수 있음 → <code>IsValid(Ptr)</code></td><td><code>.Get()</code>이 nullptr</td></tr>
+      <tr><td>주로</td><td>내 부품 (컴포넌트)</td><td>남을 가리키기만 (타겟)</td></tr>
+      <tr><td>예</td><td>터렛 <code>DetectSphere</code></td><td>미사일 <code>TargetActor</code>, <code>AOrbitCenter::Orbiter</code></td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>기준: <b>붙잡아야 하나 / 살아 있으면 쓰고 없으면 그만인가</b>. UE5는 <code>UPROPERTY</code> 멤버에 맨 포인터 대신 <code>TObjectPtr</code> (Epic 공식)</li>
+    <li>액터는 월드가 주인이라 <code>TObjectPtr</code>로 잡아도 <code>Destroy()</code>하면 사라진다 → 액터에선 <b>확인 방법</b>이 차이</li>
+    <li><span class="bad">함정 ①</span> <code>UPROPERTY</code> 없는 맨 포인터 <code>AActor* Target;</code> — 지워진 메모리를 가리킨 채 남음(dangling). <b>가끔만</b> 크래시라 원인 찾기가 제일 어렵다</li>
+    <li><span class="bad">함정 ②</span> <code>TObjectPtr</code>를 <code>!= nullptr</code>로만 확인 — <code>Destroy()</code> 직후엔 아직 null이 아닐 수 있다. <code>IsValid()</code>로</li>
+  </ul>
+  <p class="src">유니티 대조: <code>target != null</code>(Destroy되면 null처럼 보임) ↔ <code>IsValid</code>, C# <code>WeakReference</code> ↔ <code>TWeakObjectPtr</code></p>
+</article>
+
 <!-- 12 -->
 <article class="card">
   <h2>작은 것들</h2>
@@ -399,6 +450,7 @@ Current value = None  은 둘 다 같다 (게임이 안 돌 때는 원래 None)<
   <ul>
     <li><a href="../game-math/radar-cone.html">레이더 원뿔 판정</a> — 내적 판정을 직접 돌려 보기</li>
     <li><a href="https://github.com/DEV-JSB/study-notes/blob/main/gamemathlab/devlog/2026-10-25-GameMathLab.md">2026-10-25 개발 일지</a> — 이 함정들을 겪은 날</li>
+    <li><a href="https://github.com/DEV-JSB/study-notes/blob/main/gamemathlab/devlog/2026-11-03-GameMathLab.md">2026-11-03 개발 일지</a> — 자동 include, 참조 None, 포인터 고르기</li>
   </ul>
 </section>
 </main>
