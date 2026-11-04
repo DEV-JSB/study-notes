@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>오카리나 리메이크 리뷰 해석</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Serif:ital,wght@0,400;1,400&display=swap">
+<style>
+/* layout: one reading column. 원문 → 덩어리별 비교(원문 / 내 해석 / 모범 해석 / 짚을 점) → 고칠 점 요약 */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --accent:#178a66; --mine:#2f6fd0; --warn:#d2552a; --soft:#eef1f5;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --serif:"IBM Plex Serif",Georgia,serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --accent:#4cc79c; --mine:#6aa3f0; --warn:#f08a5d; --soft:#222a35; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --accent:#4cc79c; --mine:#6aa3f0; --warn:#f08a5d; --soft:#222a35; color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 72px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0 0 10px;text-wrap:balance}
+p{margin:0}
+a{color:var(--accent)}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);font-family:var(--mono)}
+.eyebrow a{color:inherit}
+.lead{color:var(--muted)}
+.sub{font-size:14px;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.en{font-family:var(--serif);font-size:18px;line-height:1.8}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.stat b{display:block;font-family:var(--mono);font-size:28px;font-weight:500;line-height:1.2}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;padding:5px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.chunks{display:flex;flex-direction:column;gap:16px}
+.chunk{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.chunk .en{padding:16px 20px;border-bottom:1px solid var(--line)}
+.chunk .num{font-family:var(--mono);font-size:12px;color:var(--muted);margin-right:8px}
+.rows{display:grid;grid-template-columns:88px minmax(0,1fr);}
+.rows>*{padding:10px 20px;border-bottom:1px solid var(--line)}
+.rows>.k{font-size:13px;color:var(--muted);padding-right:0}
+.rows>.k.mine{color:var(--mine)} .rows>.k.good{color:var(--accent)}
+.rows>.v.mine{color:var(--muted)}
+.ans{transition:filter .15s}
+.hide-ans .ans{filter:blur(6px);cursor:pointer;user-select:none}
+.hide-ans .ans.peek{filter:none}
+.notes{padding:12px 20px 16px;display:flex;flex-direction:column;gap:8px}
+.notes li{list-style:none;display:flex;gap:10px;align-items:baseline}
+.notes ul{margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.tag{flex:none;font-size:12px;font-family:var(--mono);padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.crit{border-color:var(--warn);color:var(--warn)}
+.tag.ok{border-color:var(--accent);color:var(--accent)}
+.def{border-left:3px solid var(--accent);padding:4px 0 4px 16px}
+.tbl{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+th{font-weight:500;color:var(--muted);font-size:13px}
+ul.plain{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+code{font-family:var(--mono);font-size:.92em}
+.next{border:1px solid var(--accent);border-radius:12px;padding:16px 20px;display:flex;flex-direction:column;gap:6px}
+@media (max-width:560px){
+  .rows{grid-template-columns:minmax(0,1fr)}
+  .rows>.k{padding-bottom:0;border-bottom:0}
+  .stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .stat{padding:12px}
+  .stat b{font-size:22px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow"><a href="../../index.html">study-notes</a> / english / 원문 해석 · 2026-11-04</span>
+  <h1>시간의 오카리나 리메이크 리뷰 한 문단</h1>
+  <p class="lead">게임 리뷰의 결론 문단. 처음엔 영어 어순 그대로 단어를 늘어놓았고, 그중 한 곳은 뜻이 정반대가 됐다. 덩어리마다 내 해석과 모범 해석을 나란히 놓고 무엇이 달랐는지 짚는다.</p>
+</header>
+
+<section class="card" aria-labelledby="h-src">
+  <h2 id="h-src" style="margin:0">원문</h2>
+  <p class="en" lang="en">The Legend of Zelda: Ocarina of Time Remake feels designed for new players <span class="w" data-k="first and foremost">first and foremost</span>, letting new generations see what made us fall in love with it <span class="w" data-k="back in the day">back in the day</span>, and <span class="w" data-k="in that regard">in that regard</span>, it succeeds <span class="w" data-k="with flying colors">with flying colors</span>. While some decisions and directions in this remake may <span class="w" data-k="keep A from -ing">keep me from</span> <span class="w" data-k="reach for">reaching for</span> it again <span class="w" data-k="anytime soon">anytime soon</span>, Ocarina of Time is a classic <span class="w" data-k="tale">tale</span> and <span class="w" data-k="remain">remains</span> a <span class="w" data-k="standout">standout</span> <span class="w" data-k="among">among</span> the <span class="w" data-k="pantheon">pantheon</span> of the Zelda titles, and this remake is a great <span class="w" data-k="a showing of">showing of</span> why, even with its <span class="w" data-k="blemish">blemishes</span>.</p>
+  <p class="sub">밑줄 친 표현에 마우스를 올리거나 탭하면 뜻이 나온다. 게임 리뷰 기사에서 학습용으로 발췌.</p>
+</section>
+
+<section class="stats" aria-label="요약 숫자">
+  <div class="stat"><b>6</b><span class="sub">문장 덩어리</span></div>
+  <div class="stat"><b>14</b><span class="sub">새 표현</span></div>
+  <div class="stat"><b>9</b><span class="sub">고칠 점</span></div>
+</section>
+
+<section id="cmp" aria-labelledby="h-cmp">
+  <div class="bar" style="margin-bottom:12px">
+    <h2 id="h-cmp" style="margin:0">덩어리별로 비교</h2>
+    <button id="hideBtn" type="button" aria-pressed="false">모범 해석 가리기</button>
+  </div>
+  <p class="sub" style="margin-bottom:14px">다시 풀어 볼 때는 모범 해석을 가리고 먼저 직접 옮겨 본 다음, 흐린 칸을 눌러 맞춰 보기.</p>
+  <div class="chunks">
+
+    <article class="chunk">
+      <p class="en" lang="en"><span class="num">1</span>The Legend of Zelda: Ocarina of Time Remake feels designed for new players <span class="w" data-k="first and foremost">first and foremost</span>,</p>
+      <div class="rows">
+        <span class="k mine">내 해석</span><span class="v mine">시간의 오카리나는 느껴진다 디자인되었다는게, 새로운 플레이어들의 첫 그리고 foremost??</span>
+        <span class="k good">모범 해석</span><span class="v ans">시간의 오카리나 리메이크는 무엇보다도 새로운 플레이어를 위해 만들어진 것처럼 느껴진다</span>
+      </div>
+      <div class="notes"><ul>
+        <li><span class="tag">관용구</span><span><b>first and foremost</b>는 한 덩어리로 "무엇보다도". first를 따로 떼어 "첫"으로 읽으면 안 된다</span></li>
+        <li><span class="tag">문법</span><span><b>feels + 과거분사</b> = "~된 것처럼 느껴진다". feels (being) designed의 줄임</span></li>
+        <li><span class="tag">어휘</span><span><b>for new players</b>는 "플레이어들의"가 아니라 "플레이어를 위해"</span></li>
+      </ul></div>
+    </article>
+
+    <article class="chunk">
+      <p class="en" lang="en"><span class="num">2</span>letting new generations see what made us fall in love with it <span class="w" data-k="back in the day">back in the day</span>,</p>
+      <div class="rows">
+        <span class="k mine">내 해석</span><span class="v mine">새로운 세대는 본다 무엇을 만들어진 사랑에 빠진 함께 과거의?</span>
+        <span class="k good">모범 해석</span><span class="v ans">그 시절 우리가 이 게임에 빠졌던 이유를 새로운 세대도 직접 볼 수 있게 해 주며</span>
+      </div>
+      <div class="notes"><ul>
+        <li><span class="tag">문법</span><span><b>, letting ~</b> 은 앞 문장에 이어지는 분사구문. 새 문장으로 끊지 말고 "~하게 해 주며"로 붙인다</span></li>
+        <li><span class="tag">문법</span><span><b>let + 사람 + 동사원형</b> = "사람이 ~하게 해 주다". new generations가 see의 주인</span></li>
+        <li><span class="tag">문법</span><span><b>what made us fall in love</b>: what은 "무엇을"(목적어)이 아니라 주어. "우리를 사랑에 빠지게 만든 것" → 자연스럽게 "우리가 빠졌던 이유". make + 목적어 + 동사원형</span></li>
+        <li><span class="tag">관용구</span><span><b>back in the day</b> = "그 시절에". "함께 과거의"처럼 단어별로 나누면 뜻이 안 나온다</span></li>
+      </ul></div>
+    </article>
+
+    <article class="chunk">
+      <p class="en" lang="en"><span class="num">3</span>and <span class="w" data-k="in that regard">in that regard</span>, it succeeds <span class="w" data-k="with flying colors">with flying colors</span>.</p>
+      <div class="rows">
+        <span class="k mine">내 해석</span><span class="v mine">그리고 regard가 뭐지? 이것은 성공했다 flying colors가 뭘 뜻하는거지..?</span>
+        <span class="k good">모범 해석</span><span class="v ans">그런 점에서 이 작품은 훌륭하게 성공했다.</span>
+      </div>
+      <div class="notes"><ul>
+        <li><span class="tag ok">잘함</span><span>모르는 두 표현을 정확히 짚었고, "이것은 성공했다" 뼈대는 맞았다</span></li>
+        <li><span class="tag">관용구</span><span><b>in that regard</b> = "그런 점에서", <b>with flying colors</b> = "훌륭하게"</span></li>
+      </ul></div>
+    </article>
+
+    <article class="chunk">
+      <p class="en" lang="en"><span class="num">4</span>While some decisions and directions in this remake may <span class="w" data-k="keep A from -ing">keep me from</span> <span class="w" data-k="reach for">reaching for</span> it again <span class="w" data-k="anytime soon">anytime soon</span>,</p>
+      <div class="rows">
+        <span class="k mine">내 해석</span><span class="v mine">몇몇 decisions 그리고 방향은 리메이크 아마도 유지가 되었다 나에게 탐색 이걸 곧 할 수 있도록,</span>
+        <span class="k good">모범 해석</span><span class="v ans">이번 리메이크의 몇몇 결정과 방향성 때문에 당분간 다시 손이 가지는 않을 것 같지만,</span>
+      </div>
+      <div class="notes"><ul>
+        <li><span class="tag crit">뜻 반대</span><span><b>keep A from -ing</b> = "A가 ~하지 못하게 하다". "~할 수 있도록"으로 읽어서 문장 뜻이 정반대가 됐다. 이 페이지에서 가장 큰 실수</span></li>
+        <li><span class="tag">문법</span><span>문장 맨 앞 <b>While</b> 은 "~동안"이 아니라 "~이긴 하지만"(양보). 뒤 문장과 대비된다</span></li>
+        <li><span class="tag">어휘</span><span><b>reach for it</b> = 손을 뻗어 집다 → "다시 손이 가다". "탐색"이 아니다. <b>anytime soon</b> = "당분간"</span></li>
+        <li><span class="tag">어순</span><span>주어 <code>some decisions and directions in this remake</code> 를 한 덩어리로 묶으면 "리메이크의 몇몇 결정과 방향성"이 바로 나온다</span></li>
+      </ul></div>
+    </article>
+
+    <article class="chunk">
+      <p class="en" lang="en"><span class="num">5</span>Ocarina of Time is a classic <span class="w" data-k="tale">tale</span> and <span class="w" data-k="remain">remains</span> a <span class="w" data-k="standout">standout</span> <span class="w" data-k="among">among</span> the <span class="w" data-k="pantheon">pantheon</span> of the Zelda titles,</p>
+      <div class="rows">
+        <span class="k mine">내 해석</span><span class="v mine">시간의 오카리나는 클래식 꼬리 그리고 남긴다 스탠드아웃 동안 젤다의 판테온 타이틀,</span>
+        <span class="k good">모범 해석</span><span class="v ans">시간의 오카리나는 고전 명작이며 젤다 시리즈의 쟁쟁한 작품들 사이에서도 여전히 돋보이는 작품이고,</span>
+      </div>
+      <div class="notes"><ul>
+        <li><span class="tag">어휘</span><span><b>tale</b>(이야기) ≠ tail(꼬리). 발음이 같다</span></li>
+        <li><span class="tag">문법</span><span><b>remains + 명사</b> = "여전히 ~이다"(2형식). 뒤에 보어가 오면 "남기다"(leave)가 아니다</span></li>
+        <li><span class="tag">어휘</span><span><b>among</b>(~ 사이에서) ≠ during(~동안)</span></li>
+        <li><span class="tag">어휘</span><span><b>pantheon</b> = 만신전 → "명작 반열". the pantheon of the Zelda titles = "젤다 시리즈의 쟁쟁한 작품들"</span></li>
+      </ul></div>
+    </article>
+
+    <article class="chunk">
+      <p class="en" lang="en"><span class="num">6</span>and this remake is a great <span class="w" data-k="a showing of">showing of</span> why, even with its <span class="w" data-k="blemish">blemishes</span>.</p>
+      <div class="rows">
+        <span class="k mine">내 해석</span><span class="v mine">그리고 이 리메이크는 보여준다 왜 심지어 함께 blemishes를.</span>
+        <span class="k good">모범 해석</span><span class="v ans">이 리메이크는 몇몇 흠에도 불구하고 그 이유를 잘 보여준다.</span>
+      </div>
+      <div class="notes"><ul>
+        <li><span class="tag ok">잘함</span><span>"이 리메이크는 왜인지 보여준다" 뼈대를 잡았다</span></li>
+        <li><span class="tag">문법</span><span><b>why</b> 뒤가 생략됐다: why (Ocarina of Time remains a standout). 앞 문장에서 찾아 채워 읽기</span></li>
+        <li><span class="tag">관용구</span><span><b>even with ~</b> = "~에도 불구하고". with를 "함께"로 직역하면 어색해진다</span></li>
+      </ul></div>
+    </article>
+
+  </div>
+</section>
+
+<section aria-labelledby="h-full">
+  <h2 id="h-full">모범 해석 전체</h2>
+  <p class="def ans">젤다의 전설: 시간의 오카리나 리메이크는 무엇보다도 새로운 플레이어를 위해 만들어진 것처럼 느껴진다. 그 시절 우리가 이 게임에 빠졌던 이유를 새로운 세대도 직접 볼 수 있게 해 주며, 그런 점에서 이 작품은 훌륭하게 성공했다. 이번 리메이크의 몇몇 결정과 방향성 때문에 당분간 다시 손이 가지는 않을 것 같지만, 시간의 오카리나는 고전 명작이며 젤다 시리즈의 쟁쟁한 작품들 사이에서도 여전히 돋보이는 작품이고, 이 리메이크는 몇몇 흠에도 불구하고 그 이유를 잘 보여준다.</p>
+</section>
+
+<section aria-labelledby="h-fix">
+  <h2 id="h-fix">고칠 점 한눈에</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>유형</th><th>무엇을</th><th>이렇게</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag crit">뜻 반대</span></td><td>keep A from -ing</td><td>"~하지 못하게 하다"</td></tr>
+      <tr><td><span class="tag">어휘</span></td><td>tale / tail, among / during</td><td>철자와 전치사를 한 번 더 확인</td></tr>
+      <tr><td><span class="tag">문법</span></td><td>what이 주어인 절</td><td>what + 동사 = "~하는 것"</td></tr>
+      <tr><td><span class="tag">문법</span></td><td>remain + 보어</td><td>"여전히 ~이다"</td></tr>
+      <tr><td><span class="tag">문법</span></td><td>, letting ~ 분사구문</td><td>앞 문장에 "~하며"로 잇기</td></tr>
+      <tr><td><span class="tag">문법</span></td><td>While 양보절</td><td>"~이긴 하지만"</td></tr>
+      <tr><td><span class="tag">문법</span></td><td>why 뒤 생략</td><td>앞 문장에서 채워 읽기</td></tr>
+      <tr><td><span class="tag">관용구</span></td><td>back in the day, even with</td><td>덩어리로 외우기</td></tr>
+      <tr><td><span class="tag">어순</span></td><td>단어를 영어 순서대로 나열</td><td>주어·동사부터 찾고 한국어 어순으로 재배열</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="next" aria-labelledby="h-next">
+  <h2 id="h-next" style="margin:0">다음에 할 것</h2>
+  <ul class="plain">
+    <li>해석하기 전에 <b>주어와 동사</b>에 먼저 표시하고, 쉼표마다 덩어리를 끊어 읽기</li>
+    <li>문장이 <b>While / Although</b>로 시작하면 뒤에 반대 이야기가 온다고 예상하기</li>
+    <li><b>keep · prevent · stop + A + from -ing</b> 세 개를 묶어서 외우기</li>
+  </ul>
+</section>
+
+<section aria-labelledby="h-voc">
+  <h2 id="h-voc">이번에 나온 표현</h2>
+  <p>14개를 <a href="../vocab.html">단어장</a>에 넣었다. 단어장에서 뜻을 가리고 혼자 시험해 볼 수 있다.</p>
+</section>
+</main>
+
+<script src="../vocab.js"></script>
+<script src="../word-tips.js"></script>
+<script>
+(function(){
+  const btn=document.getElementById('hideBtn');
+  let on=false;
+  try{on=localStorage.getItem('enHideAns')==='1';}catch(e){}
+  function paint(){
+    document.body.classList.toggle('hide-ans',on);
+    btn.setAttribute('aria-pressed',String(on));
+    btn.textContent=on?'모범 해석 보이기':'모범 해석 가리기';
+    document.querySelectorAll('.ans').forEach(a=>{a.classList.remove('peek');a.tabIndex=on?0:-1;a.title=on?'눌러서 보기':'';});
+  }
+  btn.addEventListener('click',()=>{on=!on;try{localStorage.setItem('enHideAns',on?'1':'0');}catch(e){}paint();});
+  document.querySelectorAll('.ans').forEach(a=>{
+    const peek=()=>{if(on)a.classList.toggle('peek');};
+    a.addEventListener('click',peek);
+    a.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();peek();}});
+  });
+  paint();
+})();
+</script>
+</body>
+</html>

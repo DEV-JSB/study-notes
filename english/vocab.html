@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>영어 단어장</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Serif:ital,wght@0,400;1,400&display=swap">
+<style>
+/* layout: one column. 검색·필터 막대 → 단어 목록(한 줄에 표제어·뜻, 아래에 원문 쓰임과 출처) */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --accent:#178a66; --warn:#d2552a; --soft:#eef1f5;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --serif:"IBM Plex Serif",Georgia,serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --accent:#4cc79c; --warn:#f08a5d; --soft:#222a35; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --accent:#4cc79c; --warn:#f08a5d; --soft:#222a35; color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 72px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-size:28px;font-weight:500;margin:0}
+p{margin:0}
+a{color:var(--accent)}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);font-family:var(--mono)}
+.eyebrow a{color:inherit}
+.lead{color:var(--muted)}
+.sub{font-size:14px;color:var(--muted)}
+.tools{display:flex;flex-direction:column;gap:12px;position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 0;border-bottom:1px solid var(--line)}
+input[type=search]{font:inherit;width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+input[type=search]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row .sp{flex:1}
+button{font:inherit;font-size:13px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.count{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+.item{padding:14px 18px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.item:first-child{border-top:0}
+.head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.en{font-family:var(--serif);font-size:19px}
+.tag{font-size:12px;font-family:var(--mono);padding:0 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.ko{font-weight:500}
+.ex{font-family:var(--serif);font-style:italic;color:var(--muted);font-size:15px}
+.ex mark{background:none;color:var(--fg);font-style:normal;text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:3px}
+.note{font-size:14px;color:var(--muted)}
+.meta{font-size:12px;font-family:var(--mono);color:var(--muted)}
+.meta a{color:inherit}
+.quiz .ko,.quiz .note{filter:blur(6px);cursor:pointer;user-select:none;transition:filter .15s}
+.quiz .item.peek .ko,.quiz .item.peek .note{filter:none}
+.empty{padding:24px 18px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:8px">
+  <span class="eyebrow"><a href="../index.html">study-notes</a> / english / 단어장</span>
+  <h1>영어 단어장</h1>
+  <p class="lead">원문을 직접 해석하다 막힌 표현만 모은 목록. 원문 속 쓰임과 처음 나온 해석 기록이 함께 붙어 있다.</p>
+</header>
+
+<div class="tools">
+  <input id="q" type="search" placeholder="영어나 뜻으로 찾기 (예: keep, 이야기)" aria-label="단어 검색">
+  <div class="row" role="group" aria-label="종류">
+    <button data-kind="" aria-pressed="true">전체</button>
+    <button data-kind="단어" aria-pressed="false">단어</button>
+    <button data-kind="숙어" aria-pressed="false">숙어</button>
+    <button data-kind="문법" aria-pressed="false">문법</button>
+    <span class="sp"></span>
+    <button id="sort" aria-pressed="false">ABC순</button>
+    <button id="quiz" aria-pressed="false">뜻 가리기</button>
+  </div>
+  <span id="count" class="count"></span>
+</div>
+
+<div id="list" class="list" aria-live="polite"></div>
+</main>
+
+<script src="vocab.js"></script>
+<script>
+(function(){
+  const data=(window.VOCAB||[]).map((v,i)=>Object.assign({i},v));
+  const list=document.getElementById('list'),q=document.getElementById('q'),cnt=document.getElementById('count');
+  const sortBtn=document.getElementById('sort'),quizBtn=document.getElementById('quiz');
+  let kind='',abc=false,quiz=false;
+  try{quiz=localStorage.getItem('enVocabQuiz')==='1';}catch(e){}
+
+  function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
+  function exLine(v){
+    const p=el('p','ex');const s=v.ex||'';const idx=v.hit?s.indexOf(v.hit):-1;
+    if(idx<0){p.textContent='“'+s+'”';return p;}
+    p.append('“'+s.slice(0,idx),el('mark',null,v.hit),s.slice(idx+v.hit.length)+'”');
+    return p;
+  }
+  function render(){
+    const t=q.value.trim().toLowerCase();
+    let rows=data.filter(v=>(!kind||v.kind===kind)&&(!t||(v.en+' '+v.ko+' '+(v.note||'')).toLowerCase().includes(t)));
+    rows.sort(abc?(a,b)=>a.en.localeCompare(b.en):(a,b)=>(b.date.localeCompare(a.date))||(a.i-b.i));
+    list.textContent='';
+    if(!rows.length){list.appendChild(el('p','empty','찾는 표현이 없어요.'));}
+    rows.forEach(v=>{
+      const it=el('div','item');it.tabIndex=quiz?0:-1;
+      const h=el('div','head');h.append(el('span','en',v.en),el('span','tag',v.kind));
+      it.append(h,el('span','ko',v.ko));
+      if(v.ex)it.append(exLine(v));
+      if(v.note)it.append(el('span','note',v.note));
+      const meta=el('span','meta');const a=el('a',null,v.date+' 해석 기록');a.href=v.src;meta.append(a);it.append(meta);
+      const peek=e=>{if(quiz&&!(e.target.closest&&e.target.closest('a')))it.classList.toggle('peek');};
+      it.addEventListener('click',peek);
+      it.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();peek(e);}});
+      list.appendChild(it);
+    });
+    cnt.textContent=rows.length+' / '+data.length+'개';
+  }
+  function paintQuiz(){
+    document.body.classList.toggle('quiz',quiz);
+    quizBtn.setAttribute('aria-pressed',String(quiz));
+    quizBtn.textContent=quiz?'뜻 보이기':'뜻 가리기';
+  }
+  q.addEventListener('input',render);
+  document.querySelectorAll('button[data-kind]').forEach(b=>b.addEventListener('click',()=>{
+    kind=b.dataset.kind;document.querySelectorAll('button[data-kind]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));render();}));
+  sortBtn.addEventListener('click',()=>{abc=!abc;sortBtn.setAttribute('aria-pressed',String(abc));render();});
+  quizBtn.addEventListener('click',()=>{quiz=!quiz;try{localStorage.setItem('enVocabQuiz',quiz?'1':'0');}catch(e){}paintQuiz();render();});
+  paintQuiz();render();
+})();
+</script>
+</body>
+</html>
