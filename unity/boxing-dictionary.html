@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>박싱과 Dictionary</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: question → measured table → where the bytes come from → key lookup paths (toggle) → when boxing happens */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --ok:#178a66; --bad:#d23b3b; --info:#2f6fd0; --warn:#d2552a;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;padding-inline:16px;padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0;text-wrap:balance}
+h3{font-size:17px;font-weight:600;color:var(--fg);margin:6px 0 0;line-height:1.5;text-wrap:balance}
+.card>h3{margin:0;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h3 code{font-size:.9em}
+p{margin:0;max-width:68ch}
+a{color:var(--info)}
+section{display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+blockquote{margin:0;padding:10px 16px;border-left:3px solid var(--warn);background:var(--panel);border-radius:0 8px 8px 0}
+.src{font-size:12px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+td.num{font-family:var(--mono);white-space:nowrap}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:13.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0;overflow-x:auto;line-height:1.6}
+.bad{color:var(--bad)} .ok{color:var(--ok)} .mut{color:var(--muted)} .inf{color:var(--info)}
+svg{width:100%;height:auto;display:block}
+ul{margin:0;padding-left:20px}
+.toggles{display:flex;flex-wrap:wrap;gap:8px 20px}
+.toggles label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:15px}
+.toggles input{width:18px;height:18px;accent-color:var(--ok)}
+.result{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:15px}
+.result b{font-family:var(--mono);font-weight:500;font-size:20px}
+.ctabs{display:flex;flex-wrap:wrap;gap:6px}
+.ctabs button{font:14px var(--sans);padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
+.ctabs button[aria-selected="true"]{background:var(--info);border-color:var(--info);color:var(--panel)}
+.ctabs button:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.cpanel{display:flex;flex-direction:column;gap:8px}
+.cpanel[hidden]{display:none}
+.chip{font-size:15px}
+.chip b{font-family:var(--mono);font-weight:500}
+.struct{font-size:14px;color:var(--muted);margin:0;max-width:none}
+.warnbox{padding:10px 14px;border:1px solid var(--warn);border-radius:8px;font-size:15px;display:flex;flex-direction:column;gap:6px}
+.warnbox ol{margin:0;padding-left:20px}
+.warn{color:var(--warn)}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">Unity · C# 런타임 · 2026-08-08</span>
+  <h1>박싱 / 언박싱 — Dictionary와 struct</h1>
+  <p class="lead">"Dictionary에 struct를 넣으면 박싱, foreach 돌리면 또 박싱 아니냐"는 반문을 Profiler로 직접 재서 확인한 기록. 결론부터: <b>박싱은 struct를 키로 쓰면서 <code>IEquatable&lt;T&gt;</code>·<code>GetHashCode()</code>를 안 만들었을 때만</b> 생깁니다.</p>
+  <p class="src">글 버전 <a href="boxing-dictionary.md">boxing-dictionary.md</a> · 실습 원본 <a href="https://github.com/DEV-JSB/unity-study/tree/main/Assets/Chapter/01.BoxingUnBoxing">unity-study / 01.BoxingUnBoxing</a></p>
+</header>
+
+<section>
+  <h2>발단</h2>
+  <p>몇백 개짜리 <code>List&lt;T&gt;</code>를 최악 1,000번 돌며 <code>Find</code>를 부르는 코드에 "검색에 유리한 <code>Dictionary</code>로 바꾸자"고 리뷰했더니 이런 반문이 왔습니다.</p>
+  <blockquote>Dictionary에 struct를 넣으면 박싱이 일어나고, foreach까지 돌리면 또 박싱이 일어나서, GC 때문에 오히려 프레임 드랍이 생기지 않냐</blockquote>
+  <p>아닐 것 같은데 확신이 없어서 직접 쟀습니다. 확인할 것은 <b>Dictionary × struct × foreach 조합에서 실제로 박싱이 일어나는가</b>.</p>
+</section>
+
+<section>
+  <h2>1 · 측정 결과</h2>
+  <p class="src">직접 측정 · Unity 6000.0.72f1 · 에디터(Mono) · Profiler → CPU Usage → Hierarchy → GC Alloc · 엔트리 1,000개, 케이스마다 프레임당 10회</p>
+  <svg viewBox="0 0 680 230" role="img" aria-label="케이스별 조회 1회당 할당 바이트 막대 그래프: 직접 foreach 0, 인터페이스 foreach 60, 구현 없음 92, IEquatable만 32">
+    <g font-size="13" fill="var(--fg)">
+      <text x="0" y="36">직접 foreach</text>
+      <text x="0" y="86">인터페이스로 foreach</text>
+      <text x="0" y="136">struct 키 · 구현 없음</text>
+      <text x="0" y="186">struct 키 · IEquatable만</text>
+    </g>
+    <line x1="200" y1="10" x2="200" y2="205" stroke="var(--line)"/>
+    <rect x="200" y="22" width="2" height="22" fill="var(--ok)"/>
+    <text x="210" y="38" font-size="13" fill="var(--ok)" font-family="var(--mono)">0 B</text>
+    <rect x="200" y="72" width="261" height="22" rx="3" fill="var(--warn)" opacity=".85"/>
+    <text x="469" y="88" font-size="13" fill="var(--fg)" font-family="var(--mono)">≈60 B · 열거자 박싱 1</text>
+    <rect x="200" y="122" width="400" height="22" rx="3" fill="var(--bad)" opacity=".85"/>
+    <g fill="var(--panel)" font-size="12" font-family="var(--mono)">
+      <line x1="339" y1="122" x2="339" y2="144" stroke="var(--panel)" stroke-width="2"/>
+      <line x1="478" y1="122" x2="478" y2="144" stroke="var(--panel)" stroke-width="2"/>
+      <text x="270" y="138" text-anchor="middle">32</text><text x="409" y="138" text-anchor="middle">32</text><text x="539" y="138" text-anchor="middle">32</text>
+    </g>
+    <text x="608" y="138" font-size="13" fill="var(--fg)" font-family="var(--mono)">≈92 B</text>
+    <rect x="200" y="172" width="139" height="22" rx="3" fill="var(--bad)" opacity=".85"/>
+    <text x="270" y="188" text-anchor="middle" font-size="12" fill="var(--panel)" font-family="var(--mono)">32</text>
+    <text x="347" y="188" font-size="13" fill="var(--fg)" font-family="var(--mono)">≈32 B · 박싱 1</text>
+    <text x="200" y="224" font-size="12" fill="var(--muted)">조회(또는 foreach) 1회당 할당. 칸 하나 = 이 struct의 박싱 1회(32 B)</text>
+  </svg>
+  <div class="tbl"><table>
+    <thead><tr><th>케이스</th><th>프레임당</th><th>1회당</th><th>뜻</th></tr></thead>
+    <tbody>
+      <tr><td>Dictionary 직접 foreach</td><td class="num ok">0 B</td><td class="num">—</td><td>박싱 없음</td></tr>
+      <tr><td><code>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</code>로 받아 foreach</td><td class="num">0.6 KB</td><td class="num">≈60 B</td><td>열거자 박싱 1회</td></tr>
+      <tr><td>struct 키 조회 — 구현 없음</td><td class="num bad">0.9 KB</td><td class="num">≈92 B</td><td>박싱 3회</td></tr>
+      <tr><td>struct 키 조회 — <code>IEquatable&lt;T&gt;</code>만</td><td class="num">0.3 KB</td><td class="num">≈32 B</td><td>박싱 1회</td></tr>
+      <tr><td>struct 키 조회 — <code>IEquatable&lt;T&gt;</code> + <code>GetHashCode()</code></td><td class="num mut">측정 예정</td><td></td><td class="mut">예상 0</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card" aria-labelledby="cases">
+  <h2 id="cases">케이스별 코드</h2>
+  <p>Inspector의 <code>Test Case</code>로 고르면 <code>Update()</code>가 해당 함수를 매 프레임 부릅니다. Dictionary는 <code>Start()</code>에서 키 1,000개를 <code>TryAdd</code>로 넣어 둡니다. <span class="src">원본 <a href="https://github.com/DEV-JSB/unity-study/blob/main/Assets/Chapter/01.BoxingUnBoxing/Code.cs">Code.cs</a></span></p>
+  <div class="ctabs" role="tablist" id="caseTabs">
+    <button type="button" role="tab" aria-controls="c1">기준값 · 단순 박싱</button>
+    <button type="button" role="tab" aria-controls="c2">직접 foreach</button>
+    <button type="button" role="tab" aria-controls="c3">인터페이스 foreach</button>
+    <button type="button" role="tab" aria-controls="c4">키 조회 · 구현 없음</button>
+    <button type="button" role="tab" aria-controls="c5">키 조회 · IEquatable만</button>
+    <button type="button" role="tab" aria-controls="c6">키 조회 · 둘 다</button>
+  </div>
+
+  <div class="cpanel" role="tabpanel" id="c1">
+    <p class="chip">10,000번에 <b>195.3 KB</b> (≈ 200,000 B) → 200,000 ÷ 10,000 = 박싱 1번에 <b>20 B</b></p>
+    <p class="struct">struct 없음 — <code>int</code> 하나를 <code>object</code> 필드에 넣기</p>
+<pre>private object _test;
+
+for (int i = 0; i &lt; _iterationCount; ++i)   <span class="mut">// _iterationCount = 10000</span>
+{
+    _test = i;                               <span class="bad">// int → object : 박싱 1회</span>
+}</pre>
+  </div>
+
+  <div class="cpanel" role="tabpanel" id="c2">
+    <p class="chip ok">프레임당 <b>0 B</b></p>
+    <p class="struct">키 struct: <code>TestStruct</code> — 아무것도 구현 안 함</p>
+<pre>public struct TestStruct
+{
+    public int X;
+    public string TestString;
+}
+
+private Dictionary&lt;TestStruct, int&gt; _dict = new Dictionary&lt;TestStruct, int&gt;();
+
+for (int i = 0; i &lt; 10; ++i)
+{
+    foreach (var test in _dict) { }          <span class="ok">// Dictionary&lt;K,V&gt;.Enumerator (struct) 그대로 → 힙 안 씀</span>
+}</pre>
+  </div>
+
+  <div class="cpanel" role="tabpanel" id="c3">
+    <p class="chip">프레임당 <b>0.6 KB</b> · foreach 1번당 ≈60 B</p>
+    <p class="struct">키 struct: <code>TestStruct</code> (구현 없음, 직접 foreach와 같음). 박싱되는 건 키가 아니라 열거자라서 struct 구성은 결과와 상관없음</p>
+<pre>for (int i = 0; i &lt; 10; ++i)
+{
+    IEnumerable&lt;KeyValuePair&lt;TestStruct, int&gt;&gt; iterator = _dict;
+    foreach (var test in iterator) { }       <span class="bad">// GetEnumerator()가 IEnumerator로 반환 → 열거자 박싱 1회</span>
+}</pre>
+    <p class="src">요소 1,000개를 돌아도 박싱은 foreach 시작할 때 1번. 요소 수와 무관</p>
+  </div>
+
+  <div class="cpanel" role="tabpanel" id="c4">
+    <p class="chip bad">프레임당 <b>0.9 KB</b> · 조회 1번당 ≈92 B (32 B × 3)</p>
+    <p class="struct">키 struct: <code>Equals(T)</code> <span class="bad">✗</span> · <code>GetHashCode()</code> <span class="bad">✗</span></p>
+<pre>public struct TestStruct
+{
+    public int X;
+    public string TestString;
+    <span class="mut">// 아무것도 없음 → 해시는 ValueType.GetHashCode, 비교는 Equals(object)</span>
+}
+
+for (int i = 0; i &lt; 10; ++i)
+{
+    var testStruct = new TestStruct();
+    testStruct.X = i;
+    _dict.TryGetValue(testStruct, out int value);   <span class="bad">// 해시 1회 + 비교 2회 = 박싱 3회</span>
+}</pre>
+  </div>
+
+  <div class="cpanel" role="tabpanel" id="c5">
+    <p class="chip">프레임당 <b>0.3 KB</b> · 조회 1번당 ≈32 B (박싱 1회)</p>
+    <p class="struct">키 struct: <code>Equals(T)</code> <span class="ok">✓</span> · <code>GetHashCode()</code> <span class="bad">✗</span></p>
+<pre>public struct TestStruct2 : IEquatable&lt;TestStruct2&gt;
+{
+    public int X;
+    public string TestString;
+    public bool Equals(TestStruct2 other) =&gt; other.X == X;   <span class="ok">// 비교 경로 → 0회</span>
+    <span class="mut">// GetHashCode() 없음 → 해시는 여전히 ValueType.GetHashCode</span>
+}
+
+private Dictionary&lt;TestStruct2, int&gt; _dict2 = new Dictionary&lt;TestStruct2, int&gt;();
+
+for (int i = 0; i &lt; 10; ++i)
+{
+    var testStruct = new TestStruct2();
+    testStruct.X = i;
+    _dict2.TryGetValue(testStruct, out int value);  <span class="bad">// 해시 1회만 남음 = 박싱 1회</span>
+}</pre>
+  </div>
+
+  <div class="cpanel" role="tabpanel" id="c6">
+    <p class="chip mut">측정 예정 · 예상 <b>0 B</b></p>
+    <p class="struct">키 struct: <code>Equals(T)</code> <span class="ok">✓</span> · <code>GetHashCode()</code> <span class="ok">✓</span> — 앞 케이스의 <code>TestStruct2</code>에 한 줄을 추가한 것. 저장소의 지금 코드가 이 상태</p>
+<pre>public struct TestStruct2 : IEquatable&lt;TestStruct2&gt;
+{
+    public int X;
+    public string TestString;
+    public bool Equals(TestStruct2 other) =&gt; other.X == X;   <span class="ok">// 비교 경로 → 0회</span>
+    public override int GetHashCode() =&gt; X;                  <span class="ok">// 해시 경로 → 0회 (Equals와 같은 필드 X)</span>
+}
+
+<span class="mut">// 조회 코드는 앞 케이스와 같음</span>
+_dict2.TryGetValue(testStruct, out int value);</pre>
+  </div>
+</section>
+
+<section>
+  <h2>2 · 박싱 1회는 몇 바이트인가</h2>
+  <p><b>박싱 1번 할 때마다</b> 힙에 20 B짜리 상자가 새로 하나 생깁니다. "5배"도 이 한 번에 대한 말이에요.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>측정에서 1회 값을 꺼내는 순서</th><th>계산</th><th>값</th></tr></thead>
+    <tbody>
+      <tr><td>① Profiler가 보여 준 값 (<code>object o = i;</code>를 10,000번)</td><td class="num">—</td><td class="num">195.3 KB</td></tr>
+      <tr><td>② 바이트로 (Profiler의 KB는 1,024 B)</td><td class="num">195.3 × 1,024</td><td class="num">≈ 200,000 B</td></tr>
+      <tr><td>③ 1번으로 나누기</td><td class="num">200,000 ÷ 10,000</td><td class="num"><b>20 B</b></td></tr>
+    </tbody>
+  </table></div>
+  <div class="tbl"><table>
+    <thead><tr><th>20 B가 어디서 나왔나 (64비트 기준)</th><th>크기</th></tr></thead>
+    <tbody>
+      <tr><td>값 자체 (<code>int</code>)</td><td class="num">4 B</td></tr>
+      <tr><td>객체 헤더 — 타입 포인터 (이 상자가 <code>int</code>라는 표시)</td><td class="num">8 B</td></tr>
+      <tr><td>객체 헤더 — 동기화 블록 (<code>lock</code> 등에 쓰는 칸)</td><td class="num">8 B</td></tr>
+      <tr><td><b>합계 = 박싱 1번에 새로 생기는 상자</b></td><td class="num"><b>20 B</b></td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>값은 4 B인데 담는 상자가 20 B → <b>박싱 1번마다 4 B짜리 값 하나가 20 B를 쓰게 됩니다 (5배)</b>. 10,000번이면 상자가 10,000개라서 200,000 B</li>
+    <li>원래의 <code>int</code>(스택 4 B)는 그대로 있고, 힙에 <b>복사본 상자가 추가로</b> 생기는 것. 이 상자가 GC가 치워야 할 쓰레기가 됩니다</li>
+  </ul>
+  <h3>그림으로 — int 박싱과 실험 struct 박싱</h3>
+  <svg viewBox="0 0 680 250" role="img" aria-label="int를 박싱하면 헤더 16바이트(타입 포인터 8, 동기화 블록 8) 뒤에 값 4바이트가 붙어 20바이트. 실험 struct를 박싱하면 같은 헤더 16바이트 뒤에 X 4, 패딩 4, string 참조 8이 붙어 32바이트">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+    <text x="10" y="16" font-size="12" fill="var(--muted)">스택 (원래 값)</text>
+    <text x="180" y="16" font-size="12" fill="var(--muted)">힙 (박싱 1번에 새로 생기는 상자)</text>
+
+    <!-- row 1: int -->
+    <rect x="10" y="30" width="60" height="40" rx="4" fill="none" stroke="var(--info)" stroke-width="2"/>
+    <text x="40" y="55" text-anchor="middle" font-size="12" fill="var(--fg)" font-family="var(--mono)">int 4</text>
+    <line x1="76" y1="50" x2="172" y2="50" stroke="var(--muted)" stroke-width="2" marker-end="url(#ar)"/>
+    <text x="124" y="42" text-anchor="middle" font-size="12" fill="var(--bad)">box</text>
+    <rect x="180" y="30" width="192" height="40" rx="4" fill="var(--bad)" opacity=".15" stroke="var(--bad)"/>
+    <line x1="276" y1="30" x2="276" y2="70" stroke="var(--bad)"/>
+    <text x="228" y="55" text-anchor="middle" font-size="12" fill="var(--fg)">타입 포인터 8</text>
+    <text x="324" y="55" text-anchor="middle" font-size="12" fill="var(--fg)">동기화 블록 8</text>
+    <rect x="372" y="30" width="48" height="40" rx="4" fill="none" stroke="var(--info)" stroke-width="2"/>
+    <text x="396" y="55" text-anchor="middle" font-size="12" fill="var(--fg)" font-family="var(--mono)">4</text>
+    <text x="432" y="55" font-size="13" fill="var(--fg)" font-family="var(--mono)">= 20 B</text>
+
+    <!-- header brace between rows -->
+    <path d="M182 80 v6 h188 v-6" fill="none" stroke="var(--bad)" stroke-width="1.5"/>
+    <line x1="276" y1="86" x2="276" y2="96" stroke="var(--bad)" stroke-width="1.5"/>
+    <text x="276" y="112" text-anchor="middle" font-size="12" fill="var(--bad)">헤더 16 — 힙에 올라가는 객체마다 붙는 고정 칸 (위아래 똑같음)</text>
+    <path d="M182 128 v-6 h188 v6" fill="none" stroke="var(--bad)" stroke-width="1.5"/>
+    <line x1="276" y1="116" x2="276" y2="122" stroke="var(--bad)" stroke-width="1.5"/>
+
+    <!-- row 2: struct -->
+    <rect x="10" y="138" width="140" height="40" rx="4" fill="none" stroke="var(--info)" stroke-width="2"/>
+    <text x="80" y="163" text-anchor="middle" font-size="12" fill="var(--fg)" font-family="var(--mono)">TestStruct 16</text>
+    <line x1="154" y1="158" x2="172" y2="158" stroke="var(--muted)" stroke-width="2" marker-end="url(#ar)"/>
+    <rect x="180" y="138" width="192" height="40" rx="4" fill="var(--bad)" opacity=".15" stroke="var(--bad)"/>
+    <line x1="276" y1="138" x2="276" y2="178" stroke="var(--bad)"/>
+    <text x="228" y="163" text-anchor="middle" font-size="12" fill="var(--fg)">타입 포인터 8</text>
+    <text x="324" y="163" text-anchor="middle" font-size="12" fill="var(--fg)">동기화 블록 8</text>
+    <rect x="372" y="138" width="192" height="40" rx="4" fill="none" stroke="var(--info)" stroke-width="2"/>
+    <line x1="420" y1="138" x2="420" y2="178" stroke="var(--info)"/>
+    <line x1="468" y1="138" x2="468" y2="178" stroke="var(--info)" stroke-dasharray="3 3"/>
+    <text x="396" y="163" text-anchor="middle" font-size="12" fill="var(--fg)" font-family="var(--mono)">X 4</text>
+    <text x="444" y="163" text-anchor="middle" font-size="11" fill="var(--muted)">패딩 4</text>
+    <text x="516" y="163" text-anchor="middle" font-size="11" fill="var(--fg)">string 참조 8</text>
+    <text x="576" y="163" font-size="13" fill="var(--fg)" font-family="var(--mono)">= 32 B</text>
+    <path d="M374 188 v6 h188 v-6" fill="none" stroke="var(--info)" stroke-width="1.5"/>
+    <text x="468" y="212" text-anchor="middle" font-size="12" fill="var(--info)">값 16 — 스택의 TestStruct를 그대로 복사</text>
+    <text x="10" y="242" font-size="12" fill="var(--muted)">조회 1번에 92 B ≈ 32 B × 3 → 조회 1번마다 박싱 3번</text>
+  </svg>
+  <ul>
+    <li><b>헤더 16은 int 줄의 헤더와 똑같은 것</b>입니다. 타입 포인터 8 + 동기화 블록 8. 무엇을 박싱하든(심지어 <code>class</code>를 <code>new</code> 해도) 힙 객체에는 이 16 B가 붙어요. 그래서 박싱 비용 = <b>값 크기 + 16</b></li>
+    <li><b>패딩 4</b>: 다음 칸인 참조(8 B)를 8의 배수 위치에 놓으려고 비워 두는 자리 (공식 문서: 필드 정렬)</li>
+    <li><b>string 참조 8</b>: 글자들이 아니라 "글자가 있는 곳의 주소"만 복사됩니다. 그래서 문자열 길이와 상관없이 8 B</li>
+  </ul>
+  <p class="src">직접 측정 + 계산 · 헤더·참조 크기는 64비트 런타임 기준</p>
+</section>
+
+<section>
+  <h2>3 · 자리마다 위험이 다르다</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>자리</th><th>박싱?</th><th>이유</th></tr></thead>
+    <tbody>
+      <tr><td>값(Value)</td><td class="ok">거의 안 함</td><td>담기는 대상이라 해시·비교가 필요 없음. 예외: <code>ContainsValue()</code>는 처음부터 훑으며 비교</td></tr>
+      <tr><td>foreach</td><td class="ok">안 함</td><td>열거자도 struct, <code>KeyValuePair</code>도 struct</td></tr>
+      <tr><td>foreach를 <b>인터페이스로 받아서</b></td><td>1회</td><td>struct 열거자가 인터페이스로 박싱. foreach 1번당 1개라 요소 수와 무관 — "그냥 돌렸는데 박싱"이 사실이 되는 유일한 경우</td></tr>
+      <tr><td><b>키(Key)</b></td><td class="bad">3회</td><td>아래 두 경로</td></tr>
+    </tbody>
+  </table></div>
+  <p>키 자리의 위험은 <b>GC(박싱)</b>, 값 자리의 위험은 <b>복사 비용</b>. 성격이 다른 문제입니다.</p>
+</section>
+
+<section class="card" aria-labelledby="paths">
+  <h2 id="paths">4 · 키 조회의 두 경로 — 켜 보기</h2>
+  <p>struct에 무엇을 구현하느냐에 따라 박싱이 어느 경로에서 사라지는지 봅니다. 두 경로는 <b>완전히 별개</b>라 하나만 하면 하나만 사라집니다.</p>
+  <div class="toggles">
+    <label><input type="checkbox" id="tEq"> <code>IEquatable&lt;T&gt;</code> 구현</label>
+    <label><input type="checkbox" id="tHash"> <code>GetHashCode()</code> override</label>
+  </div>
+  <svg id="pathSvg" viewBox="0 0 680 250" role="img" aria-label="TryGetValue가 해시 경로와 비교 경로로 갈라지고, 각 경로에서 박싱이 일어나는지 표시"></svg>
+  <div class="result">
+    <span>조회 1회 박싱 <b id="rCount">3</b>회</span>
+    <span>예상 할당 <b id="rBytes">96</b> B</span>
+    <span class="mut" id="rNote"></span>
+  </div>
+  <pre>public struct SlotKey : IEquatable&lt;SlotKey&gt;
+{
+    public int X;
+    public bool Equals(SlotKey other) =&gt; other.X == X;   <span class="ok">// ② 비교 경로</span>
+    public override int GetHashCode() =&gt; X;              <span class="ok">// ① 해시 경로 — Equals와 같은 필드 X</span>
+}</pre>
+  <ul>
+    <li><code>Add</code>, <code>Remove</code>, <code>ContainsKey</code>, 인덱서 — <b>키를 다루는 모든 연산</b>이 같은 경로라, 한 번 잘못 쓰면 아주 자주 터집니다</li>
+    <li><code>Equals</code>와 <code>GetHashCode</code>는 <b>같은 필드 기준</b>으로. "같으면 해시도 같다"가 깨지면 넣었는데 못 찾습니다 (공식 문서)</li>
+  </ul>
+  <p class="src">경로 설명: <code>EqualityComparer&lt;T&gt;.Default</code>가 타입에 따라 비교기를 고름 (공식 문서) · 바이트는 측정값 기준 추정 (92 B ≈ 96 B)</p>
+</section>
+
+<section>
+  <h2>5 · 박싱은 언제 일어나나</h2>
+  <p>한 문장: <b>값 타입이 참조 타입으로 취급되는 순간.</b> 그 순간이 네 군데입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>#</th><th>언제</th><th>예</th><th>이 실습에서</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><code>object</code>로 넘어갈 때</td><td><code>object o = i;</code><br><code>string.Format("{0}", i)</code></td><td><code>Equals(object)</code></td></tr>
+      <tr><td>2</td><td>인터페이스로 취급될 때</td><td><code>IEnumerable&lt;…&gt; it = dict;</code></td><td>인터페이스 foreach</td></tr>
+      <tr><td>3</td><td>struct가 <b>override 안 한 상속 메서드</b>를 부를 때</td><td><code>myStruct.GetHashCode()</code><br><code>myStruct.ToString()</code></td><td><code>ValueType.GetHashCode()</code></td></tr>
+      <tr><td>4</td><td><code>params object[]</code></td><td>인자마다 박싱 + 배열 할당</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>3번은 <b>매개변수가 없어도</b> 일어납니다 → "매개변수가 <code>object</code>인지 보면 된다"로는 못 잡음</li>
+    <li>3번은 struct만. 클래스는 처음부터 힙에 있어서 옮길 게 없습니다</li>
+  </ul>
+  <h3>반대로 안전한 것</h3>
+  <pre>void Foo&lt;T&gt;(T value);       <span class="ok">// int를 넘겨도 박싱 없음 — 런타임이 값 타입 전용 코드를 만듦</span>
+List&lt;int&gt;.Add(int item);    <span class="ok">// 박싱 없음</span>
+StringBuilder.Append(int);  <span class="ok">// 값 타입 전용 오버로드</span></pre>
+  <h3>확인하는 법</h3>
+  <ul>
+    <li>시그니처를 본다 — 인자 자리가 <code>object</code>·인터페이스면 박싱, <code>T</code>·구체 값 타입이면 안전</li>
+    <li>오버로드가 여러 개라 컴파일러 선택을 모르면 → IL을 보거나, <b>박싱이 불가능한 형태로 바꿔서 같은 숫자가 나오는지</b> 잰다 (<a href="string-gc.html">2편</a>에서 실제로 씀)</li>
+  </ul>
+</section>
+
+<section>
+  <h2>결론</h2>
+  <ul>
+    <li>반문은 틀렸다. Dictionary에 struct를 넣는 것도, foreach도 박싱을 만들지 않는다</li>
+    <li>문제는 struct <b>키</b> + 구현 누락뿐이고, 두 줄이면 0</li>
+    <li>제안한 리팩터링은 그대로 진행됐고, 리뷰어도 스스로 정정해 <code>Dictionary</code>로 바꿨다</li>
+    <li>내 기준: struct를 키로 쓰면 <code>IEquatable&lt;T&gt;</code> + <code>GetHashCode()</code>를 <b>반드시 같이</b> <span class="src">(취향 · 바꿔도 됨)</span></li>
+  </ul>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="string-gc.html">문자열과 GC</a> — 2편. "박싱을 피했다 ≠ 할당이 적다"</li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  const tabs=[...document.querySelectorAll('#caseTabs button')];
+  function show(i){
+    tabs.forEach((b,j)=>{const on=j===i;b.setAttribute('aria-selected',on);b.tabIndex=on?0:-1;document.getElementById(b.getAttribute('aria-controls')).hidden=!on;});
+  }
+  tabs.forEach((b,i)=>{
+    b.addEventListener('click',()=>show(i));
+    b.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const n=(i+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;show(n);tabs[n].focus();}});
+  });
+  show(0);
+})();
+(function(){
+  const svg = document.getElementById('pathSvg');
+  const tEq = document.getElementById('tEq'), tHash = document.getElementById('tHash');
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, text){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(text!=null) e.textContent=text; return e; }
+  function box(x,y,w,h,stroke,fill,lines,size){
+    svg.appendChild(el('rect',{x,y,width:w,height:h,rx:8,fill:fill||'none',stroke,'stroke-width':2}));
+    lines.forEach((t,i)=>svg.appendChild(el('text',{x:x+w/2,y:y+h/2+(i-(lines.length-1)/2)*18+5,'text-anchor':'middle','font-size':size||13,fill:'var(--fg)'},t)));
+  }
+  function arrow(x1,y1,x2,y2){ svg.appendChild(el('line',{x1,y1,x2,y2,stroke:'var(--muted)','stroke-width':2,'marker-end':'url(#ar2)'})); }
+  function boxes(x,y,n,color){
+    for(let i=0;i<n;i++){
+      svg.appendChild(el('rect',{x:x+i*40,y,width:32,height:26,rx:4,fill:color,opacity:.85}));
+      svg.appendChild(el('text',{x:x+i*40+16,y:y+18,'text-anchor':'middle','font-size':11,fill:'var(--panel)','font-family':'var(--mono)'},'box'));
+    }
+  }
+  function draw(){
+    const eq=tEq.checked, hash=tHash.checked;
+    svg.textContent='';
+    const defs=el('defs',{}); const m=el('marker',{id:'ar2',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto'});
+    m.appendChild(el('path',{d:'M0 0L10 5L0 10z',fill:'var(--muted)'})); defs.appendChild(m); svg.appendChild(defs);
+
+    box(10,100,150,50,'var(--info)',null,['TryGetValue(key)']);
+    arrow(160,115,214,52); arrow(160,135,214,198);
+
+    // hash path
+    svg.appendChild(el('text',{x:220,y:16,'font-size':12,fill:'var(--muted)'},'① 어느 버킷? (해시)'));
+    const hc = hash?'var(--ok)':'var(--bad)';
+    box(220,26,230,52,hc,null, hash?['내 GetHashCode()','struct 자신의 메서드'] : ['ValueType.GetHashCode()','상속 메서드 → 먼저 박싱'],12);
+    if(hash) svg.appendChild(el('text',{x:470,y:57,'font-size':13,fill:'var(--ok)'},'박싱 0'));
+    else boxes(470,39,1,'var(--bad)');
+
+    // equals path
+    svg.appendChild(el('text',{x:220,y:162,'font-size':12,fill:'var(--muted)'},'② 같은 키? (비교)'));
+    const ec = eq?'var(--ok)':'var(--bad)';
+    box(220,172,230,52,ec,null, eq?['제네릭 비교기','Equals(T) 직접 호출'] : ['object 비교기','Equals(object) → 인자 + 대상'],12);
+    if(eq) svg.appendChild(el('text',{x:470,y:203,'font-size':13,fill:'var(--ok)'},'박싱 0'));
+    else boxes(470,185,2,'var(--bad)');
+
+    const n=(hash?0:1)+(eq?0:2);
+    document.getElementById('rCount').textContent=n;
+    document.getElementById('rBytes').textContent=n*32;
+    const note = (!eq&&!hash)?'측정 ≈92 B (0.9 KB/10회)':(eq&&!hash)?'측정 ≈32 B (0.3 KB/10회) — 해시 쪽 1회가 남음':(eq&&hash)?'예상 0 — 아직 측정 전':'이번 실험에 없던 조합';
+    document.getElementById('rNote').textContent=note;
+    const rc=document.getElementById('rCount'); rc.className = n? 'bad':'ok';
+  }
+  tEq.addEventListener('change',draw); tHash.addEventListener('change',draw); draw();
+})();
+</script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "IEquatable": "같은 타입끼리 비교하는 Equals(T)를 제공한다는 약속. 있으면 Dictionary가 박싱 없는 제네릭 비교기를 고름",
+  "GetHashCode": "버킷(칸)을 고르기 위한 숫자. struct가 override 안 하면 ValueType 것이 불리며 박싱",
+  "Equals": "두 값이 같은지. Equals(object)는 인자를 object로 받아 박싱, Equals(T)는 박싱 없음",
+  "ContainsValue": "값을 처음부터 끝까지 훑으며 비교. 값 자리에서 박싱이 생기는 유일한 예외",
+  "KeyValuePair": "Dictionary가 foreach에서 꺼내 주는 키·값 한 쌍. struct라 힙을 안 씀",
+  "IEnumerable": "foreach할 수 있다는 인터페이스. 이 타입으로 받으면 struct 열거자가 박싱됨",
+  "TryGetValue": "키로 값을 찾는 함수. 내부에서 GetHashCode → Equals 순으로 키를 다룸",
+  "object": "모든 타입의 부모. 값 타입을 object로 받으면 박싱",
+  "Append": "StringBuilder에 붙이기. Append(int) 같은 값 타입 전용 오버로드가 있어 박싱 없음"
+});
+</script>
+</body>
+</html>
