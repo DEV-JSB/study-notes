@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>간격마다 실행하기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: one reading column; the frame timeline first (where the bug lives), then the fps sweep (staircase), then the two kinds of rounding, then measurements and engine table */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --fwd:#2f6fd0; --a:#178a66; --b:#d2552a; --c:#7a4cc8; --cellA:#dfe8f6; --cellB:#eceff3;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --a:#4cc79c; --b:#f08a5d; --c:#b48cf0; --cellA:#22314a; --cellB:#2b323d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --fwd:#6aa3f0; --a:#4cc79c; --b:#f08a5d; --c:#b48cf0; --cellA:#22314a; --cellB:#2b323d; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0 0 8px;text-wrap:balance}
+h3{font-size:16px;font-weight:500;margin:12px 0 4px}
+p{margin:0;max-width:65ch}
+a{color:var(--a)}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.def{border-left:3px solid var(--b);padding:4px 0 4px 16px;font-size:18px}
+.lab{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctrl label{font-size:14px;color:var(--muted);min-width:110px}
+.ctrl input[type=range]{flex:1;min-width:160px;accent-color:var(--b)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{font:13px var(--mono);padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
+.chips button[aria-pressed="true"]{border-color:var(--b);color:var(--b)}
+.chips button:focus-visible,input:focus-visible{outline:2px solid var(--fwd);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+svg{width:100%;height:auto;display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.card{background:var(--bg);border-radius:8px;padding:10px 12px}
+.card .k{font-size:13px;color:var(--muted)}
+.card .v{font-size:20px;font-weight:500;font-family:var(--mono)}
+.sub{font-size:14px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+code{font-family:var(--mono);font-size:.92em}
+pre{font-family:var(--mono);font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0;overflow-x:auto;line-height:1.6}
+ul{margin:0;padding-left:20px}
+.quote{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.quote q{font-size:17px}
+.verdict{font-size:14px;font-weight:500;color:var(--a)}
+.bad{color:var(--b)} .ok{color:var(--a)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">게임 루프 · 초3~6 · 2026-11-10</span>
+  <h1>간격마다 실행하기 — fps에 묶이지 않게</h1>
+  <p class="lead">TBH(Unity)에 30·45·60 fps 옵션이 있는데, 로직 하나가 "0.002초 기다렸다가 실행"을 반복하고 있었습니다. 같은 걸 언리얼 <code>AFpsTest</code>로 재현하고 고친 날의 정리예요. 핵심은 벡터가 아니라 <b>나눗셈의 몫과 나머지, 그리고 올림</b>입니다.</p>
+</header>
+
+<section>
+  <p class="def"><b>게임은 프레임 경계에서만 깨어난다.</b> "0.002초마다"라고 써도 코드는 다음 프레임이 와야 확인할 수 있다. 그래서 간격을 지키려면 <b>이번 프레임에 흐른 시간 안에 간격이 몇 번 들어 있었나</b>를 세어야 한다.</p>
+</section>
+
+<section class="lab" aria-labelledby="l1">
+  <h2 id="l1">1 · 프레임 타임라인 (0.2초 확대)</h2>
+  <p class="sub">fps와 간격을 바꿔 보세요. 맨 위 초록 눈금이 <b>원래 의도</b>, 그 아래 칸이 <b>프레임</b>입니다. 코드는 칸의 오른쪽 끝(Tick)에서만 깨어나요.</p>
+  <div class="ctrl"><label for="fps">fps</label><input id="fps" type="range" min="20" max="144" step="1" value="60"><span class="num" id="oFps" style="min-width:90px"></span></div>
+  <div class="chips" role="group" aria-label="fps 빠른 선택"><button data-f="30">30</button><button data-f="45">45</button><button data-f="60">60</button><button data-f="120">120</button><button data-f="144">144</button></div>
+  <div class="ctrl"><label for="iv">간격 (초)</label><input id="iv" type="range" min="0" max="8" step="1" value="0"><span class="num" id="oIv" style="min-width:90px"></span></div>
+  <svg id="tl" viewBox="0 0 680 236" role="img" aria-label="0.2초 동안의 의도한 실행 눈금, 프레임 칸, 고장 버전이 실행되는 프레임, 고친 버전이 프레임마다 실행하는 횟수"></svg>
+  <div class="legend"><span><i style="background:var(--a)"></i>의도 / 고침</span><span><i style="background:var(--b)"></i>고장</span><span><i style="background:var(--cellA)"></i>프레임 한 칸</span></div>
+  <div class="cards">
+    <div class="card"><div class="k">의도: 1초에</div><div class="v" id="cWant"></div></div>
+    <div class="card"><div class="k">고장: 1초에</div><div class="v bad" id="cBad"></div></div>
+    <div class="card"><div class="k">고침: 1초에</div><div class="v ok" id="cFix"></div></div>
+    <div class="card"><div class="k">고장은 몇 프레임마다 1번</div><div class="v" id="cK"></div></div>
+  </div>
+  <p class="num sub" id="why"></p>
+</section>
+
+<section class="lab" aria-labelledby="l2">
+  <h2 id="l2">2 · fps를 쭉 올려 보면 — 정비례냐 계단이냐</h2>
+  <p class="sub">위에서 고른 간격으로, fps 20~144에서 <b>고장 버전이 1초에 몇 번</b> 도는지 그린 그래프예요. 점선이 의도, 점은 30·45·60.</p>
+  <svg id="sweep" viewBox="0 0 680 230" role="img" aria-label="fps에 따른 고장 버전의 1초당 실행 횟수와 의도한 횟수 비교 그래프"></svg>
+  <p class="sub" id="sweepT"></p>
+</section>
+
+<section aria-labelledby="l3">
+  <h2 id="l3">3 · 고장 = 올림, 고침 = 버림 + 나머지</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th></th><th>고장 (대기 후 1번)</th><th>고침 (몫만큼 + 나머지 넘기기)</th></tr></thead>
+    <tbody>
+      <tr><td>묻는 것</td><td>간격을 넘기려면 프레임이 <b>몇 개 있어야</b> 하나</td><td>이번에 흐른 시간 안에 간격이 <b>몇 번 들어 있나</b></td></tr>
+      <tr><td>계산</td><td class="num">간격 ÷ 프레임 시간 → <b>올림</b></td><td class="num">(프레임 시간 + 나머지) ÷ 간격 → <b>버림(몫)</b>, 남은 건 다음으로</td></tr>
+      <tr><td>0.02초, 60fps</td><td class="num">0.02 ÷ 0.0167 = 1.2 → 2프레임마다 1번 → <span class="bad">30번/초</span></td><td class="num">0.0167 ÷ 0.02 = 0.83 → 0번, 0.0167 남김 → 다음 프레임 0.0333 ÷ 0.02 → 1번 … → <span class="ok">50번/초</span></td></tr>
+      <tr><td>0.002초, 30fps</td><td class="num">0.002 ÷ 0.0333 = 0.06 → 올림 1 → 매 프레임 → <span class="bad">30번/초</span></td><td class="num">0.0333 ÷ 0.002 = 16.67 → 16번, 0.0013 남김 → <span class="ok">500번/초</span></td></tr>
+      <tr><td>지키는 것</td><td>프레임당 횟수 (늘 정수, 최대 1)</td><td>시간당 횟수 (늘 의도대로)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <h3>나머지를 버리면 왜 안 되나</h3>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>fps</th><th>한 프레임</th><th>÷ 0.002</th><th>몫</th><th>몫만 쓰면 1초에</th></tr></thead>
+    <tbody>
+      <tr><td class="num">30</td><td class="num">0.0333</td><td class="num">16.67</td><td class="num">16</td><td class="num bad">480</td></tr>
+      <tr><td class="num">45</td><td class="num">0.0222</td><td class="num">11.11</td><td class="num">11</td><td class="num bad">495</td></tr>
+      <tr><td class="num">60</td><td class="num">0.0167</td><td class="num">8.33</td><td class="num">8</td><td class="num bad">480</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:8px">목표는 500. 버려진 조각(0.67번분, 0.11번분, 0.33번분)이 프레임마다 쌓여서 여전히 fps마다 틀려요. 나머지를 다음 Tick으로 넘기면 <b>잃어버리는 시간이 0</b>이 됩니다. 이 모양을 게임 루프에서는 <b>누적기(accumulator)</b>라고 불러요 (커뮤니티 표준: Glenn Fiedler, "Fix Your Timestep").</p>
+  <h3>고친 코드 (<code>AFpsTest::Tick</code>, <code>bUseTimeCorrection</code>이 켜졌을 때)</h3>
+<pre>const float TimeToProcess = DeltaTime + RemainTimeLastDamage;
+const int32 AttackCount = FMath::FloorToInt(TimeToProcess / DamageInterval);
+RemainTimeLastDamage = TimeToProcess - (DamageInterval * AttackCount);
+Health = FMath::Max(0, Health - AttackCount * Damage);
+DamageCount += AttackCount;</pre>
+  <p class="sub" style="margin-top:8px">한 줄씩: 처리할 시간 = 이번 프레임 + 지난 나머지 → 몫(버림) → 나머지 → 몫만큼 깎기(0 아래로는 안 감) → 횟수 누적. 미사일의 "속도 × DeltaTime"과 같은 생각이지만, 거리처럼 <b>연속적인 양</b>은 곱하기로 끝나고 데미지처럼 <b>띄엄띄엄 일어나는 사건</b>은 몫 + 나머지가 필요해요.</p>
+</section>
+
+<section aria-labelledby="l4">
+  <h2 id="l4">4 · 실제로 재 본 값</h2>
+  <h3>MaxHealth 100, 간격 0.002초 (의도: 0.2초에 사망)</h3>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>KillTime (초)</th><th>30fps</th><th>45fps</th><th>60fps</th></tr></thead>
+    <tbody>
+      <tr><td>고장</td><td class="num bad">3.317</td><td class="num bad">2.233</td><td class="num bad">1.672</td></tr>
+      <tr><td>고침</td><td class="num ok">0.217</td><td class="num ok">0.211</td><td class="num ok">0.206</td></tr>
+      <tr><td>고침의 오차</td><td class="num">0.017</td><td class="num">0.011</td><td class="num">0.006</td></tr>
+      <tr><td>1프레임 길이</td><td class="num">0.033</td><td class="num">0.022</td><td class="num">0.017</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:8px">고침의 오차가 모두 <b>1프레임 안쪽</b>. 체력이 0이 된 순간을 프레임 경계에서만 알아채니까 생기는 오차이고, fps가 낮을수록 커지는 것도 그 때문이에요.</p>
+  <h3>MaxHealth 1000, Damage 2, 3초 측정, 고장</h3>
+  <div class="tbl">
+  <table>
+    <thead><tr><th></th><th>30fps</th><th>60fps</th></tr></thead>
+    <tbody>
+      <tr><td>DamageCount</td><td class="num">90</td><td class="num">178</td></tr>
+      <tr><td>남은 체력</td><td class="num">820 = 1000 − 90 × 2</td><td class="num">644 = 1000 − 178 × 2</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:8px">간격 0.02초는 아직 재지 않았어요. 2번 그래프의 예상: 3초에 고장 30 / 45 / 60fps가 약 90 / 135 / 90, 고침은 모두 약 150.</p>
+</section>
+
+<section aria-labelledby="l5">
+  <h2 id="l5">5 · 어떤 숫자로 판단하나</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>보는 값</th><th>알려 주는 것</th><th>고장 (0.002초)</th><th>고침</th></tr></thead>
+    <tbody>
+      <tr><td>시간당 실행 횟수</td><td><b>증상</b> — 의도대로 도나</td><td class="num">30 / 45 / 60</td><td class="num">500 / 500 / 500</td></tr>
+      <tr><td>프레임당 실행 횟수</td><td><b>원인</b> — 왜 그렇게 되나</td><td class="num">1 / 1 / 1</td><td class="num">16.7 / 11.1 / 8.3</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:8px">게임 규칙은 "1초에 몇 번"처럼 시간으로 정의되니까 판단 기준은 <b>시간당</b>. 두 줄은 정확히 뒤집혀 있어요. 고장은 프레임당을 고정해서 시간당이 흔들리고, 고침은 프레임당을 흔들리게 두고 시간당을 고정합니다.</p>
+  <h3>딱 맞아떨어지지 않는 이유</h3>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>원인</th><th>무엇</th><th>크기</th></tr></thead>
+    <tbody>
+      <tr><td>① 프레임 경계에서만 확인</td><td>사건이 프레임 사이에 일어나도 다음 Tick에서야 앎</td><td>최대 1프레임 — 가장 큼</td></tr>
+      <tr><td>② 프레임 시간이 흔들림</td><td><code>t.MaxFPS 30</code>이어도 실제 DeltaTime은 매번 조금씩 다름</td><td>①이 어느 프레임에 걸릴지를 바꿈</td></tr>
+      <tr><td>③ float 소수 오차</td><td>0.002는 2진수로 딱 안 떨어짐</td><td>수십억분의 1초 — 무시</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:8px">고친 버전은 ②가 있어도 <b>총량이 안 틀린다</b>. 흐른 시간을 전부 넣고 남은 건 넘기니까요.</p>
+</section>
+
+<section aria-labelledby="l6">
+  <h2 id="l6">6 · 고치기 전에 판단할 것</h2>
+  <p>0.002초(1초에 500번)는 어떤 fps보다도 촘촘해서, 고장 버전은 <b>어떤 fps에서도 의도보다 8~17배 느렸어요</b>. 체력 2000이면 의도 4초, 고장 30fps 66.7초. 그런데 밸런스는 아마 "실제로 돌던 모습"을 보고 맞춰졌을 겁니다. 그대로 "제대로" 고치면 60fps 기준으로 갑자기 8배 빨라져요.</p>
+  <ul style="margin-top:8px">
+    <li>숫자 0.002가 의도였다면 → 누적기로 고치고 밸런스를 다시 맞춘다</li>
+    <li>지금까지 보던 느낌이 의도였다면 → 간격을 그 느낌에 맞는 값으로 바꾸고, 그다음 누적기로 fps와 상관없게 만든다</li>
+  </ul>
+  <p class="sub" style="margin-top:8px">수학이 아니라 판단이라 정답이 없어요. 그 로직이 무슨 역할(데미지·이동·연출)인지에 달렸습니다.</p>
+</section>
+
+<section aria-labelledby="l7">
+  <h2 id="l7">7 · 언리얼 ↔ 유니티</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>하는 일</th><th>언리얼 C++</th><th>Unity C#</th></tr></thead>
+    <tbody>
+      <tr><td>매 프레임 + 흐른 시간</td><td><code>Tick(float DeltaTime)</code></td><td><code>Update()</code> + <code>Time.deltaTime</code></td></tr>
+      <tr><td>fps 제한</td><td>콘솔 <code>t.MaxFPS 30</code> (블루프린트 <code>Execute Console Command</code>)</td><td><code>Application.targetFrameRate = 30</code> — vSync가 켜져 있으면 무시됨 (Unity 공식)</td></tr>
+      <tr><td>몫 (버림)</td><td><code>FMath::FloorToInt</code></td><td><code>Mathf.FloorToInt</code></td></tr>
+      <tr><td>올림</td><td><code>FMath::CeilToInt</code></td><td><code>Mathf.CeilToInt</code></td></tr>
+      <tr><td>"기다렸다가 실행" (고장과 같은 구조)</td><td>직접 짠 <code>if (지금 &gt; 마지막 + 간격)</code></td><td><code>yield return new WaitForSeconds(t)</code>, UniTask 대기 — 시간이 지난 뒤 <b>첫 프레임</b>에 재개 (Unity 공식: WaitForSeconds 설명)</td></tr>
+      <tr><td>누적기가 이미 들어 있는 것</td><td>— (엔진 타이머가 한 프레임에 여러 번 부르는지는 아직 확인 안 함)</td><td><code>FixedUpdate</code> — 한 프레임에 0번, 1번, 여러 번 불릴 수 있다 (Unity 공식)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:8px">유니티 <code>FixedUpdate</code>가 "한 프레임에 여러 번"인 이유가 바로 3번의 누적기예요. 물리는 고정 간격이어야 해서 엔진이 이 계산을 대신 해 줍니다.</p>
+</section>
+
+<section aria-labelledby="l8">
+  <h2 id="l8">내가 정리한 문장</h2>
+  <div class="quote">
+    <q>사실상 지난 시간에 DamageInterval을 나눠서 몫만큼 데미지를 줘야 하나?</q>
+    <span class="verdict">맞음 — 뼈대를 스스로 냄. 나머지 넘기기는 검토에서 보충</span>
+  </div>
+  <div class="quote">
+    <q>시간값이 0.002초라서 그랬구나 … 딱 애매하게 0.02초여야 내가 말한 문제점이 드러나는 시간이었네</q>
+    <span class="verdict">맞음 — TBH에서 본 "30이랑 60이 같다"를 원리(올림 계단)로 다시 설명</span>
+  </div>
+  <div class="quote">
+    <q>사실상 시간당 수행 횟수로 봐야겠네, 정확하게 보려면</q>
+    <span class="verdict">맞음 — 시간당 = 증상, 프레임당 = 원인</span>
+  </div>
+</section>
+
+<section aria-labelledby="l9">
+  <h2 id="l9">구멍의 위치</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>개념</th><th>학교</th><th>이 노트</th></tr></thead>
+    <tbody>
+      <tr><td>나눗셈의 몫과 나머지</td><td>초3~4</td><td>3 (고침)</td></tr>
+      <tr><td>올림·버림 (어림하기)</td><td>초5</td><td>1, 2, 3</td></tr>
+      <tr><td>"1당 얼마" (비율, 속력)</td><td>초6~중1</td><td>5 (시간당 횟수)</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="rounding-and-modulo.html">어림수와 나머지</a> — floor·ceil, <code>%</code>는 <code>/</code>의 짝꿍. 이 노트는 그 응용편</li>
+    <li><a href="distance-speed-time.html">거리 · 속력 · 시간</a> — 1초를 프레임으로 자른다, ÷ DeltaTime</li>
+    <li><a href="https://github.com/DEV-JSB/study-notes/blob/main/gamemathlab/devlog/2026-11-10-GameMathLab.md">2026-11-10 개발 일지</a></li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const NS='http://www.w3.org/2000/svg';
+  const el=(t,a,txt)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;return e;};
+  const IVS=[0.002,0.005,0.01,0.0125,0.0167,0.02,0.025,0.033,0.05];
+  const EPS=1e-9;
+  // 고장: "지금 > 마지막 + 간격"이면 1번, 마지막 = 지금. 몇 프레임마다 1번인가 (> 비교라 딱 나누어떨어지면 한 프레임 더)
+  const kFrames=(iv,fps)=>Math.floor(iv*fps+EPS)+1;
+  const fmt=(v,d)=>{const r=+v.toFixed(d);return Number.isInteger(r)?String(r):r.toFixed(d).replace(/0+$/,'');};
+
+  function chips(){document.querySelectorAll('.chips button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.f===+$('fps').value)));}
+  document.querySelectorAll('.chips button').forEach(b=>b.addEventListener('click',()=>{$('fps').value=b.dataset.f;draw();}));
+
+  function timeline(fps,iv){
+    const g=$('tl');g.innerHTML='';
+    const L=118,W=550,T=0.2,x=t=>L+W*t/T,frame=1/fps,N=Math.floor(T*fps+EPS);
+    const rows=[['의도',28],['프레임',78],['고장',132],['고침',186]];
+    rows.forEach(([s,y])=>g.appendChild(el('text',{x:8,y:y+5,'font-size':13,fill:'var(--muted)'},s)));
+    g.appendChild(el('text',{x:8,y:204,'font-size':11,fill:'var(--muted)'},'(프레임당 횟수)'));
+    // 의도 눈금
+    const n=Math.floor(T/iv+EPS);
+    for(let i=1;i<=n;i++){const xx=x(i*iv);g.appendChild(el('line',{x1:xx,y1:16,x2:xx,y2:40,stroke:'var(--a)','stroke-width':n>60?1:1.5}));}
+    // 프레임 칸
+    for(let i=0;i<N;i++){
+      const a=x(i*frame),b=x((i+1)*frame);
+      g.appendChild(el('rect',{x:a,y:62,width:Math.max(b-a-1,0.5),height:32,rx:2,fill:i%2?'var(--cellB)':'var(--cellA)'}));
+    }
+    if(N*frame<T-EPS){const a=x(N*frame);g.appendChild(el('rect',{x:a,y:62,width:Math.max(x(T)-a-1,0.5),height:32,rx:2,fill:N%2?'var(--cellB)':'var(--cellA)',opacity:.5}));}
+    // 고장: K프레임마다 Tick 끝에서 1번
+    const K=kFrames(iv,fps);
+    for(let i=1;i<=N;i++){
+      const xx=x(i*frame);
+      g.appendChild(el('line',{x1:xx,y1:112,x2:xx,y2:152,stroke:'var(--line)','stroke-width':1}));
+      if(i%K===0)g.appendChild(el('circle',{cx:xx,cy:132,r:6,fill:'var(--b)'}));
+    }
+    // 고침: 누적기
+    let acc=0;const cw=W*frame/T;
+    for(let i=1;i<=N;i++){
+      acc+=frame;const c=Math.floor(acc/iv+EPS);acc=Math.max(0,acc-c*iv);
+      const xx=x(i*frame),cx=xx-cw/2;
+      g.appendChild(el('line',{x1:xx,y1:170,x2:xx,y2:202,stroke:'var(--line)','stroke-width':1}));
+      if(cw>=14)g.appendChild(el('text',{x:cx,y:191,'text-anchor':'middle','font-size':cw>=22?13:10,'font-family':'var(--mono)',fill:c?'var(--a)':'var(--muted)'},String(c)));
+      else if(c)g.appendChild(el('circle',{cx:xx,cy:186,r:Math.min(6,2+c),fill:'var(--a)'}));
+    }
+    // 시간 축
+    [0,0.05,0.1,0.15,0.2].forEach(t=>g.appendChild(el('text',{x:x(t),y:228,'text-anchor':t===0?'start':t===0.2?'end':'middle','font-size':11,fill:'var(--muted)'},t+'초')));
+  }
+
+  function sweep(iv,cur){
+    const g=$('sweep');g.innerHTML='';
+    const L=48,R=660,Tp=16,B=190,f0=20,f1=144,want=1/iv;
+    let maxR=want;for(let f=f0;f<=f1;f++)maxR=Math.max(maxR,f/kFrames(iv,f));
+    maxR*=1.12;
+    const x=f=>L+(R-L)*(f-f0)/(f1-f0),y=r=>B-(B-Tp)*r/maxR;
+    // 축
+    g.appendChild(el('line',{x1:L,y1:B,x2:R,y2:B,stroke:'var(--line)'}));
+    [30,45,60,90,120,144].forEach(f=>g.appendChild(el('text',{x:x(f),y:B+16,'text-anchor':'middle','font-size':11,fill:'var(--muted)'},f)));
+    g.appendChild(el('text',{x:R,y:B+30,'text-anchor':'end','font-size':11,fill:'var(--muted)'},'fps →'));
+    const step=maxR>300?100:maxR>120?50:maxR>60?20:10;
+    for(let r=0;r<=maxR;r+=step){g.appendChild(el('line',{x1:L,y1:y(r),x2:R,y2:y(r),stroke:'var(--line)','stroke-width':.5,opacity:.6}));g.appendChild(el('text',{x:L-6,y:y(r)+4,'text-anchor':'end','font-size':11,fill:'var(--muted)'},r));}
+    // 의도
+    g.appendChild(el('line',{x1:L,y1:y(want),x2:R,y2:y(want),stroke:'var(--a)','stroke-width':2,'stroke-dasharray':'6 5'}));
+    g.appendChild(el('text',{x:R,y:y(want)-6,'text-anchor':'end','font-size':12,fill:'var(--a)'},'의도 '+fmt(want,1)+'번/초'));
+    // 고장
+    let d='';for(let f=f0;f<=f1;f++){d+=(f===f0?'M':'L')+x(f).toFixed(1)+' '+y(f/kFrames(iv,f)).toFixed(1)+' ';}
+    g.appendChild(el('path',{d:d,fill:'none',stroke:'var(--b)','stroke-width':2}));
+    // 현재 fps
+    g.appendChild(el('line',{x1:x(cur),y1:Tp,x2:x(cur),y2:B,stroke:'var(--fwd)','stroke-width':1,'stroke-dasharray':'3 3'}));
+    [30,45,60].forEach(f=>{const r=f/kFrames(iv,f);g.appendChild(el('circle',{cx:x(f),cy:y(r),r:5,fill:'var(--b)'}));g.appendChild(el('text',{x:x(f),y:y(r)-9,'text-anchor':'middle','font-size':12,'font-family':'var(--mono)',fill:'var(--fg)'},fmt(r,1)));});
+    const r30=30/kFrames(iv,30),r45=45/kFrames(iv,45),r60=60/kFrames(iv,60);
+    let s;
+    if(kFrames(iv,f1)===1)s='이 간격은 144fps의 한 프레임보다도 짧아서 어느 fps에서나 매 프레임 1번 → fps에 정비례. 버그가 눈에 잘 띄는 경우.';
+    else s='계단(톱니) 모양: 간격 ÷ 프레임 시간이 정수를 넘을 때마다 "몇 프레임마다 1번"이 하나씩 늘어나서 뚝 떨어진다. 30 / 45 / 60fps = '+fmt(r30,1)+' / '+fmt(r45,1)+' / '+fmt(r60,1)+'번/초'+(Math.abs(r30-r60)<1e-6?' — 30과 60이 같아서 둘만 비교하면 버그가 숨는다.':'.');
+    $('sweepT').textContent=s;
+  }
+
+  function draw(){
+    const fps=+$('fps').value,iv=IVS[+$('iv').value],frame=1/fps,K=kFrames(iv,fps);
+    $('oFps').textContent=fps+' (한 칸 '+frame.toFixed(4)+'초)';
+    $('oIv').textContent=iv+'초';
+    chips();
+    $('cWant').textContent=fmt(1/iv,1)+'번';
+    $('cBad').textContent=fmt(fps/K,1)+'번';
+    $('cFix').textContent=fmt(1/iv,1)+'번';
+    $('cK').textContent=K+'프레임';
+    const ratio=iv/frame;
+    $('why').textContent='간격 ÷ 프레임 시간 = '+iv+' ÷ '+frame.toFixed(4)+' = '+ratio.toFixed(2)+' → 그보다 큰 첫 정수 '+K+(Math.abs(ratio-Math.round(ratio))<1e-6?' (딱 나누어떨어지면 > 비교라 한 프레임 더 기다림)':'')+' → 고장은 '+fps+' ÷ '+K+' = '+fmt(fps/K,1)+'번/초. 고침은 프레임마다 몫만큼 실행해서 의도대로 '+fmt(1/iv,1)+'번/초.';
+    timeline(fps,iv);sweep(iv,fps);
+  }
+  ['fps','iv'].forEach(id=>$(id).addEventListener('input',draw));
+  draw();
+})();
+</script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "DeltaTime": "이번 프레임에 걸린 시간(초). 60fps면 약 0.0167초, 30fps면 약 0.0333초",
+  "RemainTimeLastDamage": "지난 Tick에서 쓰고 남은 시간(나머지). 버리지 않고 다음 Tick으로 넘긴다",
+  "TimeToProcess": "이번 Tick에 처리할 시간 = 이번 프레임 + 지난 나머지. 지역 변수라서 ElapsedTime(전체 경과 시간)을 건드리지 않는다",
+  "AttackCount": "이번 Tick에 실행할 횟수 = 처리할 시간 안에 간격이 몇 번 들어 있나 (몫)",
+  "DamageInterval": "원래 의도한 간격. 0.002초면 1초에 500번",
+  "FMath::FloorToInt": "버림(내림)해서 정수로. 양수에서는 나눗셈의 몫과 같다. Unity는 Mathf.FloorToInt",
+  "FMath::Max": "둘 중 큰 값. 체력이 0 아래로 내려가지 않게",
+  "DamageCount": "지금까지 실행한 횟수. 시간으로 나누면 시간당 횟수"
+});
+</script>
+</body>
+</html>
