@@ -83,6 +83,9 @@ ul{margin:0;padding-left:20px}
       <tr><td><code>C1083 Cannot open include file: '….generated.h'</code></td><td><a href="#auto-include">IDE가 몰래 넣은 include</a></td></tr>
       <tr><td>처음 Play엔 되던 게 두 번째부터 조용히 안 된다</td><td><a href="#ref-none">Details의 참조 칸이 None</a></td></tr>
       <tr><td><code>TObjectPtr</code>와 <code>TWeakObjectPtr</code> 중 뭘 쓰나 / 가끔만 크래시</td><td><a href="#object-ptr">오브젝트 포인터 고르기</a></td></tr>
+      <tr><td>UMG 버튼 글자 뒤에 흰 입력칸이 생긴다 / 플레이 중 클릭하면 글자가 수정된다</td><td><a href="#text-block">Text Box ≠ Text Block</a></td></tr>
+      <tr><td>앵커를 늘이기로 골랐는데 위젯이 안 늘어난다 / 버튼에 width·height 칸이 없다</td><td><a href="#anchor-ctrl">앵커는 Ctrl + 클릭</a></td></tr>
+      <tr><td>화면이 디버그 글자로 뒤덮여 숫자를 못 읽는다</td><td><a href="#debug-key">AddOnScreenDebugMessage의 Key</a></td></tr>
     </tbody>
   </table>
   </div>
@@ -426,6 +429,57 @@ Current value = None  은 둘 다 같다 (게임이 안 돌 때는 원래 None)<
     <li><span class="bad">함정 ②</span> <code>TObjectPtr</code>를 <code>!= nullptr</code>로만 확인 — <code>Destroy()</code> 직후엔 아직 null이 아닐 수 있다. <code>IsValid()</code>로</li>
   </ul>
   <p class="src">유니티 대조: <code>target != null</code>(Destroy되면 null처럼 보임) ↔ <code>IsValid</code>, C# <code>WeakReference</code> ↔ <code>TWeakObjectPtr</code></p>
+</article>
+
+<article class="card" id="text-block">
+  <h2>UMG: 글자 표시에 Text Box → 입력칸이 됨</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>버튼 글자 뒤에 흰 입력칸 배경. Details 맨 위 이름이 <code>EditableTextBox_186</code> (2026-11-09, <code>WBP_FpsSwitcher</code>)</dd>
+    <dt>처음 의심</dt><dd>글자 정렬 설정 문제</dd>
+    <dt>원인</dt><dd>Palette에서 <b>Text Box</b>를 골랐다. 플레이어가 타이핑하는 입력칸 = 유니티 InputField. 플레이 중 클릭하면 글자가 수정되고 버튼 클릭을 가로챌 수도 있다</dd>
+    <dt>해결</dt><dd>지우고 <b>Text Block</b>(Palette의 COMMON → <b>Text</b>)을 Button 안에 다시 넣음 (Epic 공식)</dd>
+  </dl>
+  <ul>
+    <li>Palette에서 <code>text</code>를 검색하면 6개. 보여 주기만 하는 건 Text와 Rich Text Block뿐</li>
+    <li>가운데 맞추기는 Text Block의 <b>Slot (Button Slot) → Horizontal / Vertical Alignment</b>. Appearance의 Justification은 "글줄을 블록 안에서" 정렬하는 것이라 다르다</li>
+  </ul>
+  <p class="src">Epic 공식: 부모 안에서 어디에 놓일지는 자식 자신이 아니라 <b>Slot</b>이 정한다. 부모 종류마다 Slot 칸이 다르다</p>
+</article>
+
+<article class="card" id="anchor-ctrl">
+  <h2>UMG: 앵커 프리셋은 Ctrl + 클릭해야 꽉 찬다</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>앵커 프리셋에서 늘이기 칸을 골랐는데 체력바가 화면 폭을 따라 늘어나지 않는다 (2026-11-10, <code>HealthBar</code>)</dd>
+    <dt>원인</dt><dd>그냥 클릭하면 <b>앵커만</b> 바뀌고 위치·크기는 그대로. 유니티도 그냥 클릭은 앵커만이고 Alt + 클릭이라야 꽉 찬다</dd>
+    <dt>해결</dt><dd>위쪽 가로 늘이기 칸을 <b>Ctrl + Shift + 클릭</b>. 늘이면 Slot 칸이 Position X·Size X 대신 <b>Offset Left / Offset Right</b>(양쪽 여백)로 바뀐다</dd>
+  </dl>
+  <div class="tbl"><table>
+    <thead><tr><th>하는 일</th><th>유니티</th><th>언리얼</th></tr></thead>
+    <tbody>
+      <tr><td>앵커만 바꾸기</td><td>클릭</td><td>클릭</td></tr>
+      <tr><td>위치·크기도 맞추기</td><td><b>Alt</b> + 클릭</td><td><b>Ctrl</b> + 클릭</td></tr>
+      <tr><td>피벗(기준점)도 맞추기</td><td>Shift + 클릭</td><td>Shift + 클릭 (Alignment)</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>늘어나는 칸: 프리셋 오른쪽 줄 = 가로, 아래 줄 = 세로, 오른쪽 아래 큰 칸 = 둘 다</li>
+    <li>확인: Designer 오른쪽 위 <b>Screen Size</b>로 해상도를 바꿔 본다</li>
+    <li>부모가 Horizontal Box면 버튼에 width·height 칸 자체가 없다 = 유니티 Layout Group 안의 자식. 상자를 키우고 버튼은 Slot의 Size를 <b>Fill</b>로</li>
+  </ul>
+  <p class="src">Render Transform의 Scale로 키우면 그림만 커지고 레이아웃은 원래 크기로 계산해서 겹친다 — 크기는 Slot으로 (커뮤니티 표준)</p>
+</article>
+
+<article class="card" id="debug-key">
+  <h2><code>AddOnScreenDebugMessage</code>의 Key: <code>-1</code>은 매번 새 줄</h2>
+  <dl class="grid">
+    <dt>증상</dt><dd>Tick에서 값을 찍으면 화면이 글자로 뒤덮여 못 읽는다 (2026-11-10, <code>AFpsTest</code> — 실행 전에 발견)</dd>
+    <dt>원인</dt><dd>첫 인자 Key가 <code>-1</code>이면 <b>매번 새 줄을 추가</b>. 3초씩 남게 했으면 60fps × 3초 = 180줄</dd>
+    <dt>해결</dt><dd>고정 Key(예: <code>1</code>)를 주면 <b>같은 줄을 덮어써서</b> 한 줄만 갱신된다 (Epic 공식)</dd>
+  </dl>
+  <ul>
+    <li>반대로 한 번만 일어나는 일(체력 0이 된 순간)은 일부러 <code>-1</code> + 긴 시간(100초)으로 남기면 기록처럼 쌓인다</li>
+    <li><code>GEngine</code>은 서버·에디터 밖에서 없을 수 있다 → <code>if (GEngine)</code>. 한쪽만 감싸고 다른 쪽을 빼먹기 쉽다</li>
+  </ul>
 </article>
 
 <!-- 12 -->

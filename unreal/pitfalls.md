@@ -27,6 +27,9 @@
 | `C1083 Cannot open include file: '….generated.h'` | IDE가 몰래 넣은 include |
 | 처음 Play엔 되던 게 두 번째부터 조용히 안 된다 | Details의 참조 칸이 None |
 | `TObjectPtr`와 `TWeakObjectPtr` 중 뭘 쓰나 / 가끔만 크래시 | 오브젝트 포인터 고르기 |
+| UMG 버튼 글자 뒤에 흰 입력칸이 생긴다 / 플레이 중 클릭하면 글자가 수정된다 | Text Box ≠ Text Block |
+| 앵커를 늘이기로 골랐는데 위젯이 안 늘어난다 / 버튼에 width·height 칸이 없다 | 앵커는 Ctrl + 클릭 |
+| 화면이 디버그 글자로 뒤덮여 숫자를 못 읽는다 | AddOnScreenDebugMessage의 Key |
 
 ## 생성자에서 `AddDynamic` → 조용히 안 불림
 
@@ -190,6 +193,39 @@ UE_LOG(LogTemp, Warning, TEXT("Enter(%s)"), *Other->GetName());
 - **함정 ①** `UPROPERTY` 없는 맨 포인터 `AActor* Target;` — 상대가 사라져도 GC가 모르고 지워진 메모리를 가리킨 채 남음(dangling). **가끔만** 크래시라 원인 찾기가 제일 어렵다
 - **함정 ②** `TObjectPtr`를 `!= nullptr`로만 확인 — `Destroy()` 직후엔 아직 null이 아닐 수 있다. `IsValid()`로
 - 유니티 대조: `target != null`(Destroy되면 null처럼 보임) ↔ `IsValid`, C# `WeakReference` ↔ `TWeakObjectPtr`
+
+## UMG: 글자 표시에 Text Box → 입력칸이 됨
+
+- **증상**: 버튼 글자 뒤에 흰 입력칸 배경. 글자를 가운데로 옮기려다 이상함을 느낌. Details 맨 위 이름이 `EditableTextBox_186` (2026-11-09, `WBP_FpsSwitcher`)
+- **처음 의심**: 정렬 설정 문제
+- **원인**: Palette에서 **Text Box**를 골랐다. 플레이어가 타이핑하는 입력칸 = 유니티 InputField. 플레이 중 클릭하면 글자가 수정되고 버튼 클릭을 가로챌 수도 있다
+- **해결**: 지우고 **Text Block**(Palette의 COMMON → **Text**)을 Button 안에 다시 넣음 (Epic 공식)
+- Palette에서 `text`를 검색하면 6개가 나온다. 보여 주기만 하는 건 Text와 Rich Text Block뿐
+- 가운데 맞추기는 Text Block의 **Slot (Button Slot) → Horizontal / Vertical Alignment**. Appearance의 Justification은 "글줄을 블록 안에서" 정렬하는 것이라 다르다 (Epic 공식: 부모 안에서의 위치는 Slot이 정함)
+
+## UMG: 앵커 프리셋은 Ctrl + 클릭해야 꽉 찬다
+
+- **증상**: 앵커 프리셋에서 늘이기 칸을 골랐는데 체력바가 화면 폭을 따라 늘어나지 않는다 (2026-11-10, `HealthBar`)
+- **원인**: 그냥 클릭하면 **앵커만** 바뀌고 위치·크기는 그대로다. 유니티도 그냥 클릭은 앵커만이고 Alt + 클릭이라야 꽉 찬다
+
+| 하는 일 | 유니티 | 언리얼 |
+|---|---|---|
+| 앵커만 바꾸기 | 클릭 | 클릭 |
+| 위치·크기도 맞추기 | **Alt** + 클릭 | **Ctrl** + 클릭 |
+| 피벗(기준점)도 맞추기 | Shift + 클릭 | Shift + 클릭 (Alignment) |
+
+- **해결**: 위쪽 가로 늘이기 칸을 Ctrl + Shift + 클릭. 늘이면 Slot 칸이 Position X·Size X 대신 **Offset Left / Offset Right**(양쪽 여백)로 바뀐다
+- 늘어나는 칸: 프리셋 오른쪽 줄 = 가로, 아래 줄 = 세로, 오른쪽 아래 큰 칸 = 둘 다
+- 확인: Designer 오른쪽 위 **Screen Size**로 해상도를 바꿔 본다
+- 부모가 Horizontal Box면 버튼에 width·height 칸 자체가 없다 = 유니티 Layout Group 안의 자식. 상자를 키우고 버튼은 Slot의 Size를 **Fill**로. Render Transform의 Scale로 키우면 레이아웃은 원래 크기로 계산해서 겹친다 (커뮤니티 표준)
+
+## `AddOnScreenDebugMessage`의 Key: `-1`은 매번 새 줄
+
+- **증상**: Tick에서 값을 찍었더니 화면이 글자로 뒤덮여서 못 읽는다 (2026-11-10, `AFpsTest` — 실행 전에 발견)
+- **원인**: 첫 인자 Key가 `-1`이면 **매번 새 줄을 추가**한다. 3초씩 남게 했으면 60fps × 3초 = 180줄
+- **해결**: 고정 Key(예: `1`)를 주면 **같은 줄을 덮어써서** 한 줄만 계속 갱신된다 (Epic 공식)
+- 반대로 한 번만 일어나는 일(체력 0이 된 순간)은 일부러 `-1` + 긴 시간(100초)으로 남겨 두면 기록처럼 쌓인다
+- `GEngine`은 서버·에디터 밖에서 없을 수 있다 → `if (GEngine)`으로 감싸기. 한쪽만 감싸고 다른 쪽을 빼먹기 쉽다
 
 ## 작은 것들
 
