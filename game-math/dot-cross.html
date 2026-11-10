@@ -207,7 +207,7 @@ ul{margin:0;padding-left:20px}
   <p>종이 공기저항(<a href="../projectf/paper-aero-map.html">PaperAero 지도</a> ②)에서 속도를 이렇게 쪼갰어요.</p>
   <pre>float3 vn = dot(Vel, N) * N;   // N 방향 그림자 조각  → cos 쪽 (초록)
 float3 vt = Vel - vn;          // 그림자를 떼어낸 나머지 → sin 쪽 (주황)</pre>
-  <p style="margin-top:10px"><code>vt</code>가 실험 1의 주황 조각입니다. 화살표 길이가 1이면 <code>vt</code>의 길이가 정확히 sin이에요. 그리고 초록과 주황은 직각이라 <b>cos² + sin² = 1</b>은 빗변이 1인 직각삼각형의 피타고라스(중2)일 뿐입니다.</p>
+  <p style="margin-top:10px"><code>vt</code>가 실험 1의 주황 조각입니다. 화살표 길이가 1이면 <code>vt</code>의 길이가 정확히 sin이에요. 그리고 초록과 주황은 직각이라 <b>cos² + sin² = 1</b>은 빗변이 1인 직각삼각형의 피타고라스일 뿐입니다.</p>
 </section>
 
 <section aria-labelledby="l6">

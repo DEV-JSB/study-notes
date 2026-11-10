@@ -64,7 +64,7 @@ ul{margin:0;padding-left:20px}
 <body>
 <main>
 <header style="display:flex;flex-direction:column;gap:10px">
-  <span class="eyebrow">게임 루프 · 초3~6 · 2026-11-10</span>
+  <span class="eyebrow">게임 루프 · 2026-11-10</span>
   <h1>간격마다 실행하기 — fps에 묶이지 않게</h1>
   <p class="lead">TBH(Unity)에 30·45·60 fps 옵션이 있는데, 로직 하나가 "0.02초 기다렸다가 실행"을 반복하고 있었습니다. 같은 구조를 언리얼 <code>AFpsTest</code>로 재현하고 고친 날의 정리예요. 언리얼 실험은 처음에 0.002초로 시작했는데, 그 간격에서는 버그가 fps에 정비례로만 보였고, 실제 값 0.02초에서는 30fps와 60fps가 같아지는 계단이 됩니다 (2번). 핵심은 벡터가 아니라 <b>나눗셈의 몫과 나머지, 그리고 올림</b>입니다.</p>
 </header>
@@ -228,20 +228,6 @@ DamageCount += AttackCount;</pre>
   <div class="quote">
     <q>사실상 시간당 수행 횟수로 봐야겠네, 정확하게 보려면</q>
     <span class="verdict">맞음 — 시간당 = 증상, 프레임당 = 원인</span>
-  </div>
-</section>
-
-<section aria-labelledby="l9">
-  <h2 id="l9">구멍의 위치</h2>
-  <div class="tbl">
-  <table>
-    <thead><tr><th>개념</th><th>학교</th><th>이 노트</th></tr></thead>
-    <tbody>
-      <tr><td>나눗셈의 몫과 나머지</td><td>초3~4</td><td>3 (고침)</td></tr>
-      <tr><td>올림·버림 (어림하기)</td><td>초5</td><td>1, 2, 3</td></tr>
-      <tr><td>"1당 얼마" (비율, 속력)</td><td>초6~중1</td><td>5 (시간당 횟수)</td></tr>
-    </tbody>
-  </table>
   </div>
 </section>
 
