@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>경쟁 상태와 lock</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: race result → ++ stepper (try it) → three tools → lock cost → lock scope → await measuring trap → choosing */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --ok:#178a66; --bad:#d23b3b; --info:#2f6fd0; --warn:#d2552a;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;padding-inline:16px;padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
+h1{font-size:28px;font-weight:500;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:500;margin:0;text-wrap:balance}
+h3{font-size:17px;font-weight:600;color:var(--fg);margin:6px 0 0;line-height:1.5;text-wrap:balance}
+.card>h3{margin:0;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h3 code{font-size:.9em}
+p{margin:0;max-width:68ch}
+a{color:var(--info)}
+section{display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.src{font-size:12px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+td.num{font-family:var(--mono);white-space:nowrap}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:13.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0;overflow-x:auto;line-height:1.6}
+.bad{color:var(--bad)} .ok{color:var(--ok)} .mut{color:var(--muted)} .inf{color:var(--info)} .warn{color:var(--warn)}
+svg{width:100%;height:auto;display:block}
+ul,ol{margin:0;padding-left:20px}
+.big{font-size:20px;font-weight:500}
+.try{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.try button{font:14px var(--sans);padding:6px 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);cursor:pointer}
+.try button:hover{border-color:var(--muted)}
+.try button:focus-visible{outline:2px solid var(--info);outline-offset:1px}
+.try button:disabled{opacity:.4;cursor:default}
+.try output{font-family:var(--mono);font-size:15px}
+#stOut{font-family:var(--sans);font-size:14px}
+#steps tr.on td{background:color-mix(in srgb,var(--info) 12%,transparent)}
+#steps tr.off td{color:var(--muted);opacity:.45}
+#steps tr.lost td:last-child{color:var(--bad);font-weight:500}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">Unity · C# 스레드 · 2026-11-13</span>
+  <h1>같은 변수를 두 스레드가 더하면 값이 사라진다 — 경쟁 상태와 lock</h1>
+  <p class="lead">두 워커 스레드가 같은 <code>_count</code>를 더하는 실험으로 경쟁 상태를 직접 보고, <code>Interlocked</code> · <code>lock</code> · <code>SemaphoreSlim</code>으로 고친 뒤 비용을 잰 기록. 한 줄 결론: <b><code>_count++</code>는 읽기·더하기·쓰기 세 단계라 겹치면 값이 사라진다. 막는 도구는 공짜가 아니어서 범위와 도구를 목적에 맞게 고른다.</b></p>
+  <p class="src">글 버전 <a href="race-condition.md">race-condition.md</a> · 실습 원본 <a href="https://github.com/DEV-JSB/unity-study/tree/main/Assets/Chapter/05.RaceCondition">unity-study / 05.RaceCondition</a></p>
+</header>
+
+<section>
+  <h2>발단</h2>
+  <p>실무 프로젝트(TBH)의 세이브 저장 코드에 <code>SemaphoreSlim</code>, <code>Interlocked.Exchange</code>, <code>UniTask.RunOnThreadPool</code>을 썼습니다. 그런데 이 부분은 AI에게 맡겨서 짰고, 다시 읽어 보니 <b>왜 이런 모양인지 설명할 수 없었습니다.</b> 동작하는 코드를 갖고 있어도 설명하거나 고칠 수 없으면 내 코드가 아닙니다.</p>
+  <p>그래서 스레드를 기초부터 다시 공부하기로 했고, 이 노트가 첫 단계입니다. 두 스레드가 같은 변수를 동시에 건드리면 무슨 일이 생기는지, 그걸 막는 도구는 각각 무엇이고 얼마나 비싼지를 빈 씬에서 직접 쟀습니다. 회사 코드는 없습니다.</p>
+</section>
+
+<section>
+  <h2>1 · 용어 먼저</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>용어</th><th>뜻</th></tr></thead>
+    <tbody>
+      <tr><td>스레드</td><td>코드를 한 줄씩 실행하는 일꾼 하나. 같은 프로그램 안의 스레드들은 같은 변수를 함께 본다</td></tr>
+      <tr><td>메인 스레드</td><td>Unity가 <code>Update</code>, 렌더링, 입력을 처리하는 스레드 1개. 게임 화면 담당</td></tr>
+      <tr><td>워커 스레드</td><td>메인 스레드가 아닌, 일을 받아서 처리해 주는 보조 스레드 (업계에서 널리 쓰는 말)</td></tr>
+      <tr><td>스레드 풀</td><td>.NET이 워커 스레드를 미리 만들어 두는 대기실. 새로 만드는 비용이 비싸서 재사용한다 (.NET 공식 문서)</td></tr>
+      <tr><td><code>Task.Run(일)</code></td><td>스레드 풀에서 워커 하나를 <b>빌려서</b> 일을 시킨다. 끝나면 워커는 대기실로 돌아간다. UniTask의 <code>UniTask.RunOnThreadPool</code>과 같은 일</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>async</code> 메서드를 만든다고 스레드가 생기지는 않습니다. 다른 스레드에서 돌게 하려면 <code>Task.Run</code>으로 넘겨야 합니다.</p>
+</section>
+
+<section>
+  <h2>2 · 실험 1 — 두 스레드가 1만 번씩: 5번 중 2번 값이 사라졌다</h2>
+<pre><code>private void AddMany()
+{
+    for (int i = 0; i &lt; _loopCount; ++i)
+    {
+        _count++;   // 두 워커 스레드가 같은 _count 를 더한다
+    }
+}
+
+Task workerA = Task.Run(AddMany);
+Task workerB = Task.Run(AddMany);
+await Task.WhenAll(workerA, workerB);</code></pre>
+  <p class="src">직접 측정 · Unity 6000.0.72f1 · 에디터(Mono) · 스레드 하나당 1만 번 · 기대값 20,000</p>
+  <svg viewBox="0 0 680 230" role="img" aria-label="5회차 결과 막대: 1회차 20000, 2회차 12137, 3회차 20000, 4회차 20000, 5회차 15828">
+    <g font-size="13" fill="var(--fg)" font-family="var(--mono)">
+      <text x="0" y="30">1회차</text><text x="0" y="68">2회차</text><text x="0" y="106">3회차</text><text x="0" y="144">4회차</text><text x="0" y="182">5회차</text>
+    </g>
+    <line x1="70" y1="8" x2="70" y2="196" stroke="var(--line)"/>
+    <line x1="510" y1="8" x2="510" y2="196" stroke="var(--muted)" stroke-dasharray="4 3"/>
+    <rect x="70" y="16" width="440" height="20" rx="3" fill="var(--ok)" opacity=".85"/><text x="518" y="31" font-size="13" fill="var(--fg)" font-family="var(--mono)">20,000</text>
+    <rect x="70" y="54" width="267" height="20" rx="3" fill="var(--bad)" opacity=".85"/><text x="345" y="69" font-size="13" fill="var(--bad)" font-family="var(--mono)">12,137 (7,863 사라짐)</text>
+    <rect x="70" y="92" width="440" height="20" rx="3" fill="var(--ok)" opacity=".85"/><text x="518" y="107" font-size="13" fill="var(--fg)" font-family="var(--mono)">20,000</text>
+    <rect x="70" y="130" width="440" height="20" rx="3" fill="var(--ok)" opacity=".85"/><text x="518" y="145" font-size="13" fill="var(--fg)" font-family="var(--mono)">20,000</text>
+    <rect x="70" y="168" width="348" height="20" rx="3" fill="var(--bad)" opacity=".85"/><text x="426" y="183" font-size="13" fill="var(--bad)" font-family="var(--mono)">15,828 (4,172 사라짐)</text>
+    <text x="70" y="220" font-size="12" fill="var(--muted)">점선 = 기대값 20,000. 틀린 회차는 항상 기대값보다 작고, 에러는 한 번도 나지 않았다</text>
+  </svg>
+  <p>돌리기 전 예측은 "20,000이 나오거나, 아니면 프로그램이 터진다"였는데 <b>둘 다 틀렸습니다.</b></p>
+  <ul>
+    <li><b>가끔만 틀린다.</b> 1만 번은 너무 빨리 끝나서, 워커 B가 시작하기 전에 워커 A가 끝난 회차는 두 스레드가 아예 겹치지 않았다</li>
+    <li><b>틀릴 때는 항상 작다.</b> 기대값보다 커진 회차는 없었다</li>
+    <li><b>에러가 나지 않는다.</b> 조용히 틀린 값만 나온다</li>
+  </ul>
+  <p>이렇게 여러 스레드가 같은 것을 동시에 건드려서 결과가 실행 순서에 따라 달라지는 상황을 <b>경쟁 상태(race condition)</b>라고 합니다 (교과서 표준 용어). 세 번 연속 맞으면 "괜찮네" 하고 넘어가게 되는 게 이 버그의 무서운 점입니다.</p>
+</section>
+
+<section>
+  <h2>3 · 왜 사라지나 — <code>_count++</code> 한 줄은 세 단계</h2>
+<pre><code>_count++;
+
+// CPU 입장에서는 세 번 나눠서 일한다
+int temp = _count;   // ① 읽기
+temp = temp + 1;     // ② 더하기
+_count = temp;       // ③ 쓰기</code></pre>
+  <p class="src"><code>++</code>가 한 번에 끝나는 연산(원자적 연산)이 아니라는 것은 .NET 공식 문서의 <code>Interlocked</code> 설명에 나옵니다.</p>
+  <div class="card">
+    <h3>직접 넘겨 보기 — <code>_count</code>가 5일 때 두 워커가 겹치면</h3>
+    <div class="tbl"><table id="steps">
+      <thead><tr><th>순서</th><th>워커 A</th><th>워커 B</th><th>메모리의 <code>_count</code></th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td>① 읽기 → temp = 5</td><td></td><td class="num">5</td></tr>
+        <tr><td class="num">2</td><td></td><td>① 읽기 → temp = 5</td><td class="num">5</td></tr>
+        <tr><td class="num">3</td><td>② 더하기 → temp = 6</td><td></td><td class="num">5</td></tr>
+        <tr><td class="num">4</td><td></td><td>② 더하기 → temp = 6</td><td class="num">5</td></tr>
+        <tr><td class="num">5</td><td>③ 쓰기 → 6</td><td></td><td class="num">6</td></tr>
+        <tr class="lost"><td class="num">6</td><td></td><td>③ 쓰기 → 6</td><td class="num">6 (덮어씀)</td></tr>
+      </tbody>
+    </table></div>
+    <div class="try">
+      <button type="button" id="stPrev">이전</button>
+      <button type="button" id="stNext">다음</button>
+      <output id="stOut" aria-live="polite"></output>
+    </div>
+  </div>
+  <ul>
+    <li><b>항상 작은 이유</b> — 덮어써서 잃어버리는 일만 생긴다. 한 번에 두 번 더해지는 순서는 없다</li>
+    <li><b>안 터지는 이유</b> — <code>int</code>에 숫자를 쓰는 건 숫자 하나를 쓰는 일이라 깨질 구조가 없다. <code>List.Add</code>를 동시에 하면 예외가 나거나 내부가 망가질 수 있다고 알려져 있다 (이번에 재지는 않음)</li>
+    <li><b>가끔 맞는 이유</b> — 두 스레드가 겹치지 않은 회차에서는 이 순서가 생기지 않는다</li>
+  </ul>
+</section>
+
+<section>
+  <h2>4 · 고치는 도구 셋</h2>
+  <p>3절에서 문제가 된 곳은 공유 변수 <code>_count</code>를 건드리는 <code>_count++</code> 한 줄입니다. 이렇게 <b>여러 스레드가 함께 쓰는 데이터를 건드려서, 한 번에 한 스레드만 들어가야 하는 코드 구간</b>을 임계 구역(critical section)이라고 합니다 (교과서 표준 용어).</p>
+  <p>그래서 할 일은 두 단계입니다.</p>
+  <ol>
+    <li><b>임계 구역을 찾는다.</b> 이번 실험에서는 <code>_count++</code> 한 줄 (①읽기·②더하기·③쓰기)</li>
+    <li><b>한 번에 한 스레드만 들어가도록 지킨다.</b> 이걸 상호 배제(mutual exclusion)라고 합니다 (교과서 표준 용어)</li>
+  </ol>
+  <p>아래 세 도구는 모두 2번, 임계 구역을 지키는 방법입니다. 흔히 "lock으로 임계 구역을 만든다"고도 말하지만, 정확히는 임계 구역은 공유 데이터를 건드리는 순간 이미 생겨 있고, 도구는 그 구역을 <b>지키는</b> 역할입니다.</p>
+
+  <div class="card">
+    <h3><code>Interlocked</code> — CPU에게 세 단계를 한 번에 시킨다</h3>
+<pre><code>Interlocked.Increment(ref _count);</code></pre>
+    <ul>
+      <li>자물쇠가 없다. CPU에 원래 있는 "한 번에 끝나는 명령"을 쓴다 (.NET 공식 문서)</li>
+      <li>할 수 있는 일은 <b>변수 하나에 연산 하나</b>뿐이다. <code>_gold</code>를 빼고 <code>_itemCount</code>를 더하는 두 줄이 함께 바뀌어야 하면, 두 줄 사이에 다른 스레드가 끼어들 수 있어 <code>lock</code>이 필요하다</li>
+    </ul>
+    <p>할 수 있는 일은 적지만, 실무에서 자주 쓰이는 곳은 정해져 있습니다.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>쓰임</th><th>코드</th><th><code>lock</code> 대신 쓰는 이유</th></tr></thead>
+      <tbody>
+        <tr><td>횟수 세기 (처리한 개수, 통계)</td><td><code>Interlocked.Increment(ref _count);</code></td><td>변수 하나에 1을 더하는 것뿐이라 자물쇠까지 쓸 필요가 없다</td></tr>
+        <tr><td>고유 번호 발급</td><td><code>int id = Interlocked.Increment(ref _nextId);</code></td><td>1 더하기와 결과 받기가 한 번에 끝나서 두 스레드가 같은 번호를 받지 않는다. <code>_nextId++; int id = _nextId;</code>로 두 줄에 나눠 쓰면 그 사이에 다른 스레드가 끼어들 수 있다</td></tr>
+        <tr><td>딱 한 번만 실행</td><td><code>if (Interlocked.Exchange(ref _flag, 1) == 0) { ... }</code></td><td><code>Exchange</code>는 <code>_flag</code>를 1로 바꾸고 <b>바꾸기 전 값</b>을 돌려준다. 이게 한 번에 끝나서, 두 스레드가 동시에 와도 0을 돌려받는 스레드는 처음 온 하나뿐이다</td></tr>
+      </tbody>
+    </table></div>
+    <p>TBH 저장 코드는 세 번째 모양으로 "세마포어 반납은 딱 한 번만"을 지켰습니다.</p>
+  </div>
+
+  <div class="card">
+    <h3><code>lock</code> — 자물쇠 하나, 쥔 스레드만 들어간다</h3>
+<pre><code>private readonly object _lock = new();
+
+lock (_lock)        // 이미 누가 쥐고 있으면 여기서 기다린다
+{
+    _count++;       // ①②③이 통째로 보호된다
+}                   // 중괄호를 나가면 자동으로 놓는다</code></pre>
+    <ul>
+      <li>두 스레드가 <b>같은 자물쇠 객체</b>를 써야 의미가 있다</li>
+      <li>안에서 <code>await</code>를 쓸 수 없다 (컴파일 에러 CS1996, C# 공식 문서)</li>
+      <li>쥔 스레드가 직접 놓아야 한다. <code>lock</code>은 <code>Monitor.Enter</code> / <code>Monitor.Exit</code>로 컴파일되고, 다른 스레드에서 <code>Monitor.Exit</code>를 부르면 <code>SynchronizationLockException</code>이 난다 (C# 공식 문서)</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><code>SemaphoreSlim</code> — 입장권 N장짜리 문</h3>
+<pre><code>private readonly SemaphoreSlim _semaphore = new(1, 1);   // (처음 입장권 수, 최대 입장권 수)
+
+_semaphore.Wait();          // 입장권 가져가기. 0장이면 기다린다
+try
+{
+    _count++;
+}
+finally
+{
+    _semaphore.Release();   // 입장권 돌려주기. 직접 해야 한다
+}</code></pre>
+    <div class="tbl"><table>
+      <thead><tr><th>생성</th><th>뜻</th><th>쓰임</th></tr></thead>
+      <tbody>
+        <tr><td class="num">new(1, 1)</td><td>1장으로 시작, 최대 1장</td><td><code>lock</code>과 같은 효과</td></tr>
+        <tr><td class="num">new(3, 3)</td><td>3장으로 시작, 최대 3장</td><td>최대 3개까지 동시에 (예: 동시 다운로드 3개 제한)</td></tr>
+        <tr><td class="num">new(0, 1)</td><td>0장으로 시작</td><td>누가 <code>Release()</code>해 주면 열림 → "준비 끝 신호" 기다리기</td></tr>
+      </tbody>
+    </table></div>
+    <ul>
+      <li>최대값을 넘겨 <code>Release()</code>하면 <code>SemaphoreFullException</code>. 두 번 반납하는 버그를 드러내는 안전장치다 (.NET 공식 문서)</li>
+      <li>누가 쥐었는지 따지지 않고 숫자만 센다. 그래서 <b>메인 스레드가 쥐고 워커 스레드가 반납</b>할 수 있다. 반대로 쥔 적 없는 스레드의 <code>Release()</code>도 막지 않으니 반납 규칙은 직접 지켜야 한다</li>
+    </ul>
+    <div class="tbl"><table>
+      <thead><tr><th>반납 규칙</th><th>어기면</th></tr></thead>
+      <tbody>
+        <tr><td>가져갔으면 반드시 돌려준다 (<code>try / finally</code>)</td><td>입장권이 0에 멈춰 이후 전부 영원히 대기</td></tr>
+        <tr><td>두 번 돌려주지 않는다</td><td><code>SemaphoreFullException</code>, 또는 두 스레드가 동시에 들어감</td></tr>
+        <tr><td>못 가져갔으면 돌려주지 않는다 (<code>Wait</code>는 <code>try</code> 밖에)</td><td>입장권이 늘어 두 스레드가 동시에 들어감</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section>
+  <h2>5 · 잠그는 비용 — 두 스레드가 1,000만 번씩</h2>
+  <p class="src">직접 측정 · Unity 6000.0.72f1 · 에디터(Mono) · 두 스레드 합계 2,000만 번 · 5회 반복 · 막대는 5회 중 대표값</p>
+  <svg viewBox="0 0 680 210" role="img" aria-label="걸린 시간 막대: for 문 전체 잠금 약 8밀리초, 1스레드 한 줄씩 lock 약 310밀리초, 2스레드 한 줄씩 lock 약 1100밀리초, 2스레드 한 줄씩 SemaphoreSlim 약 3200밀리초">
+    <g font-size="13" fill="var(--fg)" font-family="var(--sans)">
+      <text x="0" y="30">for 전체 잠금</text>
+      <text x="0" y="68">1스레드, 한 줄씩 lock</text>
+      <text x="0" y="106">2스레드, 한 줄씩 lock</text>
+      <text x="0" y="144">2스레드, 한 줄씩 세마포어</text>
+    </g>
+    <line x1="180" y1="8" x2="180" y2="158" stroke="var(--line)"/>
+    <rect x="180" y="16" width="2" height="20" fill="var(--ok)"/><text x="190" y="31" font-size="13" fill="var(--ok)" font-family="var(--mono)">약 8ms · ++ 1번당 약 0.4ns</text>
+    <rect x="180" y="54" width="44" height="20" rx="3" fill="var(--info)" opacity=".85"/><text x="232" y="69" font-size="13" fill="var(--fg)" font-family="var(--mono)">약 310ms · 약 15ns</text>
+    <rect x="180" y="92" width="156" height="20" rx="3" fill="var(--warn)" opacity=".85"/><text x="344" y="107" font-size="13" fill="var(--fg)" font-family="var(--mono)">약 1,100ms · 약 55ns</text>
+    <rect x="180" y="130" width="455" height="20" rx="3" fill="var(--bad)" opacity=".85"/><text x="186" y="145" font-size="13" fill="#fff" font-family="var(--mono)">약 3,200ms · 약 160ns</text>
+    <text x="180" y="180" font-size="12" fill="var(--muted)">값은 네 모드 모두 2,000만으로 맞았다. Interlocked 모드의 시간은 재지 않았다</text>
+    <text x="180" y="200" font-size="12" fill="var(--muted)">"++ 1번당" = 걸린 시간 ÷ 2,000만</text>
+  </svg>
+  <ul>
+    <li><b>for 문 전체를 잠근 쪽이 140배쯤 빨랐다.</b> 한 줄씩 잠그면 자물쇠를 2,000만 번 쥐었다 놓고 그때마다 두 스레드가 다툰다. for 문 전체를 잠그면 자물쇠는 총 2번만 쥔다</li>
+    <li><b><code>SemaphoreSlim</code>이 <code>lock</code>보다 3배쯤 느렸다.</b> 내부에서 잠금을 쓰고 그 위에 입장권 숫자 관리를 더 하는 것으로 알고 있다 (.NET 소스를 직접 확인하지는 않음)</li>
+  </ul>
+
+  <h3>비용은 어디서 나오나 — 쥐고 놓기 vs 서로 다투기</h3>
+  <p>스레드를 <b>하나만</b> 써서 한 줄씩 <code>lock</code>을 2,000만 번 걸면, 다툴 상대가 없으니 순수하게 쥐고 놓는 비용만 남습니다. 이 값을 2스레드 결과에서 빼서 나눠 봤습니다.</p>
+  <svg viewBox="0 0 680 150" role="img" aria-label="2스레드 한 줄씩 lock 1100밀리초를 쥐고 놓기 310밀리초와 서로 다투느라 늘어난 790밀리초로 나눈 막대">
+    <text x="0" y="20" font-size="13" fill="var(--fg)">1스레드 + 한 줄씩 lock (다툼 없음)</text>
+    <rect x="0" y="30" width="185" height="28" rx="3" fill="var(--info)" opacity=".85"/><text x="92" y="49" font-size="13" fill="#fff" text-anchor="middle" font-family="var(--mono)">310ms</text>
+    <text x="0" y="88" font-size="13" fill="var(--fg)">2스레드 + 한 줄씩 lock (다툼 있음) = 약 1,100ms</text>
+    <rect x="0" y="98" width="185" height="28" rx="3" fill="var(--info)" opacity=".85"/><text x="92" y="117" font-size="13" fill="#fff" text-anchor="middle" font-family="var(--mono)">310ms</text>
+    <rect x="189" y="98" width="471" height="28" rx="3" fill="var(--warn)" opacity=".85"/><text x="424" y="117" font-size="13" fill="#fff" text-anchor="middle" font-family="var(--mono)">790ms · 다투느라 늘어난 시간</text>
+    <text x="92" y="144" font-size="12" fill="var(--muted)" text-anchor="middle">쥐고 놓기 약 28%</text>
+    <text x="424" y="144" font-size="12" fill="var(--muted)" text-anchor="middle">서로 다투기 약 72%</text>
+  </svg>
+  <div class="tbl"><table>
+    <thead><tr><th>단계</th><th>계산</th><th>값</th></tr></thead>
+    <tbody>
+      <tr><td>① 1스레드 + 한 줄씩 lock</td><td>직접 측정, 5회</td><td class="num">308–318ms, 약 310ms</td></tr>
+      <tr><td>② 2스레드 + 한 줄씩 lock</td><td>직접 측정, 5회</td><td class="num">약 1,100ms</td></tr>
+      <tr><td>③ 상대가 생겨서 늘어난 시간</td><td class="num">1,100 − 310</td><td class="num">약 790ms</td></tr>
+      <tr><td>④ 쥐고 놓기 몫</td><td class="num">310 ÷ 1,100</td><td class="num">약 28%</td></tr>
+      <tr><td>⑤ 서로 다투기 몫</td><td class="num">790 ÷ 1,100</td><td class="num">약 72%</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><b>서로 다투는 비용이 더 컸다</b> (약 790ms 대 약 310ms)</li>
+    <li><b>쥐고 놓기 자체도 싸지 않았다.</b> 다툼 없이도 <code>++</code> 한 번당 약 15ns로, 잠그지 않은 <code>++</code>(약 0.4ns)의 약 39배. 돌리기 전 예측("별로 안 비쌀 것")은 틀렸다</li>
+    <li>"혼자일 때 쥐고 놓기 비용이 둘일 때도 같다"고 가정하고 뺀 대략적인 나누기다. "다툼 쪽이 2배에서 3배쯤 크다" 정도로 기억한다</li>
+  </ul>
+
+  <h3>그럼 lock은 비싸서 못 쓰나 — 아니다</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>상황</th><th>잠금 1번(약 15ns)과 비교할 일</th><th>판단</th></tr></thead>
+    <tbody>
+      <tr><td>이번 실험: <code>++</code> 하나마다 잠금</td><td><code>++</code> 약 0.4ns</td><td class="bad">잠금이 일보다 39배 큼 → 아깝다</td></tr>
+      <tr><td>세이브 저장: 저장 1번에 잠금 1번</td><td>저장 수십 ms</td><td class="ok">저장 시간의 백만 분의 1 수준 → 무시해도 됨</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>일 하나가 아주 작은데 아주 자주 잠글 때만</b> 비쌉니다. 그래서 순서는 ① 공유 데이터면 일단 막는다(틀린 값은 빨라도 소용없다) ② 느리다는 게 측정으로 확인되면 그때 범위나 도구를 바꾼다.</p>
+</section>
+
+<section>
+  <h2>6 · 잠그는 범위 — for 문 전체를 잠그면 병렬이 사라진다</h2>
+  <p>for 문 전체를 잠그면 값도 맞고 더 빨랐지만, <b>워커 B는 워커 A가 1,000만 번을 다 끝낼 때까지 아무것도 못 합니다.</b> 스레드 하나가 2,000만 번 더한 것과 같습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>코드 모양</th><th>병렬로 도는 부분</th></tr></thead>
+    <tbody>
+      <tr><td><code>lock</code> 안에 <code>_count++</code>만</td><td><code>lock</code> 바깥 (이번 실험에는 바깥 일이 없었다)</td></tr>
+      <tr><td><code>lock</code> 안에 for 문 전체</td><td>없음 (A가 끝나야 B 시작)</td></tr>
+      <tr><td>for 안에 무거운 계산 + <code>lock</code> 안에 <code>_count++</code>만</td><td>무거운 계산 부분 ← 병렬이 이득을 보는 모양 (이번에 재지는 않음)</td></tr>
+    </tbody>
+  </table></div>
+  <p>여기서 놓치고 있던 것이 있었습니다. <b>스레드를 쓰는 목적은 두 가지</b>입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>목적</th><th>뜻</th><th>for 문 전체를 잠그면</th></tr></thead>
+    <tbody>
+      <tr><td>나눠서 빨리</td><td>워커 여러 개가 일을 나눠 총 시간을 줄인다</td><td class="bad">사라진다</td></tr>
+      <tr><td>메인 스레드 비워 두기</td><td>무거운 일을 워커에게 넘겨 게임 화면이 멈추지 않게 한다</td><td class="ok">그대로 남는다</td></tr>
+    </tbody>
+  </table></div>
+  <p>TBH 저장 코드가 두 번째 경우입니다. 세마포어가 <b>저장 전체</b>를 잠가서 저장끼리는 한 번에 하나씩만 돕니다(같은 파일에 동시에 쓰면 깨지니까). 그래도 워커 스레드를 쓴 이유는 JSON 직렬화와 파일 쓰기를 메인 스레드에서 빼내 <b>프레임 드랍을 막으려는 것</b>입니다. 그래서 잠그는 범위를 정하기 전에 먼저 묻습니다. <b>"이 스레드를 나눠서 빨리 하려고 쓰나, 메인 스레드를 비워 두려고 쓰나?"</b></p>
+</section>
+
+<section>
+  <h2>7 · 측정 함정 — <code>await</code> 다음 줄은 메인 스레드 차례를 기다린다</h2>
+  <p>for 문 전체를 잠근 모드를 처음 쟀을 때 이상한 숫자가 나왔습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>회차</th><th><code>SemaphoreSlim</code>, for 전체</th><th><code>lock</code>, for 전체</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="num">9ms</td><td class="num">9ms</td></tr>
+      <tr><td class="num">2</td><td class="num bad">608ms</td><td class="num bad">651ms</td></tr>
+      <tr><td class="num">3</td><td class="num">16ms</td><td class="num">18ms</td></tr>
+      <tr><td class="num">4</td><td class="num">105ms</td><td class="num">106ms</td></tr>
+      <tr><td class="num">5</td><td class="num">99ms</td><td class="num">99ms</td></tr>
+    </tbody>
+  </table></div>
+  <p>일은 매번 같은데 2회차만 60배 넘게 느리고, 두 모드의 회차별 모양까지 똑같았습니다. 잠금 방식이 아니라 <b>재는 방법</b>의 문제였습니다.</p>
+<pre><code>var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+Task workerA = Task.Run(action);
+Task workerB = Task.Run(action);
+await Task.WhenAll(workerA, workerB);
+Debug.Log($"... {stopwatch.ElapsedMilliseconds}ms");   // 이 줄은 언제, 어느 스레드에서 실행되나?</code></pre>
+  <p><code>await</code>는 "여기서 기다린다"처럼 보이지만, 실제로는 <b>"이 메서드를 잠깐 빠져나가고, 일이 끝나면 아래 줄부터 마저 실행해 줘"라는 예약</b>입니다. Unity에서는 그 "아래 줄부터"를 <b>메인 스레드가 자기 차례에</b> 실행합니다. <code>await</code> 다음 줄에서도 <code>transform</code> 같은 Unity API를 안전하게 쓰게 하려는 장치입니다 (Unity API는 메인 스레드 전용, Unity 공식 문서).</p>
+  <svg viewBox="0 0 680 400" role="img" aria-label="await 버전은 워커가 8밀리초에 끝나도 메인 스레드가 600밀리초짜리 느린 프레임을 지나야 Debug.Log를 실행해 608밀리초가 찍힌다. WaitAll 버전은 메인이 그 자리에서 기다리다 바로 Debug.Log를 실행해 8밀리초가 찍힌다">
+    <text x="0" y="22" font-size="14" font-weight="500" fill="var(--fg)">await Task.WhenAll → 608ms</text>
+    <text x="0" y="62" font-size="13" fill="var(--muted)">워커</text>
+    <text x="0" y="112" font-size="13" fill="var(--muted)">메인</text>
+    <rect x="60" y="44" width="140" height="32" rx="4" fill="var(--ok)" opacity=".85"/><text x="130" y="65" font-size="13" fill="#fff" text-anchor="middle">일 8ms</text>
+    <rect x="60" y="94" width="140" height="32" rx="4" fill="var(--line)"/><text x="130" y="115" font-size="12" fill="var(--fg)" text-anchor="middle">다른 일 (프레임 1)</text>
+    <rect x="206" y="94" width="300" height="32" rx="4" fill="var(--warn)" opacity=".85"/><text x="356" y="115" font-size="13" fill="#fff" text-anchor="middle">프레임 2: 에디터가 느림, 약 600ms</text>
+    <rect x="512" y="94" width="130" height="32" rx="4" fill="var(--info)" opacity=".85"/><text x="577" y="115" font-size="13" fill="#fff" text-anchor="middle">Debug.Log</text>
+    <path d="M202 60 L577 60 L577 90" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 3"/>
+    <path d="M572 84 L577 91 L582 84" fill="none" stroke="var(--muted)" stroke-width="1.2"/>
+    <text x="390" y="52" font-size="12" fill="var(--muted)" text-anchor="middle">"Debug.Log 줄부터 마저 해 줘"를 메인의 할 일 목록에 넣음</text>
+    <line x1="60" y1="146" x2="642" y2="146" stroke="var(--info)"/><line x1="60" y1="140" x2="60" y2="152" stroke="var(--info)"/><line x1="642" y1="140" x2="642" y2="152" stroke="var(--info)"/>
+    <text x="351" y="170" font-size="12" fill="var(--fg)" text-anchor="middle">Stopwatch 608ms = 일한 8ms + 메인 차례를 기다린 약 600ms</text>
+
+    <text x="0" y="232" font-size="14" font-weight="500" fill="var(--fg)">Task.WaitAll → 8ms</text>
+    <text x="0" y="272" font-size="13" fill="var(--muted)">워커</text>
+    <text x="0" y="322" font-size="13" fill="var(--muted)">메인</text>
+    <rect x="60" y="254" width="140" height="32" rx="4" fill="var(--ok)" opacity=".85"/><text x="130" y="275" font-size="13" fill="#fff" text-anchor="middle">일 8ms</text>
+    <rect x="60" y="304" width="140" height="32" rx="4" fill="none" stroke="var(--bad)" stroke-dasharray="4 3"/><text x="130" y="325" font-size="13" fill="var(--bad)" text-anchor="middle">멈춰서 기다림</text>
+    <rect x="206" y="304" width="130" height="32" rx="4" fill="var(--info)" opacity=".85"/><text x="271" y="325" font-size="13" fill="#fff" text-anchor="middle">Debug.Log</text>
+    <path d="M202 270 L271 270 L271 300" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 3"/>
+    <path d="M266 294 L271 301 L276 294" fill="none" stroke="var(--muted)" stroke-width="1.2"/>
+    <line x1="60" y1="356" x2="336" y2="356" stroke="var(--info)"/><line x1="60" y1="350" x2="60" y2="362" stroke="var(--info)"/><line x1="336" y1="350" x2="336" y2="362" stroke="var(--info)"/>
+    <text x="198" y="380" font-size="12" fill="var(--fg)" text-anchor="middle">Stopwatch 8ms = 일한 시간만</text>
+  </svg>
+  <p><code>await</code>를 <code>Task.WaitAll(workerA, workerB)</code>로 바꿔서 다시 재니 5회 모두 7ms에서 8ms로 고르게 나왔습니다. 가설이 값으로 확인됐습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th><code>await Task.WhenAll</code></th><th><code>Task.WaitAll</code></th></tr></thead>
+    <tbody>
+      <tr><td>기다리는 동안 메인 스레드</td><td>다른 일을 한다 (게임이 계속 돈다)</td><td>그 자리에 멈춘다 (게임이 굳는다)</td></tr>
+      <tr><td>다음 줄이 실행되는 때</td><td>메인 스레드 차례가 왔을 때 (보통 다음 프레임)</td><td>워커가 끝난 즉시</td></tr>
+      <tr><td>이번 측정</td><td>기다린 시간이 섞인다</td><td>일한 시간만</td></tr>
+      <tr><td>실제 게임에서</td><td class="ok">보통 이걸 쓴다</td><td class="bad">오래 걸리는 일이면 프레임 드랍</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src"><code>WaitAll</code>은 측정용으로만 썼습니다. 5절의 "한 줄씩 잠금" 두 모드와 1스레드 실험은 <code>await</code> 버전으로 쟀습니다. 5회 모두 값이 고르게 나와 프레임 대기의 영향은 작아 보이지만, <code>WaitAll</code>로 다시 재지는 않았습니다.</p>
+</section>
+
+<section>
+  <h2>8 · lock과 SemaphoreSlim, 무엇을 쓰나</h2>
+  <p><b>1단계</b> 변수 하나에 연산 하나인가? → <code>Interlocked</code></p>
+  <p><b>2단계</b> 아래 다섯 질문 중 하나라도 "예"인가? → <code>SemaphoreSlim</code></p>
+  <div class="tbl"><table>
+    <thead><tr><th>질문</th><th><code>lock</code>으로 안 되는 이유</th><th>TBH 저장 코드</th></tr></thead>
+    <tbody>
+      <tr><td>보호 구역 안에 <code>await</code>가 있나?</td><td>컴파일 에러 CS1996</td><td>예</td></tr>
+      <tr><td>잠그는 스레드와 푸는 스레드가 다른가?</td><td>쥔 스레드만 풀 수 있음</td><td>예 (메인이 쥐고 워커가 반납)</td></tr>
+      <tr><td>기다리는 동안 메인 스레드를 멈추면 안 되나?</td><td>기다리는 동안 그 스레드가 멈춤</td><td>예 (<code>WaitAsync</code>)</td></tr>
+      <tr><td>타임아웃이나 취소가 필요한가?</td><td><code>lock</code> 문법에는 없음 (<code>Monitor.TryEnter</code>로는 가능)</td><td>예 (종료 시 최대 3초)</td></tr>
+      <tr><td>N개까지 동시에 허용하나?</td><td>무조건 1개</td><td>아니요</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>3단계</b> 다섯 개 다 "아니요"면 → <code>lock</code>. 반납이 자동이라 실수할 여지가 없고, 두 번 반납하는 실수가 생길 수 없고, 이번 측정에서 <code>SemaphoreSlim</code>보다 3배쯤 빨랐습니다. "필요한 이유가 있을 때만 <code>SemaphoreSlim</code>으로 올라간다"를 기준으로 삼았습니다 (커뮤니티 표준).</p>
+</section>
+
+<section>
+  <h2>정리</h2>
+  <ol>
+    <li><code>_count++</code>는 읽기·더하기·쓰기 세 단계라, 두 스레드가 겹치면 더한 값이 덮어써져 사라진다. 에러 없이 가끔만 틀린다</li>
+    <li>막는 방법은 세 단계를 한 덩어리로 만드는 것. 변수 하나는 <code>Interlocked</code>, 여러 줄은 <code>lock</code>, <code>await</code>가 끼거나 다른 스레드에서 풀어야 하면 <code>SemaphoreSlim</code></li>
+    <li>잠금은 공짜가 아니다. 다툼 없이도 <code>++</code>보다 39배, 다투면 140배쯤 비쌌다. 하지만 저장처럼 가끔 한 번 잠그는 곳에서는 무시해도 된다</li>
+    <li>잠그는 범위를 넓히면 병렬이 사라진다. 목적이 "메인 스레드 비워 두기"라면 그래도 괜찮다</li>
+    <li><code>await</code> 다음 줄은 메인 스레드 차례를 기다린다. Stopwatch로 잴 때 그 대기 시간이 섞일 수 있다</li>
+  </ol>
+</section>
+
+<section>
+  <h2>다음 — 데드락</h2>
+  <p>이번 노트는 <b>덜 막아서</b> 생기는 문제였습니다. 다음은 <b>잘못 막아서</b> 생기는 문제, 데드락(deadlock)입니다. 7절에서 본 두 가지 — <code>await</code> 다음 줄은 메인 스레드 차례를 기다린다, 메인 스레드가 그 자리에 멈춰서 기다리면 그 차례가 오지 않는다 — 를 합치면 서로가 서로를 기다리는 상황을 만들 수 있습니다. TBH 저장 코드가 게임 종료 때 세마포어를 워커 스레드에서 반납하는 이유가 바로 이것이라, 다음 노트에서 직접 만들어 보고 설명할 계획입니다.</p>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="string-gc.html">문자열과 GC</a> — 같은 방식(빈 씬에서 직접 재기)으로 쓴 노트</li>
+    <li><a href="float-precision.html">좌표가 커지면 캐릭터가 멈춘다 — float 정밀도</a> — 실무 문제를 빈 씬에서 다시 재 본 노트</li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  const rows=[...document.querySelectorAll('#steps tbody tr')];
+  const prev=document.getElementById('stPrev'), next=document.getElementById('stNext'), out=document.getElementById('stOut');
+  const notes=[
+    '워커 A가 메모리에서 5를 읽어 갔다',
+    '워커 A가 아직 쓰기 전에 워커 B도 5를 읽어 갔다',
+    '워커 A는 자기 손(temp)에서 6을 만들었다. 메모리는 아직 5',
+    '워커 B도 자기 손에서 6을 만들었다',
+    '워커 A가 6을 썼다',
+    '워커 B도 6을 썼다. 두 번 더했는데 1만 늘었다 — 1이 사라짐'
+  ];
+  let i=0;
+  function draw(){
+    rows.forEach((r,k)=>{ r.classList.toggle('on',k===i); r.classList.toggle('off',k>i); });
+    out.textContent=(i+1)+' / 6 · '+notes[i];
+    prev.disabled=i===0; next.disabled=i===rows.length-1;
+  }
+  prev.addEventListener('click',()=>{ if(i>0){i--;draw();} });
+  next.addEventListener('click',()=>{ if(i<rows.length-1){i++;draw();} });
+  draw();
+})();
+</script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "Task.Run": "스레드 풀에서 워커 스레드 하나를 빌려 일을 시킴. UniTask.RunOnThreadPool과 같은 일",
+  "Task.WhenAll": "여러 Task가 다 끝나길 await로 기다림. 다음 줄은 메인 스레드 차례에 실행",
+  "Task.WaitAll": "여러 Task가 다 끝날 때까지 지금 스레드를 그 자리에 멈춰 세움",
+  "Interlocked": "변수 하나에 대한 연산을 CPU가 쪼개지지 않게 한 번에 처리하는 도구 모음",
+  "Increment": "1 더하고 더한 결과를 돌려줌. 한 번에 끝나는(원자적) 연산",
+  "Exchange": "값을 바꾸고 바꾸기 전 값을 돌려줌. 한 번에 끝나는 연산",
+  "SemaphoreSlim": "입장권 숫자 하나로 동시에 들어갈 수 있는 수를 제한. 누가 쥐었는지는 안 따짐",
+  "WaitAsync": "입장권을 await로 기다림. 기다리는 동안 스레드를 멈추지 않음",
+  "Release": "입장권 1장 돌려주기. 최대값을 넘기면 SemaphoreFullException",
+  "Monitor": "lock 키워드가 컴파일되면 쓰이는 클래스. 쥔 스레드만 풀 수 있음",
+  "Stopwatch": "경과 시간을 재는 도구. 읽는 줄이 실행되는 순간까지가 재진다"
+});
+</script>
+</body>
+</html>

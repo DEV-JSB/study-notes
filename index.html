@@ -77,6 +77,7 @@ section{display:flex;flex-direction:column;gap:10px}
     <a href="unity/string-gc.html"><span class="t">문자열과 GC</span><span class="d">+, $"", Format, StringBuilder 비교. 박싱을 피한 쪽이 더 컸던 이유(중간 문자열), 보간 = Format, 방법을 바꾸면 최대 15% · 값이 바뀔 때만 만들면 66배</span><span class="tag">2026-08-08</span></a>
     <a href="unity/state-propagation.html"><span class="t">상태 전파 — event, static, ReactiveProperty</span><span class="d">야구 전광판을 다섯 구조로. 통지(event ↔ UniRx)와 접근(static ↔ 인스턴스 ↔ SO)은 별개의 축, 접근 축 트레이드오프</span><span class="tag">2026-08-09</span></a>
     <a href="unity/float-precision.html"><span class="t">좌표가 커지면 캐릭터가 멈춘다 — float 정밀도</span><span class="d">오래 켜 둔 유저의 이동 문제를 빈 씬에서 다시 재 보기. float은 2진수 24자리, 좌표가 2배면 눈금 간격도 2배, 이동량이 간격의 절반보다 작으면 사라짐. 좌표와 Speed를 넣어 보는 그림</span><span class="tag">2026-11-10</span></a>
+    <a href="unity/race-condition.html"><span class="t">같은 변수를 두 스레드가 더하면 값이 사라진다 — 경쟁 상태와 lock</span><span class="d">두 워커 스레드가 같은 _count를 더하면 5번 중 2번 값이 사라짐. ++는 읽기·더하기·쓰기 세 단계, 임계 구역을 Interlocked · lock · SemaphoreSlim으로 지키기, 잠금 비용(쥐고 놓기 약 28% · 다투기 약 72%), await 측정 함정. 한 단계씩 넘겨 보는 표</span><span class="tag">2026-11-13</span></a>
   </div>
 </section>
 
