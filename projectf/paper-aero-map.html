@@ -157,7 +157,7 @@ N = up + Q.w * t + cross(Q.xyz, t);</pre>
   </div>
   <div class="howfar">
     <b>알아야 할 것</b><span>"회전값으로 종이가 보는 방향을 구했다." 이 한 줄이면 충분합니다.</span>
-    <b>몰라도 되는 것</b><span><code>t = 2 * cross(…)</code>가 왜 이런 모양인지.</span>
+    <b>지금은 넘어가는 것</b><span><code>t = 2 * cross(…)</code>가 왜 이런 모양인지.</span>
     <b>UE C++에선</b><span><code>Q.GetUpVector()</code> 또는 <code>Q.RotateVector(FVector::UpVector)</code> 한 줄.</span>
     <b>Unity에선</b><span><code>transform.up</code> 또는 <code>q * Vector3.up</code>.</span>
   </div>
@@ -338,7 +338,7 @@ OutAngVel = (AngVel + torque * DeltaTime) * keepSpin * air + settle * Landed;</p
   </div>
   <div class="howfar">
     <b>알아야 할 것</b><span>회전 속도 = 축 화살표. 공중/바닥에 따라 넣는 회전 속도만 바꿔 끼운다. 0/1 곱해서 고르기. <code>cross</code>는 "경첩 축, 순서 바꾸면 반대".</span>
-    <b>말로 설명할 수 있으면 됨</b><span><code>torque = dot × cross</code>: "얼마나 정면으로 받나 × 어느 축으로 비틀리나". 성분 계산은 몰라도 됩니다.</span>
+    <b>말로 설명할 수 있으면 됨</b><span><code>torque = dot × cross</code>: "얼마나 정면으로 받나 × 어느 축으로 비틀리나". 성분 계산은 지금은 넘어갑니다.</span>
     <b>Unity에선</b><span><code>rb.angularVelocity = Vector3.Cross(transform.up, Vector3.up) * strength;</code> — 넘어진 물체 일으키기와 같은 수법</span>
     <b>더 보기</b><span><a href="https://dev-jsb.github.io/study-notes/game-math/torque-skewer.html">꼬챙이로 보는 torque</a> — N·V 평면에 수직으로 꽂는 꼬챙이(외적), 앞뒤는 내적 부호. 3D로 돌려 보기</span>
   </div>
@@ -373,7 +373,7 @@ OutQuat = normalize(Q + 0.5f * DeltaTime * float4(dq, dqw));</pre>
   </div>
   <div class="howfar">
     <b>알아야 할 것</b><span>"회전 속도만큼 이번 프레임 분 돌린다." <code>Vel → Pos</code>와 같은 구조라는 것.</span>
-    <b>몰라도 되는 것</b><span><code>0.5</code>와 <code>dq</code>, <code>dqw</code>가 왜 이런 모양인지.</span>
+    <b>지금은 넘어가는 것</b><span><code>0.5</code>와 <code>dq</code>, <code>dqw</code>가 왜 이런 모양인지.</span>
     <b>UE C++에선</b><span><code>FQuat Delta(축, 각도); NewQ = Delta * Q;</code></span>
     <b>Unity에선</b><span><code>q = Quaternion.AngleAxis(각도, 축) * q;</code></span>
   </div>
@@ -491,7 +491,7 @@ CodeTips({
   "Q.xyz": "쿼터니언 Q의 앞 세 숫자. ①④ 공식 안에서만 씀 — 블랙박스 OK",
   "Q.w": "쿼터니언 Q의 네 번째 숫자. ①④ 공식 안에서만 씀 — 블랙박스 OK",
   "up": "돌기 전 종이 윗면 방향 (0, 0, 1). 이걸 Q로 돌리면 N이 됨",
-  "t": "① 회전 공식의 중간값 = 2 × cross(Q.xyz, up). 왜 이 모양인지는 몰라도 됨",
+  "t": "① 회전 공식의 중간값 = 2 × cross(Q.xyz, up). 왜 이 모양인지는 지금은 넘어감",
   "float3": "숫자 세 개짜리 (x, y, z). HLSL의 화살표 = UE의 FVector, Unity의 Vector3",
   "float4": "숫자 네 개짜리. 여기서는 쿼터니언 변화량 (dq, dqw)를 하나로 묶음",
   "dot": "내적(그림자). 두 화살표가 같은 쪽을 보는 정도 = 숫자 하나. 길이 1끼리면 cos(사이 각도). 부호가 앞(+)/뒤(−)를 고름",
@@ -528,8 +528,8 @@ CodeTips({
   "OutAngVel": "이번 프레임의 최종 회전 속도(축 화살표). ④가 이만큼 종이를 돌림. 출력 핀 → PARTICLES AngVel",
   "OutAngVel.Size": "OutAngVel 화살표의 길이 = 도는 빠르기. Unity라면 magnitude",
   "AngVel": "지난 프레임까지의 회전 속도(축 화살표). PARTICLES AngVel. 방향 = 도는 축, 길이 = 빠르기",
-  "dq": "④ 회전 누적 공식의 중간값 (쿼터니언 변화량의 xyz 부분). 몰라도 됨",
-  "dqw": "④ 회전 누적 공식의 중간값 (쿼터니언 변화량의 w 부분). 몰라도 됨",
+  "dq": "④ 회전 누적 공식의 중간값 (쿼터니언 변화량의 xyz 부분). 지금은 넘어감",
+  "dqw": "④ 회전 누적 공식의 중간값 (쿼터니언 변화량의 w 부분). 지금은 넘어감",
   "OutQuat": "이번 프레임만큼 돌린 새 회전값 (쿼터니언). 출력 핀 → PARTICLES MeshOrientation",
   "normalize": "길이를 1로 맞춤. 여기서는 계산 오차로 회전값이 찌그러지지 않게",
   "Pos": "위치. 위치 += 속도 × dt 와 같은 구조라는 비유로 쓴 이름",

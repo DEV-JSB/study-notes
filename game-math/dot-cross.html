@@ -276,7 +276,7 @@ float3 vt = Vel - vn;          // 그림자를 떼어낸 나머지 → sin 쪽 (
 </section>
 
 <section aria-labelledby="l7">
-  <h2 id="l7">3D 외적 = 2D 외적 세 개 (몰라도 되는 칸)</h2>
+  <h2 id="l7">3D 외적 = 2D 외적 세 개 (지금은 넘어가는 칸)</h2>
   <p>공식 안쪽은 블랙박스여도 됩니다. 한 칸만 들여다보면, 세 평면에서 각각 2D 외적을 해서 축의 X·Y·Z 칸에 <b>하나씩 넣어 모은</b> 것이에요(<code>FVector::CrossProduct</code>).</p>
   <pre style="margin-top:8px">축.Z = A.X × B.Y − A.Y × B.X    // 바닥(XY): 위에서 보면 얼마나 옆으로
 축.X = A.Y × B.Z − A.Z × B.Y    // 옆벽(YZ)
