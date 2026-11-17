@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>enum 두 개를 ulong 키 하나로</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: intro → try-it (make & extract keys, A vs B) → left/right halves → enum is int → A make → A extract (try-it shift lab) → B make → B extract → pitfalls → choosing A or B → summary */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --ok:#178a66; --bad:#d23b3b; --info:#2f6fd0; --warn:#d2552a;
+  --g:#d2552a; --i:#2f6fd0;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; --g:#f08a5d; --i:#6aa3f0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; --g:#f08a5d; --i:#6aa3f0; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;padding-inline:16px;padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
+h1{font-size:30px;font-weight:600;margin:0;line-height:1.4;text-wrap:balance}
+/* 큰 제목(h2): 크고 굵게 + 위쪽 구분선 / 작은 제목(h3): 작게 + 왼쪽 색 막대. 크기만이 아니라 모양으로도 구분한다 */
+h2{font-size:24px;font-weight:700;margin:0;padding-top:20px;border-top:2px solid var(--line);line-height:1.45;text-wrap:balance}
+.card h2{font-size:19px;font-weight:600;padding-top:0;border-top:0}
+h3{font-size:17px;font-weight:600;color:var(--fg);margin:10px 0 0;padding-left:10px;border-left:3px solid var(--info);line-height:1.5;text-wrap:balance}
+.card h3{border-left:0;padding-left:0}
+h3 code{font-size:.9em}
+p{margin:0;max-width:68ch}
+a{color:var(--info)}
+section{display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.src{font-size:12px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+td.num{font-family:var(--mono);white-space:nowrap}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:13.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0;overflow-x:auto;line-height:1.6}
+.bad{color:var(--bad)} .ok{color:var(--ok)} .mut{color:var(--muted)} .gc{color:var(--g)} .ic{color:var(--i)}
+ul,ol{margin:0;padding-left:20px}
+blockquote{margin:0;padding:10px 16px;border-left:3px solid var(--warn);background:var(--panel);border-radius:0 8px 8px 0}
+
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font:13px var(--mono);padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
+.pill:hover{border-color:var(--muted)}
+.pill[aria-pressed="true"]{background:var(--info);border-color:var(--info);color:#fff}
+.pill.gp[aria-pressed="true"]{background:var(--g);border-color:var(--g)}
+.pill:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.rowhead{font-size:14px;color:var(--muted);margin-top:4px}
+
+/* try-it 1: make & extract */
+.keybox{display:flex;flex-direction:column;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.keybox .kt{font-weight:500}
+.half{display:flex;flex-direction:column;gap:0}
+.half .hl{font-size:12px;color:var(--muted)}
+.bits{font:13.5px/1.6 var(--mono);white-space:nowrap;overflow-x:auto}
+.bits .one{font-weight:500}
+.bits.g .one{color:var(--g)} .bits.i .one{color:var(--i)}
+.bits .zero{color:var(--muted)}
+@media (max-width:420px){.bits{font-size:11px}.keybox{padding:10px}}
+.res{font:14px/1.7 var(--mono);overflow-wrap:anywhere}
+.warnbox{font-size:14px;color:var(--bad)}
+
+/* try-it 2: shift lab */
+.lab{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) 10px repeat(4,minmax(0,1fr));gap:5px;max-width:460px}
+.lab .lbl{font:12px var(--mono);color:var(--muted);text-align:center}
+.lab .div{border-left:2px dashed var(--line);margin-left:4px}
+.cell{font:18px var(--mono);aspect-ratio:1;border-radius:8px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--muted);min-width:0}
+.cell.g{border-color:var(--g);color:var(--g)} .cell.i{border-color:var(--i);color:var(--i)}
+.cell.g.on{background:var(--g);color:#fff} .cell.i.on{background:var(--i);color:#fff}
+.labinfo{font:14px/1.75 var(--mono);color:var(--fg)}
+.labinfo .mut{color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">Unity · C# 기초 · 2026-11-18</span>
+  <h1>enum 두 개를 ulong 키 하나로 — 숫자 그대로 넣기와 비트 하나씩 켜기</h1>
+  <p class="lead">튜플 대신 ulong 하나로 Dictionary 키를 만들던 MakeKey를 두 가지 방법으로 다시 만들어 본 노트. 한 줄 결론: <b>둘 다 키는 만들어진다. 하지만 enum 하나에 값이 한 번에 하나뿐이면 "숫자 그대로 넣기"가 맞는 도구다. "비트 하나씩 켜기"는 여러 개를 동시에 켜고 끄기 위한 형식이라, 키로 쓰면 32개 제한과 칸 찾기라는 단점만 떠안는다.</b></p>
+  <p class="src">글 버전 <a href="ulong-key.md">ulong-key.md</a> · 실습 원본 <a href="https://github.com/DEV-JSB/unity-study/tree/main/Assets/Chapter/06.BitFlag">unity-study / 06.BitFlag / ItemKey.cs</a> · 앞 노트 <a href="bit-flag.html">비트 플래그와 8×8 격자</a></p>
+</header>
+
+<section>
+  <h2>발단</h2>
+  <p>회사 프로젝트에서 enum 두 개의 조합으로 <code>Dictionary</code> 키를 만들어야 했던 적이 있습니다. 튜플을 쓰기 싫어서 AI에게 물어 <code>ulong</code> 하나에 두 값을 담는 <code>MakeKey</code>를 썼는데, 그때는 <b>왜 그 모양인지 모른 채</b> 가져다 썼습니다. 기억에 남은 건 "ulong을 나눠서 플래그처럼 세운다"는 흐릿한 말뿐이었습니다.</p>
+  <p>그 말을 비트 그림으로 바꿔 보니 두 갈래로 나뉘었습니다. 그래서 둘 다 직접 만들어 보고 비교했습니다.</p>
+  <ul>
+    <li><b>A. 숫자 그대로 넣기 (bit packing)</b>: 칸 묶음 하나에 enum 번호를 2진수 그대로 넣는다</li>
+    <li><b>B. 비트 하나씩 켜기 (bit flag)</b>: 칸 묶음 안에서 enum 번호번 칸 하나만 켠다</li>
+  </ul>
+<pre><code>public enum ItemType { Weapon, Armor, Potion, Ring }  // 0, 1, 2, 3
+public enum Grade    { Normal, Rare, Epic, Legend }   // 0, 1, 2, 3</code></pre>
+</section>
+
+<section class="card" aria-labelledby="try1">
+  <h2 id="try1">직접 눌러 보기 — 키를 만들고 다시 꺼내기</h2>
+  <p>ItemType과 Grade를 고르면 A와 B가 만드는 64비트 키와, 그 키에서 다시 꺼낸 값이 나옵니다. <span class="gc">주황</span>은 Grade가 들어가는 왼쪽 32칸, <span class="ic">파랑</span>은 ItemType이 들어가는 오른쪽 32칸입니다.</p>
+  <p id="noJs" class="bad">이 칸은 스크립트로 계산합니다. 값이 나오지 않으면 파일을 브라우저에서 직접 열어 주세요.</p>
+  <div class="rowhead">ItemType</div>
+  <div class="pills" id="itemPills" role="group" aria-label="ItemType 고르기"></div>
+  <div class="rowhead">Grade — 지금 enum에 있는 값 4개</div>
+  <div class="pills" id="gradePills" role="group" aria-label="Grade 고르기"></div>
+  <div class="rowhead">Grade — enum에 값을 계속 추가해서 0 ~ 39번, 40개가 됐다고 치면 (B가 어디서부터 깨지는지 보는 줄)</div>
+  <div class="pills" id="extraGradePills" role="group" aria-label="추가했다고 친 Grade 번호 고르기"></div>
+  <div id="keyA"></div>
+  <div id="keyB"></div>
+</section>
+
+<section>
+  <h2>1. 64칸을 왼쪽 32칸과 오른쪽 32칸으로 나눈다</h2>
+  <p><code>ulong</code>은 64비트입니다. 2진수로 가로로 적으면 <b>맨 왼쪽이 63번 비트, 맨 오른쪽이 0번 비트</b>입니다. 이걸 가운데에서 잘라 반씩 씁니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>왼쪽 32칸 (63 ~ 32번 비트)</th><th>오른쪽 32칸 (31 ~ 0번 비트)</th></tr></thead>
+    <tbody>
+      <tr><td>담는 것</td><td class="gc">Grade</td><td class="ic">ItemType</td></tr>
+      <tr><td>다른 문서에서 부르는 이름</td><td>상위 32비트 (high bits)</td><td>하위 32비트 (low bits)</td></tr>
+    </tbody>
+  </table></div>
+  <p>64칸은 머릿속에 잘 안 들어옵니다. 아래 그림은 <b>8칸으로 줄여서</b> 그립니다. 왼쪽 4칸이 Grade, 오른쪽 4칸이 ItemType입니다. ulong에서는 4를 32로 바꾸기만 하면 됩니다.</p>
+</section>
+
+<section>
+  <h2>2. enum은 이름이 붙은 int다</h2>
+  <p>C# enum은 따로 정하지 않으면 안쪽 자료형(underlying type)이 <code>int</code>입니다 (공식 문서). <code>ItemType.Armor</code>는 메모리 안에서 그냥 int 1이고, 컴퓨터는 모든 정수를 2진수 비트로 저장합니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>이름</th><th>int 값</th><th>비트 (오른쪽 4칸)</th></tr></thead>
+    <tbody>
+      <tr><td>Weapon</td><td class="num">0</td><td class="num">0000</td></tr>
+      <tr><td>Armor</td><td class="num">1</td><td class="num">0001</td></tr>
+      <tr><td>Potion</td><td class="num">2</td><td class="num">0010</td></tr>
+      <tr><td>Ring</td><td class="num">3</td><td class="num bad">0011</td></tr>
+    </tbody>
+  </table></div>
+  <p>Ring(3)은 비트가 <b>두 개</b> 켜져 있습니다. 일반 enum은 "비트 하나 = 값 하나"가 아닙니다. 앞 노트의 <code>[Flags]</code> enum은 값을 1, 2, 4, 8로 줘서 항상 비트 하나만 켜지게 합니다. 이 차이가 A와 B를 가릅니다.</p>
+</section>
+
+<section>
+  <h2>3. A 숫자 그대로 넣기</h2>
+  <h3>10진수로 먼저</h3>
+  <p>아이템 번호 3과 등급 번호 2를 숫자 하나로 묶으려면 3 × 100 + 2 = 302로 만들면 됩니다. "앞 두 자리는 아이템, 뒤 두 자리는 등급"이라고 약속하면 302만 보고도 둘을 다시 알아낼 수 있습니다. A는 이 일을 2진수로 하는 것입니다.</p>
+  <h3>2진수로 (8칸 예시: Epic(2) + Armor(1))</h3>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>왼쪽 4칸 (Grade)</th><th>오른쪽 4칸 (ItemType)</th><th>값</th></tr></thead>
+    <tbody><tr><td>키</td><td class="num gc">0010</td><td class="num ic">0001</td><td class="num">2 × 16 + 1 = 33</td></tr></tbody>
+  </table></div>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>10진수</th><th>8칸 2진수</th><th>ulong</th></tr></thead>
+    <tbody><tr><td>앞쪽으로 보내기</td><td class="num">× 100</td><td class="num">× 16 = &lt;&lt; 4</td><td class="num">× 2³² = &lt;&lt; 32</td></tr></tbody>
+  </table></div>
+<pre><code>public static ulong MakePackedKey(ItemType itemType, Grade grade)
+{
+    ulong key = 0;
+
+    key |= (ulong)itemType;           // 밀지 않음 → 오른쪽 32칸
+    key |= ((ulong)grade &lt;&lt; 32);      // 32칸 밀기 → 왼쪽 32칸
+
+    return key;
+}</code></pre>
+  <p>ulong에서 Epic(2) + Armor(1)의 키는 2 × 2³² + 1 = <b>8589934593</b>입니다.</p>
+  <p><code>(ulong)grade &lt;&lt; 32</code>는 <b>먼저 ulong으로 바꾸고 나서</b> 밉니다. 순서를 바꿔 <code>(ulong)((int)grade &lt;&lt; 32)</code>로 쓰면 int 안에서 32칸을 밀게 되는데, int 시프트는 횟수를 32로 나눈 나머지만 쓰므로 0칸을 밉니다 (공식 문서, 앞 노트 8절).</p>
+</section>
+
+<section>
+  <h2>4. A에서 꺼내기 — 몫과 나머지</h2>
+  <p>만들 때 "× 2³² 하고 더했다"면, 꺼낼 때는 2³²으로 나눠서 <b>몫과 나머지</b>를 따로 가져갑니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>10진수</th><th>8칸 2진수</th><th>ulong</th></tr></thead>
+    <tbody>
+      <tr><td>만들기</td><td class="num">3 × 100 + 2 = 302</td><td class="num">2 × 16 + 1 = 33</td><td></td></tr>
+      <tr><td>왼쪽 값 (몫)</td><td class="num">302 ÷ 100의 몫 = 3</td><td class="num">33 ÷ 16의 몫 = 2</td><td class="num">key &gt;&gt; 32</td></tr>
+      <tr><td>오른쪽 값 (나머지)</td><td class="num">302 ÷ 100의 나머지 = 2</td><td class="num">33 ÷ 16의 나머지 = 1</td><td>왼쪽 32칸 지우기</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="card" aria-labelledby="try2">
+    <h3 id="try2">직접 밀어 보기 — 8칸에서 <code>&gt;&gt;</code>와 <code>&lt;&lt;</code></h3>
+    <p>키는 Epic(2) + Armor(1) = <code>0010_0001</code>입니다. 버튼을 누를 때마다 모든 칸이 한 칸씩 옮겨집니다. 칸의 색은 원래 어느 값의 비트였는지를 뜻하고, 회색은 새로 들어온 0입니다.</p>
+    <div class="lab" id="lab" aria-live="polite"></div>
+    <div class="labinfo" id="labInfo"></div>
+    <div class="pills">
+      <button type="button" class="pill" id="sr">&gt;&gt; 1</button>
+      <button type="button" class="pill" id="sl">&lt;&lt; 1</button>
+      <button type="button" class="pill" id="reset">처음으로</button>
+    </div>
+    <div class="pills">
+      <button type="button" class="pill" id="doGrade">Grade 꺼내기: &gt;&gt; 4</button>
+      <button type="button" class="pill" id="doItem">ItemType 꺼내기: &lt;&lt; 4 다음 &gt;&gt; 4</button>
+    </div>
+  </div>
+
+  <h3>왼쪽(Grade) 꺼내기: <code>&gt;&gt;</code>로 끌어내린다</h3>
+  <p><code>&gt;&gt;</code>는 모든 칸을 오른쪽으로 옮깁니다. 오른쪽 끝을 넘어간 칸은 <b>버려지고</b>, 왼쪽에 새로 생긴 빈칸은 <b>0으로 채워집니다</b> (ulong 기준). 4칸을 밀면 왼쪽 4칸의 <code>0010</code>이 통째로 오른쪽 4칸으로 이사를 오고, 원래 있던 ItemType은 밀려나서 사라집니다.</p>
+<pre><code>public static Grade GetGradeFromPackedKey(ulong packedKey)
+{
+    ulong key = packedKey &gt;&gt; 32;
+    int value = (int)key;
+    return (Grade)value;
+}</code></pre>
+
+  <h3>오른쪽(ItemType) 꺼내기: 옮기지 않고 왼쪽만 지운다</h3>
+  <p>ItemType은 이미 0번 칸부터, 즉 원래 있어야 할 자리에 있습니다. 문제는 왼쪽에 붙은 Grade 하나입니다. 지우는 방법을 세 가지 다 만들어 봤고, 결과는 모두 같습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>방법</th><th>코드</th><th>원리</th></tr></thead>
+    <tbody>
+      <tr><td>1. 마스크로 지우기</td><td class="num">key &amp; ((1UL &lt;&lt; 32) - 1)</td><td>마스크의 왼쪽은 전부 0, 오른쪽은 전부 1. AND는 둘 다 1인 칸만 남긴다</td></tr>
+      <tr><td>2. 밀어서 떨어뜨렸다가 되돌리기</td><td class="num">(key &lt;&lt; 32) &gt;&gt; 32</td><td><code>&lt;&lt; 32</code>에서 Grade가 <b>왼쪽 끝 밖으로</b> 떨어지고, <code>&gt;&gt; 32</code>로 ItemType이 제자리로 온다</td></tr>
+      <tr><td>3. 작은 상자에 담기</td><td class="num">(int)key</td><td>64칸을 32칸 상자로 캐스트하면 안 들어가는 왼쪽 32칸이 잘린다 (공식 문서: 명시적 정수 변환은 높은 쪽 비트를 버림)</td></tr>
+    </tbody>
+  </table></div>
+  <p>세 방법 모두 <b>"ulong 상자는 64칸으로 정해져 있어서, 밖으로 밀려난 비트는 버려진다"</b>는 같은 원리를 씁니다. 실무 코드에서는 의도가 바로 읽히는 방법 1(마스크)이나 3(캐스트)을 더 자주 봅니다 (커뮤니티 표준). 방법 2는 <code>long</code>처럼 부호 있는 자료형에서는 <code>&gt;&gt;</code>가 빈칸을 부호 비트로 채워서 (공식 문서: 산술 시프트) 음수가 나올 수 있습니다.</p>
+<pre><code>public static ItemType GetItemTypeFromPackedKey(ulong packedKey)
+{
+    ulong key = packedKey &amp; ((1UL &lt;&lt; 32) - 1);   // 방법 1
+    int value = (int)key;
+    return (ItemType)value;
+}</code></pre>
+
+  <h3>마스크 <code>(1UL &lt;&lt; 32) - 1</code>을 만드는 세 가지 방법</h3>
+  <p>오른쪽 32칸만 1인 수가 필요합니다. 1이 n개인 2진수 = 2ⁿ − 1이라는 건 <a href="bit-flag.html">앞 노트</a> 7절에서 정리했습니다. 세 값은 모두 4294967295입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>방법</th><th>코드</th><th>설명</th></tr></thead>
+    <tbody>
+      <tr><td>계산</td><td class="num">(1UL &lt;&lt; 32) - 1</td><td>1 뒤에 0이 32개인 수에서 1을 뺀다. 1000 − 1 = 999와 같은 원리</td></tr>
+      <tr><td>16진수</td><td class="num">0xFFFFFFFFUL</td><td>16진수 F 한 글자 = 2진수 <code>1111</code> 네 칸. 32칸 ÷ 4 = F 8개 (커뮤니티 표준)</td></tr>
+      <tr><td>이미 있는 값</td><td class="num">(ulong)uint.MaxValue</td><td>uint는 32칸이라 가장 큰 값이 32칸 전부 1</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>왜 Grade에는 세 방법이 안 통하나</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Grade에 써 본 방법</th><th>왼쪽 4칸</th><th>오른쪽 4칸</th><th>값</th><th>판정</th></tr></thead>
+    <tbody>
+      <tr><td>1. 마스크 <code>&amp; 1111_0000</code></td><td class="num">0010</td><td class="num">0000</td><td class="num">32</td><td class="bad">2가 아님</td></tr>
+      <tr><td>2. <code>&gt;&gt; 4</code> 다음 <code>&lt;&lt; 4</code></td><td class="num">0010</td><td class="num">0000</td><td class="num">32</td><td class="bad">2가 아님</td></tr>
+      <tr><td>3. 4칸 상자로 캐스트</td><td class="mut">(잘림)</td><td class="num">0001</td><td class="num">1</td><td class="bad">반대쪽(Armor)이 남음</td></tr>
+      <tr><td><code>&gt;&gt; 4</code> 한 번</td><td class="num">0000</td><td class="num">0010</td><td class="num">2</td><td class="ok">Epic</td></tr>
+    </tbody>
+  </table></div>
+  <blockquote><b>숫자의 값은 0번 칸부터 읽는다.</b> ItemType은 이미 0번 칸부터 있어서 지우기만 하면 되지만, Grade는 4번 칸(ulong에서는 32번 칸)부터 있어서 지워도 2 × 16 = 32로 읽힌다. 그래서 Grade는 반드시 옮겨야 하고, <code>&gt;&gt;</code>로 옮기면 오른쪽 칸은 덤으로 떨어져 나간다.</blockquote>
+</section>
+
+<section>
+  <h2>5. B 비트 하나씩 켜기</h2>
+  <p>B는 앞 노트의 비트 플래그처럼 <code>1 &lt;&lt; 번호</code>로 칸 하나를 켭니다. ItemType은 오른쪽 32칸의 itemType번 칸, Grade는 왼쪽 32칸의 grade번 칸입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>8칸 예시: Epic(2) + Armor(1)</th><th>왼쪽 4칸 (Grade)</th><th>오른쪽 4칸 (ItemType)</th></tr></thead>
+    <tbody>
+      <tr><td>A. 숫자 그대로</td><td class="num">0010 (숫자 2)</td><td class="num">0001 (숫자 1)</td></tr>
+      <tr><td>B. 비트 하나씩</td><td class="num">0100 (2번 칸)</td><td class="num">0010 (1번 칸)</td></tr>
+    </tbody>
+  </table></div>
+<pre><code>public static ulong MakeFlagKey(ItemType itemType, Grade grade)
+{
+    ulong itemFlag = 1UL &lt;&lt; (int)itemType;                // 오른쪽 32칸의 itemType번 칸
+    ulong gradeFlag = (1UL &lt;&lt; 32) &lt;&lt; (int)grade;          // 왼쪽 32칸의 grade번 칸 = 32 + grade번 칸
+
+    return itemFlag | gradeFlag;
+}</code></pre>
+</section>
+
+<section>
+  <h2>6. B에서 꺼내기 — 같은 ulong이라도 형식이 다르다</h2>
+  <p>처음에는 "B에서 ItemType 꺼내기도 A와 똑같이 왼쪽 32칸만 지우면 되지 않나?"라고 생각했습니다. 지운 뒤 남는 오른쪽 32칸을 비교해 보면 다릅니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>ItemType</th><th>A의 오른쪽 칸</th><th>값</th><th>B의 오른쪽 칸</th><th>값</th></tr></thead>
+    <tbody>
+      <tr><td>Weapon (0)</td><td class="num">0000</td><td class="num">0</td><td class="num">0001</td><td class="num bad">1</td></tr>
+      <tr><td>Armor (1)</td><td class="num">0001</td><td class="num">1</td><td class="num">0010</td><td class="num bad">2</td></tr>
+      <tr><td>Potion (2)</td><td class="num">0010</td><td class="num">2</td><td class="num">0100</td><td class="num bad">4</td></tr>
+      <tr><td>Ring (3)</td><td class="num">0011</td><td class="num">3</td><td class="num">1000</td><td class="num bad">8</td></tr>
+    </tbody>
+  </table></div>
+  <p>A는 남은 값이 곧 enum 번호입니다. B는 남은 값이 <code>1 &lt;&lt; 번호</code>의 <b>결과</b>라서, Potion을 꺼내면 2가 아니라 4가 나옵니다. B에는 "<b>몇 번 칸이 켜져 있나</b>"를 찾는 단계가 하나 더 있습니다.</p>
+  <blockquote>자료형은 둘 다 ulong이지만 <b>안에 담긴 약속(형식, encoding)이 다르다.</b> ulong만 봐서는 어느 약속으로 만든 키인지 알 수 없으므로, 만드는 메서드와 꺼내는 메서드는 항상 짝이 맞아야 한다.</blockquote>
+  <p>켜진 칸은 0번 칸부터 하나씩 확인해서 찾았습니다. 앞 노트의 <code>IsOn</code>을 32번 반복하는 것과 같습니다. <code>GetGradeFromFlagKey</code>는 A에서 쓴 <code>&gt;&gt; 32</code>를 먼저 해서 같은 루프를 다시 쓸 수 있게 만들었습니다.</p>
+<pre><code>public static ItemType GetItemTypeFromFlagKey(ulong flagKey)
+{
+    for (int i = 0; i &lt; 32; ++i)
+    {
+        ulong flag = 1UL &lt;&lt; i;
+
+        if ((flagKey &amp; flag) != 0)
+        {
+            return (ItemType)i;
+        }
+    }
+    return default;
+}
+
+public static Grade GetGradeFromFlagKey(ulong flagKey)
+{
+    ulong key = flagKey &gt;&gt; 32;          // 먼저 왼쪽 32칸을 오른쪽으로 옮긴다
+    for (int i = 0; i &lt; 32; ++i)
+    {
+        ulong flag = 1UL &lt;&lt; i;
+
+        if ((key &amp; flag) != 0)
+        {
+            return (Grade)i;
+        }
+    }
+    return default;
+}</code></pre>
+  <h3>더 다듬을 수 있는 곳</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>볼 곳</th><th>지금</th><th>다듬는다면</th></tr></thead>
+    <tbody>
+      <tr><td>같은 루프가 두 번</td><td>메서드마다 복사</td><td>"켜진 칸 번호 찾기(ulong)" 도우미 메서드 하나로 빼고, 두 메서드는 넘길 절반만 다르게</td></tr>
+      <tr><td><code>GetItemTypeFromFlagKey</code>가 왼쪽 32칸을 안 지움</td><td>루프가 0~31번만 봐서 우연히 맞음</td><td>마스크로 먼저 지워서 의도를 드러내기</td></tr>
+      <tr><td>켜진 칸이 없으면 <code>default</code></td><td>잘못된 키도 조용히 Weapon이 됨</td><td>예외를 던져서 버그를 숨기지 않기</td></tr>
+    </tbody>
+  </table></div>
+  <p>"오른쪽 끝부터 0이 몇 개 이어지나"를 바로 세는 연산(trailing zero count)도 있어서 루프 대신 쓸 수 있습니다. 지금은 넘어갑니다.</p>
+</section>
+
+<section>
+  <h2>7. 실제로 걸린 함정</h2>
+  <p>이번 실습에서 직접 걸린 것들입니다. 1번과 5번은 앞 노트에서 정리했던 내용인데 또 걸렸습니다. 읽고 이해한 것과 직접 쓸 때 손이 그렇게 움직이는 것은 다르다는 걸 다시 확인했습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>번호</th><th>쓴 코드</th><th>무슨 일이 일어났나</th><th>피하는 법</th><th>컴파일러</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="num">ulong flag = 1 &lt;&lt; 32;</td><td>그냥 쓴 <code>1</code>은 int라서 횟수를 32로 나눈 나머지(0칸)만 밀고 1이 됨</td><td>ulong 키면 <code>1UL</code>부터</td><td class="bad">못 잡음</td></tr>
+      <tr><td>2</td><td class="num">1L &lt;&lt; 32L</td><td>시프트 칸 수는 int여야 함</td><td>칸 수는 항상 int</td><td class="ok">잡음</td></tr>
+      <tr><td>3</td><td class="num">int | ulong</td><td>부호 있는 int와 부호 없는 ulong을 섞어 연산할 수 없음</td><td>처음부터 전부 ulong</td><td class="ok">잡음</td></tr>
+      <tr><td>4</td><td class="num">key &amp;= (1UL &lt;&lt; 32 - 1);</td><td><code>-</code>가 <code>&lt;&lt;</code>보다 먼저라 <code>1UL &lt;&lt; 31</code>이 됨. 마스크가 31번 칸 하나뿐이라 ItemType이 전부 0</td><td>비트 연산은 괄호로 순서를 정하기</td><td class="bad">못 잡음</td></tr>
+      <tr><td>5</td><td class="num">(flagKey &amp; flag) == 1</td><td>AND 결과는 1이 아니라 그 칸의 자리값(2, 4, 8…)이라 0번 칸에서만 참</td><td><code>!= 0</code>, 또는 <code>((value &gt;&gt; i) &amp; 1) == 1</code></td><td class="bad">못 잡음</td></tr>
+      <tr><td>6</td><td class="num">1UL &lt;&lt; (int)flagKey</td><td>루프 변수 <code>i</code> 대신 다른 값을 써서 매번 같은 칸만 확인</td><td>손으로 루프를 돌려 보면 매번 같은 값이 나옴</td><td class="bad">못 잡음</td></tr>
+    </tbody>
+  </table></div>
+  <h3>그냥 쓴 숫자의 자료형 — 접미사(suffix)</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>쓴 모양</th><th>자료형</th><th>칸 수</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>int</td><td class="num">32</td></tr>
+      <tr><td class="num">1U</td><td>uint</td><td class="num">32</td></tr>
+      <tr><td class="num">1L</td><td>long</td><td>64 (부호 있음)</td></tr>
+      <tr><td class="num">1UL</td><td>ulong</td><td>64 (부호 없음)</td></tr>
+    </tbody>
+  </table></div>
+  <h3>연산자 우선순위 — 비트 연산 관련만</h3>
+  <p>위에 있을수록 먼저 계산합니다 (공식 문서: 연산자 우선순위). 4번은 2단계의 <code>-</code>가 3단계의 <code>&lt;&lt;</code>보다 먼저라서 생겼습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>순서</th><th>연산자</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="num">*  /  %</td></tr>
+      <tr><td class="num">2</td><td class="num">+  -</td></tr>
+      <tr><td class="num">3</td><td class="num">&lt;&lt;  &gt;&gt;</td></tr>
+      <tr><td class="num">4</td><td class="num">&lt;  &gt;</td></tr>
+      <tr><td class="num">5</td><td class="num">==  !=</td></tr>
+      <tr><td class="num">6</td><td class="num">&amp;</td></tr>
+      <tr><td class="num">7</td><td class="num">^</td></tr>
+      <tr><td class="num">8</td><td class="num">|</td></tr>
+    </tbody>
+  </table></div>
+  <p>5번은 10진수로 보면 바로 보입니다. 302에서 백의 자리만 남기면 3이 아니라 <b>300</b>입니다. AND도 칸 하나만 남겨도 그 칸의 자리값이 붙은 채로 남습니다.</p>
+  <p><b>디버깅 습관 하나.</b> 6번은 루프를 손으로 한 줄씩 돌려 보니 바로 보였습니다. 예시 키 Potion(2) + Epic(2)에서 <code>(int)flagKey</code>는 왼쪽 32칸이 잘린 4라서, <code>flag</code>가 i와 상관없이 매번 <code>1UL &lt;&lt; 4</code> = 16이었습니다. 루프 안에 <code>Debug.Log($"i={i} flag={flag}")</code> 한 줄을 넣으면 같은 표를 Console에서 볼 수 있습니다.</p>
+</section>
+
+<section>
+  <h2>8. A와 B는 어떻게 고르나</h2>
+  <p>고르는 기준은 질문 하나입니다. <b>"이 칸 묶음에 들어갈 값이 한 번에 하나인가, 여러 개일 수 있나?"</b></p>
+  <div class="tbl"><table>
+    <thead><tr><th>상황</th><th>들어갈 값</th><th>고를 것</th></tr></thead>
+    <tbody>
+      <tr><td>아이템 하나의 종류와 등급으로 만든 키</td><td>종류 하나, 등급 하나</td><td>A (숫자 그대로)</td></tr>
+      <tr><td>화면에 보여 줄 로그 종류 필터</td><td>전투, 시스템… 여러 개 동시에</td><td>B (비트 하나씩)</td></tr>
+      <tr><td>8×8 격자의 칸 (앞 노트)</td><td>칸마다 켜짐/꺼짐, 여러 칸 동시에</td><td>B</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tbl"><table>
+    <thead><tr><th>키로 쓸 때</th><th>A</th><th>B</th></tr></thead>
+    <tbody>
+      <tr><td>한 절반에 담을 수 있는 값</td><td>약 42억 개 (2³²)</td><td>32개</td></tr>
+      <tr><td>꺼내기</td><td>시프트나 마스크 한두 번</td><td>켜진 칸 찾기</td></tr>
+      <tr><td>한 절반에 켜지는 비트</td><td>상관없음</td><td>항상 하나. 플래그의 장점(여러 개 켜기)을 안 씀</td></tr>
+    </tbody>
+  </table></div>
+  <p>B의 꺼내기가 어색하게 느껴졌던 건 코드 때문이 아니라 <b>도구를 잘못 골랐다는 신호</b>였습니다.</p>
+
+  <h3>조건을 바꿔 보기: Grade가 40개로 늘어나면</h3>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>결과</th><th>이유</th></tr></thead>
+    <tbody>
+      <tr><td>A</td><td class="ok">안전</td><td>숫자로 넣으니 32칸에 약 42억까지 들어감. 왼쪽이든 오른쪽이든 같음</td></tr>
+      <tr><td>B</td><td class="bad">Grade 32번부터 깨짐</td><td>켜야 할 칸이 64번 이상이라 64칸 상자 밖으로 떨어져 <code>gradeFlag</code>가 0이 됨. 에러 없이 키가 겹침</td></tr>
+    </tbody>
+  </table></div>
+  <p>맨 위 "직접 눌러 보기"에서 Grade 32나 39를 눌러 보면 B의 왼쪽 32칸이 비는 것을 볼 수 있습니다. B에서 Grade를 오른쪽에 두었다면 상자 밖으로 떨어지는 대신 <b>ItemType 칸을 침범</b>합니다. 깨지는 모양이 달라집니다.</p>
+</section>
+
+<section>
+  <h2>정리</h2>
+  <ol>
+    <li>ulong 64칸을 왼쪽 32칸(상위 비트)과 오른쪽 32칸(하위 비트)으로 나눠 enum 두 개를 담는다. enum은 이름이 붙은 int라서 비트 모양을 그대로 옮길 수 있다</li>
+    <li>A(숫자 그대로) 만들기: 왼쪽 값은 <code>(ulong)값 &lt;&lt; 32</code>, 오른쪽 값은 그대로, OR로 합친다. 밀기 전에 ulong으로 바꾼다</li>
+    <li>A 꺼내기는 몫과 나머지다. 왼쪽 값은 <code>&gt;&gt; 32</code> 한 번, 오른쪽 값은 왼쪽 지우기(마스크 <code>(1UL &lt;&lt; 32) - 1</code> / <code>&lt;&lt; 32</code> 다음 <code>&gt;&gt; 32</code> / 32칸 자료형으로 캐스트)</li>
+    <li>숫자의 값은 0번 칸부터 읽는다. 오른쪽 값은 지우기만, 왼쪽 값은 옮기기가 필요하고 <code>&gt;&gt;</code>가 지우기까지 함께 한다</li>
+    <li>B(비트 하나씩)는 같은 ulong이라도 형식이 다르다. 꺼낼 때 켜진 칸 번호를 찾는 단계가 더 있고, 만드는 메서드와 꺼내는 메서드는 짝이 맞아야 한다</li>
+    <li>값이 한 번에 하나면 A, 여러 개가 동시에 켜지면 B. 키 만들기에는 A가 맞는 도구다</li>
+    <li>그냥 쓴 <code>1</code>은 int, <code>-</code>는 <code>&lt;&lt;</code>보다 먼저, AND 결과는 그 칸의 자리값. 이 세 가지는 컴파일러가 잡아 주지 않는다</li>
+  </ol>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="bit-flag.html">칸 8개를 int 하나에 담는다 — 비트 플래그와 8×8 격자</a> — 비트 번호와 값, 네 연산, 2ⁿ − 1, 32번 시프트 함정을 먼저 다룬 노트</li>
+    <li><a href="float-precision.html">좌표가 커지면 캐릭터가 멈춘다 — float 정밀도</a> — 2진수 자리값과 자릿수 세기</li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  document.getElementById('noJs').hidden = true;
+
+  // ── 1. 키를 만들고 다시 꺼내기 (C# ulong을 BigInt로 흉내) ──
+  const MASK64 = (1n << 64n) - 1n;
+  const RIGHT_HALF_MASK = (1n << 32n) - 1n;
+  const ITEM_NAMES = ['Weapon','Armor','Potion','Ring'];
+  const GRADE_NAMES = ['Normal','Rare','Epic','Legend'];
+  const GRADE_CHOICES = [0,1,2,3,31,32,39];
+  let itemType = 1, grade = 2;
+
+  function gradeLabel(g){ return g < GRADE_NAMES.length ? GRADE_NAMES[g]+'('+g+')' : g+'번'; }
+  function itemLabel(i){ return ITEM_NAMES[i]+'('+i+')'; }
+
+  // C#: ulong 시프트는 칸 수를 64로 나눈 나머지만 쓰고, 64칸 밖으로 나간 비트는 버린다
+  function shl(value, count){ return (value << BigInt(count & 63)) & MASK64; }
+
+  function makePackedKey(i, g){ return BigInt(i) | shl(BigInt(g), 32); }
+  function makeFlagKey(i, g){ return shl(1n, i) | shl(shl(1n, 32), g); }
+
+  function findOnBit(bits){
+    for(let b=0;b<32;b++){ if((bits & (1n << BigInt(b))) !== 0n) return b; }
+    return -1;
+  }
+
+  function bitsHtml(half, cls){
+    const s = half.toString(2).padStart(32,'0');
+    let out = '';
+    for(let k=0;k<32;k++){
+      if(k>0 && k%4===0) out += '<span class="zero">_</span>';
+      out += s[k]==='1' ? '<span class="one">1</span>' : '<span class="zero">0</span>';
+    }
+    return '<div class="bits '+cls+'">'+out+'</div>';
+  }
+
+  function keyBlock(title, key, extractLines, warn){
+    const left = key >> 32n, right = key & RIGHT_HALF_MASK;
+    return '<div class="keybox">'
+      + '<div class="kt">'+title+'</div>'
+      + '<div class="half"><span class="hl">왼쪽 32칸 (63 ~ 32번) — Grade</span>'+bitsHtml(left,'g')+'</div>'
+      + '<div class="half"><span class="hl">오른쪽 32칸 (31 ~ 0번) — ItemType</span>'+bitsHtml(right,'i')+'</div>'
+      + '<div class="res">키 값 '+key.toString()+'</div>'
+      + extractLines.map(l=>'<div class="res">'+l+'</div>').join('')
+      + (warn ? '<div class="warnbox">'+warn+'</div>' : '')
+      + '</div>';
+  }
+
+  const keyA = document.getElementById('keyA'), keyB = document.getElementById('keyB');
+  function drawKeys(){
+    const a = makePackedKey(itemType, grade);
+    const aGrade = Number(a >> 32n), aItem = Number(a & RIGHT_HALF_MASK);
+    keyA.innerHTML = keyBlock('A. 숫자 그대로 넣기 — MakePackedKey(' + itemLabel(itemType) + ', ' + gradeLabel(grade) + ')', a, [
+      'Grade 꺼내기: key >> 32 = '+aGrade+' → <span class="'+(aGrade===grade?'ok':'bad')+'">'+gradeLabel(aGrade)+'</span>',
+      'ItemType 꺼내기: key & ((1UL << 32) - 1) = '+aItem+' → <span class="'+(aItem===itemType?'ok':'bad')+'">'+itemLabel(aItem)+'</span>'
+    ]);
+
+    const b = makeFlagKey(itemType, grade);
+    const bGradeBit = findOnBit(b >> 32n), bItemBit = findOnBit(b & RIGHT_HALF_MASK);
+    const gradeText = bGradeBit < 0 ? '<span class="bad">켜진 칸 없음 → default = Normal(0)</span>'
+      : '<span class="'+(bGradeBit===grade?'ok':'bad')+'">'+gradeLabel(bGradeBit)+'</span>';
+    const warn = grade >= 32
+      ? 'Grade '+grade+'는 32 + '+grade+' = '+(32+grade)+'번 칸을 켜야 하는데 64칸 상자 밖이라 버려졌습니다. Grade 32 ~ 39는 모두 같은 키가 됩니다 (키 겹침).'
+      : '';
+    keyB.innerHTML = keyBlock('B. 비트 하나씩 켜기 — MakeFlagKey(' + itemLabel(itemType) + ', ' + gradeLabel(grade) + ')', b, [
+      'Grade 꺼내기: key >> 32 한 뒤 켜진 칸 찾기 → '+gradeText,
+      'ItemType 꺼내기: 켜진 칸 찾기 = '+bItemBit+'번 → <span class="'+(bItemBit===itemType?'ok':'bad')+'">'+itemLabel(bItemBit)+'</span>'
+    ], warn);
+
+    itemBtns.forEach((btn,k)=>btn.setAttribute('aria-pressed', String(k===itemType)));
+    gradeBtns.forEach((btn,k)=>btn.setAttribute('aria-pressed', String(GRADE_CHOICES[k]===grade)));
+  }
+
+  const itemPills = document.getElementById('itemPills'), gradePills = document.getElementById('gradePills'), extraGradePills = document.getElementById('extraGradePills');
+  const itemBtns = ITEM_NAMES.map((name,k)=>{
+    const btn = document.createElement('button'); btn.type='button'; btn.className='pill'; btn.textContent=name+' ('+k+')';
+    btn.addEventListener('click',()=>{ itemType=k; drawKeys(); });
+    itemPills.appendChild(btn); return btn;
+  });
+  const gradeBtns = GRADE_CHOICES.map(g=>{
+    const btn = document.createElement('button'); btn.type='button'; btn.className='pill gp';
+    const isExistingGrade = g < GRADE_NAMES.length;
+    btn.textContent = isExistingGrade ? GRADE_NAMES[g]+' ('+g+')' : g+'번';
+    btn.addEventListener('click',()=>{ grade=g; drawKeys(); });
+    (isExistingGrade ? gradePills : extraGradePills).appendChild(btn); return btn;
+  });
+  drawKeys();
+
+  // ── 2. 8칸에서 밀어 보기 ──
+  // cells[b] = 비트 b의 { v: 0|1, from: 'g'|'i'|'z' }
+  const lab = document.getElementById('lab'), labInfo = document.getElementById('labInfo');
+  let cells, history, fallen;
+  function resetLab(){
+    cells = [];
+    const startGrade = 2, startItem = 1;  // Epic(2) + Armor(1)
+    for(let b=0;b<8;b++){
+      cells[b] = b >= 4 ? { v:(startGrade >> (b-4)) & 1, from:'g' } : { v:(startItem >> b) & 1, from:'i' };
+    }
+    history = []; fallen = [];
+  }
+  function shiftRight(){
+    const out = cells[0];
+    if(out.v) fallen.push(out.from==='g' ? 'Grade의 1' : 'ItemType의 1');
+    for(let b=0;b<7;b++) cells[b] = cells[b+1];
+    cells[7] = { v:0, from:'z' };
+    history.push('>> 1');
+  }
+  function shiftLeft(){
+    const out = cells[7];
+    if(out.v) fallen.push(out.from==='g' ? 'Grade의 1' : 'ItemType의 1');
+    for(let b=7;b>0;b--) cells[b] = cells[b-1];
+    cells[0] = { v:0, from:'z' };
+    history.push('<< 1');
+  }
+  function drawLab(){
+    lab.innerHTML = '';
+    for(let b=7;b>=0;b--){
+      if(b===3){ const d=document.createElement('div'); lab.appendChild(d); }
+      const l=document.createElement('div'); l.className='lbl'; l.textContent=b+'번'; lab.appendChild(l);
+    }
+    for(let b=7;b>=0;b--){
+      if(b===3){ const d=document.createElement('div'); d.className='div'; lab.appendChild(d); }
+      const c=document.createElement('div');
+      const cell=cells[b];
+      c.className='cell'+(cell.from==='z'?'':' '+cell.from)+(cell.v?' on':'');
+      c.textContent=cell.v;
+      c.setAttribute('aria-label', b+'번 비트 '+cell.v);
+      lab.appendChild(c);
+    }
+    let value=0, leftValue=0, rightValue=0;
+    for(let b=0;b<8;b++){ if(cells[b].v){ value += (1<<b); if(b>=4) leftValue += (1<<(b-4)); else rightValue += (1<<b); } }
+    labInfo.innerHTML =
+      '<div>지금까지: '+(history.length ? compress(history) : '<span class="mut">(아직 안 밂)</span>')+'</div>'
+      + '<div>8칸 값 = '+value+' · 왼쪽 4칸 = '+leftValue+' · 오른쪽 4칸 = '+rightValue+'</div>'
+      + '<div>상자 밖으로 떨어진 1: '+(fallen.length ? fallen.join(', ') : '<span class="mut">없음</span>')+'</div>';
+  }
+  // ">> 1, >> 1, >> 1" → ">> 3"
+  function compress(list){
+    const out=[];
+    list.forEach(op=>{
+      const last=out[out.length-1];
+      if(last && last.op===op) last.n++; else out.push({op:op, n:1});
+    });
+    return out.map(x=>x.op.replace('1', String(x.n))).join(' 다음 ');
+  }
+  document.getElementById('sr').addEventListener('click',()=>{ shiftRight(); drawLab(); });
+  document.getElementById('sl').addEventListener('click',()=>{ shiftLeft(); drawLab(); });
+  document.getElementById('reset').addEventListener('click',()=>{ resetLab(); drawLab(); });
+  document.getElementById('doGrade').addEventListener('click',()=>{ resetLab(); for(let k=0;k<4;k++) shiftRight(); drawLab(); });
+  document.getElementById('doItem').addEventListener('click',()=>{ resetLab(); for(let k=0;k<4;k++) shiftLeft(); for(let k=0;k<4;k++) shiftRight(); drawLab(); });
+  resetLab(); drawLab();
+})();
+</script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "ulong": "부호 없는 64비트 정수. 비트 64칸",
+  "uint": "부호 없는 32비트 정수",
+  "MakePackedKey": "A. enum 두 개를 숫자 그대로 왼쪽 32칸 · 오른쪽 32칸에 넣어 키 하나로",
+  "MakeFlagKey": "B. enum 번호번 칸 하나씩만 켜서 키 하나로",
+  "packedKey": "MakePackedKey로 만든 키",
+  "flagKey": "MakeFlagKey로 만든 키",
+  "itemFlag": "오른쪽 32칸에서 itemType번 칸 하나만 켠 값",
+  "gradeFlag": "왼쪽 32칸에서 grade번 칸 하나만 켠 값"
+});
+</script>
+</body>
+</html>
