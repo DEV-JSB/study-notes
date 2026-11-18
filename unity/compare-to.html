@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>CompareTo와 List.Sort</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: intro → try-it 1 (number line) → base line → sign only → direction not distance → three layers → pass a comparison → descending → tie-break → no argument → try-it 2 (watch Sort compare) → pitfalls → next → summary */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --ok:#178a66; --bad:#d23b3b; --info:#2f6fd0; --warn:#d2552a;
+  --left:#6a55c9; --right:#178a66;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; --left:#a596f0; --right:#4cc79c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; --left:#a596f0; --right:#4cc79c; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;padding-inline:16px;padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
+h1{font-size:30px;font-weight:600;margin:0;line-height:1.4;text-wrap:balance}
+/* 큰 제목(h2): 크고 굵게 + 위쪽 구분선 / 작은 제목(h3): 작게 + 왼쪽 색 막대. 크기만이 아니라 모양으로도 구분한다 */
+h2{font-size:24px;font-weight:700;margin:0;padding-top:20px;border-top:2px solid var(--line);line-height:1.45;text-wrap:balance}
+.card h2{font-size:19px;font-weight:600;padding-top:0;border-top:0}
+h3{font-size:17px;font-weight:600;color:var(--fg);margin:10px 0 0;padding-left:10px;border-left:3px solid var(--info);line-height:1.5;text-wrap:balance}
+.card h3{border-left:0;padding-left:0}
+h3 code{font-size:.9em}
+p{margin:0;max-width:68ch}
+a{color:var(--info)}
+section{display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.src{font-size:12px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+td.num{font-family:var(--mono);white-space:nowrap}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:13.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0;overflow-x:auto;line-height:1.6}
+.bad{color:var(--bad)} .ok{color:var(--ok)} .mut{color:var(--muted)} .lc{color:var(--left)} .rc{color:var(--right)}
+ul,ol{margin:0;padding-left:20px}
+blockquote{margin:0;padding:10px 16px;border-left:3px solid var(--warn);background:var(--panel);border-radius:0 8px 8px 0}
+
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font:13px var(--mono);padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
+.pill:hover{border-color:var(--muted)}
+.pill[aria-pressed="true"]{background:var(--info);border-color:var(--info);color:#fff}
+.pill:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.pill:disabled{opacity:.45;cursor:default}
+.rowhead{font-size:14px;color:var(--muted);margin-top:4px}
+.res{font:14px/1.7 var(--mono);overflow-wrap:anywhere}
+
+/* try-it 1: number line */
+.nl svg{width:100%;max-width:480px;height:auto;display:block}
+.nl text{font-family:var(--mono);font-size:13px;fill:var(--fg)}
+.nl text.m{fill:var(--muted);font-size:12px}
+
+/* try-it 2: watch Sort */
+.row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.slot{border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:6px 4px;text-align:center;min-width:0}
+.slot .idx{font:11px var(--mono);color:var(--muted)}
+.slot .nm{font:13px var(--mono);overflow-wrap:anywhere}
+.slot .gr{font:12px var(--mono);color:var(--muted)}
+.slot.l{border-color:var(--left);box-shadow:inset 0 0 0 1px var(--left)}
+.slot.r{border-color:var(--right);box-shadow:inset 0 0 0 1px var(--right)}
+.log{font:13.5px/1.75 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-wrap:anywhere}
+@media (max-width:480px){.row{grid-template-columns:repeat(3,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">Unity · C# 기초 · 2026-11-19</span>
+  <h1>CompareTo는 누가 앞인지만 정한다 — List.Sort에 비교 넘기기</h1>
+  <p class="lead">회사에서 "수평선을 긋고 -1이면 왼쪽, +1이면 오른쪽"으로 외워 쓰던 CompareTo를 빈손으로 다시 꺼내 본 노트. 한 줄 결론: <b>CompareTo는 두 개를 놓고 "누가 앞이냐"의 방향만 정한다. 최종 칸 번호는 List.Sort가 비교를 여러 번 해서 만든다. 정렬은 List.Sort에 맡기고 비교만 넘긴다.</b></p>
+  <p class="src">글 버전 <a href="compare-to.md">compare-to.md</a> · 실습 원본 <a href="https://github.com/DEV-JSB/unity-study/tree/main/Assets/Chapter/07.CompareTo">unity-study / 07.CompareTo</a> · 앞 노트 <a href="ulong-key.html">enum 두 개를 ulong 키 하나로</a></p>
+</header>
+
+<section>
+  <h2>발단</h2>
+  <p>회사 프로젝트에서 아이템 리스트를 enum 등급 순서로 정렬한 적이 있습니다. <code>List.Sort</code>에 함수 하나를 넘기고, 그 안에서 <code>grade.CompareTo(...)</code>를 불렀습니다. 그때 기억에 남은 건 이 한 줄이었습니다.</p>
+  <blockquote>수평선을 긋고, <code>-1</code>이면 왼쪽, <code>+1</code>이면 오른쪽.</blockquote>
+  <p>오늘 이걸 빈손으로 꺼내 보니 그림은 맞는데 빈 곳이 세 군데 있었습니다. <code>0</code>(같을 때)이 빠져 있었고, <code>-1</code>과 <code>+1</code>만 나온다고 믿고 있었고, "<code>+1</code>이면 기준의 바로 옆 칸"이라고 이해하고 있었습니다. 그리고 "그때 기본 순서는 어디에 있었나?"라는 질문에 답을 못 했습니다.</p>
+<pre><code>public enum ItemGrade { Normal, Rare, Epic, Legend }  // 0, 1, 2, 3
+
+public class SortItem : IComparable&lt;SortItem&gt;
+{
+    public readonly string itemName;
+    public readonly ItemGrade grade;
+}</code></pre>
+</section>
+
+<section class="card" aria-labelledby="try1">
+  <h2 id="try1">직접 눌러 보기 — 수평선 위에 놓기</h2>
+  <p>등급 두 개를 고르면 <code>a.CompareTo(b)</code>의 결과와, 그 결과가 수평선 어디에 떨어지는지 나옵니다. 0 자리에는 항상 <b>괄호 안</b>이 섭니다.</p>
+  <p id="noJs" class="bad">이 칸은 스크립트로 그립니다. 그림이 나오지 않으면 파일을 브라우저에서 직접 열어 주세요.</p>
+  <div class="rowhead">a (자리를 정할 대상)</div>
+  <div class="pills" id="aPills" role="group" aria-label="a 등급 고르기"></div>
+  <div class="rowhead">b (괄호 안, 기준)</div>
+  <div class="pills" id="bPills" role="group" aria-label="b 등급 고르기"></div>
+  <div class="pills"><button type="button" class="pill" id="swapBtn" aria-pressed="false">괄호 안팎 바꾸기 (높은 순)</button></div>
+  <div class="res" id="nlCode" aria-live="polite"></div>
+  <div class="nl" id="nl"></div>
+  <p class="mut" id="nlInfo"></p>
+</section>
+
+<section>
+  <h2>1. 수평선 그림 — 기준은 괄호 안이다</h2>
+  <p><code>a.CompareTo(b)</code>는 <b><code>b</code>를 수평선의 0 자리에 세워 두고, <code>a</code>가 어느 쪽에 떨어지는지</b> 묻는 것입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>a.CompareTo(b)의 결과</th><th>수평선에서</th><th>정렬에서</th></tr></thead>
+    <tbody>
+      <tr><td class="lc">0보다 작은 값</td><td><code>b</code>의 왼쪽</td><td><code>a</code>가 <code>b</code>보다 앞</td></tr>
+      <tr><td>0</td><td><code>b</code>와 같은 자리</td><td>순서를 정하지 않음</td></tr>
+      <tr><td class="rc">0보다 큰 값</td><td><code>b</code>의 오른쪽</td><td><code>a</code>가 <code>b</code>보다 뒤</td></tr>
+    </tbody>
+  </table></div>
+  <p>코드에서 왼쪽에 쓰인 <code>a</code>는 <b>자리를 정할 대상</b>이고, <b>기준</b>은 괄호 안의 <code>b</code>입니다. 둘을 바꿔 <code>b.CompareTo(a)</code>로 부르면 기준이 바뀌어서 부호가 반대로 나옵니다. 이게 6절 "높은 순으로 바꾸기"의 열쇠입니다.</p>
+</section>
+
+<section>
+  <h2>2. 약속은 부호뿐이다 — -1, 1이 아니다</h2>
+  <p>.NET 문서가 약속하는 건 <b>"0보다 작다 / 0 / 0보다 크다"</b> 세 가지뿐입니다 (공식 문서). <code>-1</code>과 <code>1</code>이 나와야 한다는 약속은 없습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>비교 방법</th><th>Legend(3)과 Normal(0)을 비교하면</th><th>약속을 지키나</th></tr></thead>
+    <tbody>
+      <tr><td><code>Legend.CompareTo(Normal)</code> (enum 기본)</td><td class="num">1 (.NET 9에서 찍어 본 값)</td><td class="ok">지킴</td></tr>
+      <tr><td><code>(int)leftGrade - (int)rightGrade</code> (빼기로 짠 비교)</td><td class="num bad">3</td><td class="ok">지킴</td></tr>
+    </tbody>
+  </table></div>
+  <p>두 번째 방법도 약속은 지킵니다. 그래서 비교 결과를 받아 쓰는 쪽에서 <code>== 1</code>로 확인하면, 3이 나왔을 때 "뒤로 보내야 한다"를 놓칩니다. 결과를 쓰는 쪽은 항상 <code>&gt; 0</code>, <code>&lt; 0</code>으로 확인합니다.</p>  <h3>같을 때 0을 빠뜨리면</h3>
+  <p>같을 때를 빠뜨린 비교 <code>leftItem.grade &gt; rightItem.grade ? 1 : -1</code>을 검사기에 일부러 넣어 봤습니다. 실습 데이터에서는 <b>정렬 결과가 모두 맞게 나왔습니다.</b> 눈으로는 못 잡습니다. 검사기는 "같은 아이템을 자기 자신과 비교하면 0인가"를 따로 확인해서 이걸 실패로 잡게 했습니다. 같은 두 값에 0을 안 돌려주는 비교는 데이터가 바뀌면 예외가 나거나 순서가 틀어질 수 있습니다 (공식 문서: 비교는 일관돼야 한다).</p>
+</section>
+
+<section>
+  <h2>3. 방향만 알려 주고, 칸 수는 알려 주지 않는다</h2>
+  <p>처음에는 "<code>a.CompareTo(b)</code>가 <code>+1</code>이면 <code>a</code>를 <code>b</code>의 한 칸 오른쪽(<code>b</code> + 1 칸)에 놓는다"고 이해했습니다. 실제 예로 따라가면 틀립니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>칸 번호</th><th>0</th><th>1</th><th>2</th><th>3</th></tr></thead>
+    <tbody>
+      <tr><td>정렬 전</td><td>Legend</td><td>Normal</td><td>Rare</td><td>Epic</td></tr>
+      <tr><td>정렬 후 (낮은 순)</td><td>Normal</td><td>Rare</td><td>Epic</td><td class="rc">Legend</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><code>Legend.CompareTo(Normal)</code>은 양수입니다. 그래서 Legend는 Normal의 <b>오른쪽 어딘가</b>로 가야 합니다</li>
+    <li>"Normal + 1 칸"을 글자 그대로 따르면 Legend는 1번 칸에 가야 합니다</li>
+    <li>실제 최종 자리는 3번 칸입니다. 1번 칸에는 Rare가 와야 합니다</li>
+  </ul>
+  <p>Legend가 3번 칸까지 가는 건 비교 한 번으로 정해진 게 아니라, <b>Rare, Epic과도 각각 비교한 결과가 쌓여서</b> 정해진 것입니다. 아래 "직접 넘겨 보기"에서 비교가 몇 번이나 일어나는지 셀 수 있습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>누가</th><th>하는 일</th><th>아는 범위</th></tr></thead>
+    <tbody>
+      <tr><td><code>CompareTo</code> (또는 넘긴 비교 함수)</td><td>두 개만 놓고 "누가 앞이냐" 판정</td><td>한 쌍의 방향</td></tr>
+      <tr><td><code>List.Sort</code></td><td>그 판정을 여러 번 불러서 최종 칸 번호를 만든다</td><td>리스트 전체</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>4. "그때 기본 순서는 어디에 있었나" — 세 층으로 나눠 보기</h2>
+  <p>회사에서 쓴 코드는 이런 모양이었습니다.</p>
+<pre><code>items.Sort(CompareByGrade);
+
+private int CompareByGrade(SortItem leftItem, SortItem rightItem)
+{
+    return leftItem.grade.CompareTo(rightItem.grade);
+}</code></pre>
+  <div class="tbl"><table>
+    <thead><tr><th>층</th><th>누가 만든 것</th><th>하는 일</th></tr></thead>
+    <tbody>
+      <tr><td>1. 정렬 알고리즘</td><td><code>List.Sort</code> 내부 (공식 문서: introsort)</td><td>비교를 여러 번 불러서 칸을 옮긴다</td></tr>
+      <tr><td>2. 아이템 두 개 비교</td><td>내가 넘긴 함수 <code>CompareByGrade</code></td><td>두 아이템 중 누가 앞인지</td></tr>
+      <tr><td>3. 등급 두 개 비교</td><td>enum 안에 원래 들어 있는 <code>CompareTo</code></td><td>등급 숫자가 작은 쪽이 앞</td></tr>
+    </tbody>
+  </table></div>
+  <p>"내부에 구현돼 있던 기본 순서"는 <b>3층, enum의 기본 순서</b>입니다. enum은 원래 <code>IComparable</code>을 구현하고 있어서 숫자 값(Normal 0 ~ Legend 3) 기준의 순서가 처음부터 들어 있습니다 (공식 문서). <code>int</code>, <code>string</code>도 마찬가지입니다.</p>
+  <p>반대로 <b><code>SortItem</code> 클래스 자신의 기본 순서는 그때 없었고, 없어도 됐습니다.</b> 함수를 넘기면 <code>List.Sort</code>는 넘긴 함수만 씁니다.</p>
+</section>
+
+<section>
+  <h2>5. 정렬은 List.Sort에 맡기고, 비교만 넘긴다</h2>
+  <p>실습은 <code>List.Sort</code>에 넘길 비교 메서드 세 개를 채우는 것으로 했습니다. 아래는 직접 채운 코드입니다.</p>
+<pre><code>// 1. 등급 낮은 순 (Normal → Legend)
+public static int CompareByGradeAscending(SortItem leftItem, SortItem rightItem)
+{
+    return leftItem.grade.CompareTo(rightItem.grade);
+}
+
+// 2. 등급 높은 순 (Legend → Normal)
+public static int CompareByGradeDescending(SortItem leftItem, SortItem rightItem)
+{
+    return rightItem.grade.CompareTo(leftItem.grade);
+}
+
+// 3. 등급 높은 순, 등급이 같으면 이름 알파벳 순
+public static int CompareByGradeDescendingThenName(SortItem leftItem, SortItem rightItem)
+{
+    int result = rightItem.grade.CompareTo(leftItem.grade);
+    if (result == 0)
+    {
+        return leftItem.itemName.CompareTo(rightItem.itemName);
+    }
+    return result;
+}</code></pre>
+  <p>부르는 쪽은 한 줄입니다. 이름 있는 메서드를 넘기든 람다(lambda)로 그 자리에서 쓰든 하는 일은 같습니다.</p>
+<pre><code>items.Sort(ItemComparisons.CompareByGradeDescending);
+items.Sort((leftItem, rightItem) =&gt; rightItem.grade.CompareTo(leftItem.grade));</code></pre>
+  <p>3번 메서드의 마지막 줄은 처음에 <code>return rightItem.grade.CompareTo(leftItem.grade);</code>로 같은 비교를 한 번 더 했습니다. 이미 <code>result</code>에 구해 둔 값이라 <code>return result;</code>로 줄였습니다.</p>
+</section>
+
+<section>
+  <h2>6. 높은 순 = 괄호 안팎 바꾸기</h2>
+  <p>2번 메서드는 1번에서 <b><code>leftItem</code>과 <code>rightItem</code>의 자리만 바꿨습니다.</b> 1절의 수평선으로 말하면 기준점을 바꾼 것입니다. 맨 위 "직접 눌러 보기"의 <b>괄호 안팎 바꾸기</b> 버튼이 이 일을 합니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>메서드</th><th>0 자리(기준)에 선 것</th><th>움직이는 것</th><th>Legend와 Normal을 넣으면</th></tr></thead>
+    <tbody>
+      <tr><td>낮은 순</td><td><code>rightItem</code></td><td><code>leftItem</code></td><td>Legend가 Normal의 오른쪽 → Legend가 뒤</td></tr>
+      <tr><td>높은 순</td><td><code>leftItem</code></td><td><code>rightItem</code></td><td>부호가 반대 → Legend가 앞</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>-(leftItem.grade.CompareTo(rightItem.grade))</code>처럼 결과에 마이너스를 붙이는 방법도 있습니다. 다만 결과가 <code>int.MinValue</code>이면 마이너스를 붙여도 양수가 되지 않습니다 (공식 문서: 정수 오버플로). enum 기본 비교에서는 생기지 않지만, 괄호 안팎을 바꾸는 쪽이 그런 걱정이 없습니다.</p>
+</section>
+
+<section>
+  <h2>7. 같은 등급끼리의 순서 — 기준을 하나 더 넣는다</h2>
+  <p><code>List.Sort</code>는 비교 결과가 0인 것끼리의 순서를 지켜 주지 않습니다 (공식 문서: 불안정 정렬, unstable sort). 같은 Epic인 Sword와 Bow 중 어느 쪽이 앞에 올지 보장되지 않습니다. 그래서 3번 메서드처럼 1차 기준(등급)이 같을 때만 2차 기준(이름)을 봅니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>정렬 전</th><th>1, 2번 메서드가 보장하는 것</th><th>3번 메서드의 결과</th></tr></thead>
+    <tbody>
+      <tr><td>Sword(Epic), Axe(Normal), Bow(Epic), Ring(Legend), Cap(Normal), Dagger(Rare)</td><td>등급 순서만</td><td>Ring, Bow, Sword, Dagger, Axe, Cap</td></tr>
+    </tbody>
+  </table></div>
+  <p>이름 비교에 쓴 <code>string.CompareTo</code>는 <b>그 PC의 언어 설정(culture)에 따라</b> 순서를 정합니다 (공식 문서). 어느 PC에서든 같은 결과가 나와야 하는 게임 데이터 정렬에서는 <code>string.CompareOrdinal</code>을 쓰는 경우가 많습니다 (공식 문서 권장 + 커뮤니티 표준).</p>
+</section>
+
+<section>
+  <h2>8. 아무것도 안 넘기면 — 이름이 아니라 약속을 본다</h2>
+  <p><code>items.Sort()</code>처럼 아무것도 안 넘기면, <code>List.Sort</code>는 <code>SortItem</code> 자신의 <code>CompareTo</code>로 비교합니다. 이걸 확인하려고 실험을 하나 했습니다. <b><code>CompareTo</code> 메서드는 그대로 두고, 클래스 선언의 <code>: IComparable&lt;SortItem&gt;</code>만 지웠습니다.</b></p>
+  <div class="tbl"><table>
+    <thead><tr><th>SortItem 상태</th><th>items.Sort() 결과</th></tr></thead>
+    <tbody>
+      <tr><td><code>: IComparable&lt;SortItem&gt;</code> 있음 + <code>CompareTo</code> 있음</td><td class="ok">CompareTo로 정렬됨</td></tr>
+      <tr><td><code>: IComparable&lt;SortItem&gt;</code> 없음 + <code>CompareTo</code> 있음</td><td class="bad">예외 (InvalidOperationException)</td></tr>
+      <tr><td><code>items.Sort(비교 메서드)</code>로 넘김</td><td>인터페이스가 있든 없든 넘긴 함수만 씀</td></tr>
+    </tbody>
+  </table></div>
+  <p>메서드가 그대로 있는데도 못 찾았습니다. <code>List.Sort()</code>는 "<code>CompareTo</code>라는 <b>이름의 메서드</b>가 있나?"를 찾지 않고, "이 타입이 <code>IComparable&lt;T&gt;</code>라는 <b>약속(interface)에 서명했나?</b>"만 봅니다 (공식 문서: 기본 비교자 <code>Comparer&lt;T&gt;.Default</code>가 <code>IComparable&lt;T&gt;</code> 또는 <code>IComparable</code> 구현을 찾고, 없으면 예외).</p>
+</section>
+
+<section class="card" aria-labelledby="try2">
+  <h2 id="try2">직접 넘겨 보기 — Sort가 비교를 몇 번 부르나</h2>
+  <p>규칙을 고르고 <b>다음 비교</b>를 누르면, 정렬이 비교 함수를 한 번 부를 때마다 어떤 두 아이템을 넣었고 무엇을 돌려받았는지 나옵니다. <span class="lc">보라</span> 칸이 <code>leftItem</code>, <span class="rc">초록</span> 칸이 <code>rightItem</code>입니다.</p>
+  <p class="mut">이해를 위해 가장 단순한 삽입 정렬(insertion sort)로 보여 줍니다. 실제 <code>List.Sort</code> 내부의 비교 순서와 횟수는 이것과 다릅니다. 같은 점은 "비교는 두 개씩, 결과는 부호만, 여러 번 불러서 최종 칸을 만든다"입니다.</p>
+  <div class="rowhead">넘길 비교 메서드</div>
+  <div class="pills" id="rulePills" role="group" aria-label="비교 규칙 고르기"></div>
+  <div class="row" id="slots" aria-live="polite"></div>
+  <div class="log" id="sortLog"></div>
+  <div class="pills">
+    <button type="button" class="pill" id="stepBtn">다음 비교</button>
+    <button type="button" class="pill" id="allBtn">끝까지</button>
+    <button type="button" class="pill" id="resetBtn">처음으로</button>
+  </div>
+</section>
+
+<section>
+  <h2>정리</h2>
+  <ol>
+    <li><code>a.CompareTo(b)</code>는 <code>b</code>를 0 자리에 세우고 <code>a</code>가 어느 쪽인지 돌려준다. 기준은 괄호 안이다</li>
+    <li>약속은 "음수 / 0 / 양수"뿐이다. 결과를 쓰는 쪽은 <code>== 1</code>이 아니라 <code>&gt; 0</code>, <code>&lt; 0</code>으로 확인한다</li>
+    <li><code>CompareTo</code>는 방향만 알려 준다. 최종 칸 번호는 <code>List.Sort</code>가 여러 번 비교해서 만든다</li>
+    <li>정렬은 <code>items.Sort(비교 메서드)</code>에 맡기고 비교만 넘긴다. enum, <code>int</code>, <code>string</code>은 기본 순서가 이미 들어 있어서 그 <code>CompareTo</code>를 부르면 된다</li>
+    <li>높은 순은 괄호 안팎을 바꿔서(기준점을 바꿔서) 만든다</li>
+    <li><code>List.Sort</code>는 같은 것끼리의 순서를 보장하지 않는다. 필요하면 2차 기준을 넣는다</li>
+    <li>아무것도 안 넘긴 <code>items.Sort()</code>는 메서드 이름이 아니라 <code>IComparable&lt;T&gt;</code> 약속을 본다</li>
+  </ol>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="ulong-key.html">enum 두 개를 ulong 키 하나로</a> — 같은 ItemType · Grade enum을 키로 묶은 노트</li>  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  document.getElementById('noJs').hidden = true;
+  const GRADES = ['Normal','Rare','Epic','Legend'];
+  const sign = v => v < 0 ? -1 : (v > 0 ? 1 : 0);
+
+  function makePills(container, labels, initial, onPick){
+    const buttons = labels.map((label, index) => {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'pill'; button.textContent = label;
+      button.addEventListener('click', () => { setPressed(index); onPick(index); });
+      container.appendChild(button);
+      return button;
+    });
+    function setPressed(pickedIndex){ buttons.forEach((b, i) => b.setAttribute('aria-pressed', i === pickedIndex ? 'true' : 'false')); }
+    setPressed(initial);
+  }
+
+  // ── 1. 수평선 ──
+  let aGrade = 3, bGrade = 0, swapped = false;
+  const nl = document.getElementById('nl');
+  function drawLine(){
+    // 괄호 안팎을 바꾸면 기준(0 자리)과 움직이는 쪽이 바뀐다
+    const movingName = swapped ? 'b' : 'a', baseName = swapped ? 'a' : 'b';
+    const movingGrade = swapped ? bGrade : aGrade, baseGrade = swapped ? aGrade : bGrade;
+    const result = sign(movingGrade - baseGrade);
+    document.getElementById('nlCode').innerHTML =
+      `${movingName}.CompareTo(${baseName}) = ${GRADES[movingGrade]}(${movingGrade}).CompareTo(${GRADES[baseGrade]}(${baseGrade})) = <b>${result}</b>`;
+
+    const W = 360, H = 120, mid = W / 2, y = 60;
+    const markerX = result < 0 ? 90 : (result > 0 ? W - 90 : mid);
+    const color = result < 0 ? 'var(--left)' : (result > 0 ? 'var(--right)' : 'var(--muted)');
+    nl.innerHTML =
+      `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="수평선 위에서 ${movingName}가 떨어진 자리">
+        <rect x="20" y="${y-18}" width="${mid-36}" height="36" rx="6" fill="var(--left)" opacity=".10"/>
+        <rect x="${mid+16}" y="${y-18}" width="${mid-36}" height="36" rx="6" fill="var(--right)" opacity=".10"/>
+        <line x1="20" y1="${y}" x2="${W-20}" y2="${y}" stroke="var(--muted)" stroke-width="1"/>
+        <line x1="${mid}" y1="${y-14}" x2="${mid}" y2="${y+14}" stroke="var(--fg)" stroke-width="2"/>
+        <text x="${mid}" y="${y+34}" text-anchor="middle">0 = ${baseName} (${GRADES[baseGrade]})</text>
+        <text class="m" x="24" y="${y+56}">음수: 앞</text>
+        <text class="m" x="${W-24}" y="${y+56}" text-anchor="end">양수: 뒤</text>
+        <circle cx="${markerX}" cy="${y}" r="9" fill="${color}"/>
+        <text x="${markerX}" y="${y-22}" text-anchor="middle">${movingName} (${GRADES[movingGrade]})</text>
+      </svg>`;
+    const where = result < 0 ? `${baseName}보다 앞` : (result > 0 ? `${baseName}보다 뒤` : `${baseName}와 같은 자리 (순서를 정하지 않음)`);
+    document.getElementById('nlInfo').textContent = swapped
+      ? `괄호 안팎을 바꿨습니다. 이제 a가 기준이고 b가 움직입니다. b는 ${where}. 정렬 결과는 높은 순이 됩니다.`
+      : result < 0 ? `a는 ${where}. 결과가 -1이든 -3이든 -100이든 같은 왼쪽 영역입니다. 칸 수가 아니라 방향입니다.`
+      : result > 0 ? `a는 ${where}. 결과가 1이든 3이든 100이든 같은 오른쪽 영역입니다. 칸 수가 아니라 방향입니다.`
+      : `a는 ${where}.`;
+  }
+  makePills(document.getElementById('aPills'), GRADES.map((g, i) => `${g}(${i})`), aGrade, i => { aGrade = i; drawLine(); });
+  makePills(document.getElementById('bPills'), GRADES.map((g, i) => `${g}(${i})`), bGrade, i => { bGrade = i; drawLine(); });
+  const swapBtn = document.getElementById('swapBtn');
+  swapBtn.addEventListener('click', () => { swapped = !swapped; swapBtn.setAttribute('aria-pressed', swapped ? 'true' : 'false'); drawLine(); });
+  drawLine();
+
+  // ── 2. Sort가 비교를 부르는 모습 (삽입 정렬로 흉내) ──
+  const START = [['Sword',2],['Axe',0],['Bow',2],['Ring',3],['Cap',0],['Dagger',1]];
+  const ordinal = (x, y) => x < y ? -1 : (x > y ? 1 : 0);
+  const RULES = [
+    { label: 'CompareByGradeAscending', code: 'leftItem.grade.CompareTo(rightItem.grade)',
+      compare: (l, r) => sign(l[1] - r[1]) },
+    { label: 'CompareByGradeDescending', code: 'rightItem.grade.CompareTo(leftItem.grade)',
+      compare: (l, r) => sign(r[1] - l[1]) },
+    { label: 'CompareByGradeDescendingThenName', code: '등급 높은 순, 같으면 이름 순',
+      compare: (l, r) => { const g = sign(r[1] - l[1]); return g !== 0 ? g : ordinal(l[0], r[0]); } },
+  ];
+  let ruleIndex = 0, steps = [], stepIndex = 0;
+
+  function buildSteps(){
+    const rule = RULES[ruleIndex];
+    const list = START.map(x => x.slice());
+    const out = [];
+    for (let i = 1; i < list.length; i++){
+      let j = i;
+      while (j > 0){
+        const left = list[j-1], right = list[j];
+        const result = rule.compare(left, right);
+        const before = list.map(x => x.slice());
+        const willSwap = result > 0;
+        if (willSwap){ list[j-1] = right; list[j] = left; }
+        out.push({ before, after: list.map(x => x.slice()), leftSlot: j-1, rightSlot: j,
+                   left, right, result, willSwap });
+        if (!willSwap) break;
+        j--;
+      }
+    }
+    return out;
+  }
+  function itemText(item){ return `${item[0]}(${GRADES[item[1]]})`; }
+  function renderSlots(list, leftSlot, rightSlot){
+    document.getElementById('slots').innerHTML = list.map((item, index) =>
+      `<div class="slot${index === leftSlot ? ' l' : ''}${index === rightSlot ? ' r' : ''}">
+         <div class="idx">${index}번 칸</div><div class="nm">${item[0]}</div><div class="gr">${GRADES[item[1]]}</div></div>`).join('');
+  }
+  function render(){
+    const log = document.getElementById('sortLog');
+    const rule = RULES[ruleIndex];
+    if (stepIndex === 0){
+      renderSlots(START, -1, -1);
+      log.innerHTML = `items.Sort(ItemComparisons.${rule.label});<br><span class="mut">비교 함수 안: ${rule.code}</span><br>아직 비교를 한 번도 안 불렀습니다.`;
+    } else {
+      const step = steps[stepIndex - 1];
+      const done = stepIndex === steps.length;
+      renderSlots(step.after, step.willSwap ? step.leftSlot : step.leftSlot, step.rightSlot);
+      const verdict = step.result > 0 ? '양수 → leftItem이 뒤여야 함 → 자리 바꿈'
+                    : step.result < 0 ? '음수 → leftItem이 앞이 맞음 → 그대로'
+                    : '0 → 같은 자리, 순서를 정하지 않음 → 그대로';
+      log.innerHTML =
+        `비교 ${stepIndex}번째 / 전체 ${steps.length}번<br>` +
+        `${rule.label}(<span class="lc">${itemText(step.left)}</span>, <span class="rc">${itemText(step.right)}</span>) = <b>${step.result}</b><br>` +
+        `${verdict}` +
+        (done ? `<br><b>정렬 끝.</b> 비교를 ${steps.length}번 불러서 최종 칸이 정해졌습니다: ${step.after.map(itemText).join(', ')}` : '');
+    }
+    document.getElementById('stepBtn').disabled = stepIndex >= steps.length;
+    document.getElementById('allBtn').disabled = stepIndex >= steps.length;
+  }
+  function resetSort(){ steps = buildSteps(); stepIndex = 0; render(); }
+  makePills(document.getElementById('rulePills'), RULES.map(r => r.label), ruleIndex, i => { ruleIndex = i; resetSort(); });
+  document.getElementById('stepBtn').addEventListener('click', () => { if (stepIndex < steps.length){ stepIndex++; render(); } });
+  document.getElementById('allBtn').addEventListener('click', () => { stepIndex = steps.length; render(); });
+  document.getElementById('resetBtn').addEventListener('click', resetSort);
+  resetSort();
+})();
+</script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "CompareTo": "두 개를 놓고 누가 앞인지 부호로 돌려주는 메서드. 음수 = 앞, 0 = 같은 자리, 양수 = 뒤",
+  "IComparable": "\"이 타입은 CompareTo로 순서를 정할 수 있다\"는 약속(interface). 아무것도 안 넘긴 Sort()가 찾는 것",
+  "ItemGrade": "실습용 등급 enum. Normal 0, Rare 1, Epic 2, Legend 3",
+  "SortItem": "실습용 아이템 클래스. 이름(itemName)과 등급(grade)",
+  "leftItem": "비교 함수의 첫 번째 아이템. 낮은 순 비교에서는 자리를 정할 대상",
+  "rightItem": "비교 함수의 두 번째 아이템. 낮은 순 비교에서는 기준(0 자리)",
+  "compareResult": "CompareTo가 돌려준 값. 부호만 의미가 있다"
+});
+</script>
+</body>
+</html>

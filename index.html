@@ -80,6 +80,7 @@ section{display:flex;flex-direction:column;gap:10px}
     <a href="unity/race-condition.html"><span class="t">같은 변수를 두 스레드가 더하면 값이 사라진다 — 경쟁 상태와 lock</span><span class="d">두 워커 스레드가 같은 _count를 더하면 5번 중 2번 값이 사라짐. ++는 읽기·더하기·쓰기 세 단계, 임계 구역을 Interlocked · lock · SemaphoreSlim으로 지키기, 잠금 비용(쥐고 놓기 약 28% · 다투기 약 72%), await 측정 함정. 한 단계씩 넘겨 보는 표</span><span class="tag">2026-11-13</span></a>
     <a href="unity/bit-flag.html"><span class="t">칸 8개를 int 하나에 담는다 — 비트 플래그와 8×8 격자</span><span class="d">비트 번호와 값(1 &lt;&lt; 번호), 2의 거듭제곱인 이유, 켜기 OR · 끄기 &amp; ~마스크 · 뒤집기 XOR · 확인 != 0, 연산 순서, 줄 전체를 0과 2ⁿ − 1로, 1이 n개인 2진수 = 2ⁿ − 1, 31번 부호 비트와 32번 시프트 함정. 직접 눌러 보는 한 줄 · 8×8 격자 · n 바꿔 보기</span><span class="tag">2026-11-17</span></a>
     <a href="unity/ulong-key.html"><span class="t">enum 두 개를 ulong 키 하나로 — 숫자 그대로 넣기와 비트 하나씩 켜기</span><span class="d">튜플 대신 ulong MakeKey 다시 만들기. 왼쪽 32칸 · 오른쪽 32칸, 만들기 &lt;&lt; 32와 OR, 꺼내기는 몫(&gt;&gt; 32)과 나머지(마스크 · 밀었다 되돌리기 · 캐스트), 같은 ulong이라도 형식이 다르다, 실제로 걸린 함정 6개(1과 1UL, 연산 순서, == 1), 값이 하나면 packing · 여러 개면 flag. 직접 만들고 꺼내 보는 키 · 8칸 밀어 보기</span><span class="tag">2026-11-18</span></a>
+    <a href="unity/compare-to.html"><span class="t">CompareTo는 누가 앞인지만 정한다 — List.Sort에 비교 넘기기</span><span class="d">a.CompareTo(b)는 b를 0 자리에 세운 수평선, 약속은 부호뿐(== 1 대신 &gt; 0), 방향만 · 칸 수는 아님, 정렬 · 비교 함수 · enum 기본 순서의 세 층, 높은 순 = 괄호 안팎 바꾸기, 불안정 정렬과 2차 기준, 아무것도 안 넘긴 Sort()는 IComparable 약속을 본다. 수평선에 놓아 보기 · Sort가 비교를 부르는 모습 넘겨 보기</span><span class="tag">2026-11-19</span></a>
   </div>
 </section>
 
