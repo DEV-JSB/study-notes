@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>유니크 모드와 Observer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: intro → before (if piles) → checker → observer class → hero events & context → try-it 1 (event order) → mod class → where to keep the record (try-it 2) → static handler → left as is → summary */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --ok:#178a66; --bad:#d23b3b; --info:#2f6fd0; --warn:#d2552a;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;padding-inline:16px;padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
+h1{font-size:30px;font-weight:600;margin:0;line-height:1.4;text-wrap:balance}
+/* 큰 제목(h2): 크고 굵게 + 위쪽 구분선 / 작은 제목(h3): 작게 + 왼쪽 색 막대. 크기만이 아니라 모양으로도 구분한다 */
+h2{font-size:24px;font-weight:700;margin:0;padding-top:20px;border-top:2px solid var(--line);line-height:1.45;text-wrap:balance}
+.card h2{font-size:19px;font-weight:600;padding-top:0;border-top:0}
+h3{font-size:17px;font-weight:600;color:var(--fg);margin:10px 0 0;padding-left:10px;border-left:3px solid var(--info);line-height:1.5;text-wrap:balance}
+.card h3{border-left:0;padding-left:0}
+p{margin:0;max-width:68ch}
+a{color:var(--info)}
+section{display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.src{font-size:12px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+td.num{font-family:var(--mono);white-space:nowrap}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:13.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0;overflow-x:auto;line-height:1.6}
+.bad{color:var(--bad)} .ok{color:var(--ok)} .mut{color:var(--muted)}
+ul,ol{margin:0;padding-left:20px}
+blockquote{margin:0;padding:10px 16px;border-left:3px solid var(--warn);background:var(--panel);border-radius:0 8px 8px 0}
+
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font:13px var(--sans);padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
+.pill:hover{border-color:var(--muted)}
+.pill[aria-pressed="true"]{background:var(--info);border-color:var(--info);color:#fff}
+.pill:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.pill:disabled{opacity:.45;cursor:default}
+.rowhead{font-size:14px;color:var(--muted);margin-top:4px}
+.log{font:13.5px/1.8 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-wrap:anywhere}
+.log .step{display:block}
+.result{font-size:15px}
+input[type=range]{width:100%;max-width:360px}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">Unity · C# 설계 · 2026-11-23</span>
+  <h1>유니크가 늘 때마다 if가 쌓인다 — Observer 구독으로 옮기기</h1>
+  <p class="lead">장비 특수 효과(유니크 모드) 세 개를 일부러 if로 먼저 짜고, Observer 구독으로 리팩토링한 노트. 한 줄 결론: <b>유니크 코드를 영웅과 전투 흐름에서 빼내고, 영웅은 "지금 피해를 고치는 중이다" 같은 사건만 알린다. 유니크 모드는 필요한 사건만 구독한다. 이때 사건의 순서와 사용 기록을 어디에 둘지가 실제로 설계를 가르는 곳이었다.</b></p>
+  <p class="src">글 버전 <a href="unique-mod-observer.md">unique-mod-observer.md</a> · 실습 원본 <a href="https://github.com/DEV-JSB/unity-study/tree/main/Assets/Chapter/08.SkillFeatureRefactor">unity-study / 08.SkillFeatureRefactor</a></p>
+</header>
+
+<section>
+  <h2>발단</h2>
+  <p>회사 프로젝트에는 장비에 붙는 특수 효과(유니크 모드)가 아주 많습니다. 그런데 새 유니크가 하나 생길 때마다 피해 처리 함수나 전투 흐름 함수 안에 <code>if</code>가 하나씩 늘어나는 모양을 자주 봤습니다. 왜 그게 문제인지, 그리고 어떻게 바꾸는지를 직접 해 보고 싶었습니다.</p>
+  <p>그래서 유니크 세 개짜리 작은 실습을 만들고, <b>일부러 구조 생각 없이 <code>if</code>로 먼저 짠 다음</b> 리팩토링했습니다. 리팩토링 이유는 처음에 이렇게 정리했습니다.</p>
+  <blockquote>기존에는 유니크마다 "언제 · 발동해도 되나 · 무엇을 하나"를 매번 새로 구현했다. 이 세 부분(사건 · 조건 · 효과)을 따로 만들어 조립할 수 있게 하면, 새 유니크를 함수 수정 없이 확장할 수 있다.</blockquote>
+  <p>이 노트는 그 첫 단계입니다. 유니크 하나를 class 하나로 떼어 내고, <code>if</code> 대신 <b>Observer 구독</b>으로 붙입니다. 사건 · 조건 · 효과를 완전히 쪼개는 건 그다음 단계입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>유니크</th><th>규칙</th></tr></thead>
+    <tbody>
+      <tr><td>치명상 버티기</td><td>스테이지당 한 번, 쓰러질 피해를 받으면 체력 1로 버틴다. 같은 스테이지에서 장비를 뺐다 다시 껴도 다시 못 쓴다</td></tr>
+      <tr><td>다섯 번째 평타 치명타</td><td>평타 다섯 번째마다 피해 2배</td></tr>
+      <tr><td>받는 피해 감소</td><td>받는 피해 10% 감소. 두 개 끼면 20%. 치명상 버티기와 같이 끼면 감소가 먼저고, 쓰러지나 판정은 줄어든 피해로 한다</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>1. 리팩토링 전 — if가 쌓이는 자리</h2>
+<pre><code>// Hero.TakeDamage
+if (HasUnique(EUniqueType.DamageTakenReduction10))
+{
+    int reductionValue = CountUnique(EUniqueType.DamageTakenReduction10);
+    incomingDamage *= (1f - (0.1f * reductionValue));
+}
+if (CurrentHp - incomingDamage &gt; 0f) { CurrentHp -= incomingDamage; return; }
+if (_surviveLethalOnceCount == 0 &amp;&amp; HasUnique(EUniqueType.SurviveLethalOncePerStage))
+{
+    CurrentHp = 1f;
+    ++_surviveLethalOnceCount;
+    return;
+}
+CurrentHp = 0f;
+
+// Battle.BaseAttack
+if (attacker.HasUnique(EUniqueType.EveryFifthBaseAttackCritical) &amp;&amp; attacker.AttackCount % 5 == 0)
+{
+    criticalAttack = true;
+}</code></pre>
+  <div class="tbl"><table>
+    <thead><tr><th>유니크</th><th>코드가 있던 곳</th></tr></thead>
+    <tbody>
+      <tr><td>치명상 버티기</td><td><code>Hero.TakeDamage</code>(버티기), <code>Hero</code>의 필드(사용 기록), <code>Stage.StartStage</code> → <code>Hero</code>(스테이지마다 초기화)</td></tr>
+      <tr><td>다섯 번째 평타 치명타</td><td><code>Battle.BaseAttack</code>(판정), <code>Hero</code>(평타 횟수)</td></tr>
+      <tr><td>받는 피해 감소</td><td><code>Hero.TakeDamage</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>"스테이지 시작 때 체력 20 회복" 같은 유니크가 하나 더 생기면 <code>Stage</code>와 <code>Hero</code>를 또 고쳐야 합니다. 유니크가 20개면 <code>TakeDamage</code>는 <code>if</code> 20개가 됩니다.</p>
+</section>
+
+<section>
+  <h2>2. 고치기 전에 동작부터 고정한다</h2>
+  <p>리팩토링은 <b>동작은 그대로 두고 구조만 바꾸는 것</b>입니다. 그래서 먼저 지금 동작을 시나리오 6개로 고정하는 검사기를 만들고, 리팩토링하는 동안 이 파일은 고치지 않았습니다 (특성 테스트, characterization test). 그리고 <b>시나리오 6개가 모두 성공인 지점마다 커밋</b>했습니다. 깨지면 바로 앞 커밋으로 돌아가 그 단계만 다시 하면 됩니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>시나리오</th><th>보는 것</th></tr></thead>
+    <tbody>
+      <tr><td>유니크 없음</td><td>기본 피해 처리</td></tr>
+      <tr><td>치명상 버티기</td><td>첫 스테이지에서 버팀, 새 스테이지에서 다시 버팀, 같은 스테이지에서는 못 버팀</td></tr>
+      <tr><td>치명상 버티기 뺐다 끼기</td><td>같은 스테이지에서 장비를 뺐다 다시 껴도 못 버팀</td></tr>
+      <tr><td>다섯 번째 평타 치명타</td><td>평타 10번 중 5번째, 10번째만 치명타</td></tr>
+      <tr><td>받는 피해 감소</td><td>한 개 10%, 두 개 20%, 빼면 그만큼 돌아옴</td></tr>
+      <tr><td>받는 피해 감소 + 치명상 버티기</td><td>감소 먼저, 판정 나중</td></tr>
+    </tbody>
+  </table></div>
+  <p>검사기를 딱 한 번 고친 적이 있습니다. 실제 게임에서 유니크는 <b>장비에 달려 있고 장비는 고유 번호로 구분</b>됩니다. 같은 유니크가 달린 장비를 두 개 꼈다가 하나를 뺄 때, 유니크 종류만으로는 어느 장비인지 고를 수 없습니다. 그래서 장비 class(<code>Gear</code>, <code>ulong</code> 고유 번호)를 만들고 <code>Equip(gear)</code>, <code>Unequip(gearUniqueId)</code>로 바꿨습니다. 이때도 <b>부르는 모양만 바꾸고 정답 값은 한 줄도 안 바꿨고</b>, 6개가 그대로 성공해서 동작이 같다는 걸 값으로 확인했습니다.</p>
+</section>
+
+<section>
+  <h2>3. Observer class를 직접 만든다</h2>
+  <p>회사 선임 코드가 Observer class를 따로 두고 <code>Subscribe</code> / <code>Notify</code>를 쓰는 방식이라, 안이 어떻게 생겼는지 보려고 직접 만들었습니다.</p>
+<pre><code>public class Observer&lt;T&gt;
+{
+    private readonly List&lt;Action&lt;T&gt;&gt; _listeners = new List&lt;Action&lt;T&gt;&gt;();
+
+    public void Subscribe(Action&lt;T&gt; listener)   { _listeners.Add(listener); }
+    public void Unsubscribe(Action&lt;T&gt; listener) { _listeners.Remove(listener); }
+
+    public void Notify(T value)
+    {
+        foreach (var listener in _listeners)
+        {
+            listener(value);
+        }
+    }
+}</code></pre>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>C# event</th><th>직접 만든 Observer</th><th>UniRx Subject</th></tr></thead>
+    <tbody>
+      <tr><td>등록 / 해제</td><td class="num">+= / -=</td><td class="num">Subscribe / Unsubscribe</td><td>돌려받은 것을 <code>Dispose()</code></td></tr>
+      <tr><td>알리기</td><td class="num">?.Invoke(...)</td><td class="num">Notify(...)</td><td class="num">OnNext(...)</td></tr>
+      <tr><td>바깥에서 알리기 막기</td><td class="ok">event가 막아 줌</td><td class="bad">안 막힘</td><td><code>AsObservable()</code>로 감춤</td></tr>
+      <tr><td>넘길 값이 없는 사건</td><td class="num">Action</td><td>값 없는 class를 따로 만들거나 값을 하나 넘김</td><td class="num">Subject&lt;Unit&gt;</td></tr>
+    </tbody>
+  </table></div>
+  <p>셋 다 옵저버 패턴이고, <b>알림 목록을 누가 관리하나</b>가 다릅니다.</p>
+</section>
+
+<section>
+  <h2>4. 영웅의 사건과, 사건에 넘기는 상자</h2>
+  <p><code>Hero</code>는 사건 세 개를 갖고 알리기만 합니다. 이름은 -ing(일어나기 직전, 구독자가 끼어들 수 있음) 규칙으로 지었습니다 (공식 문서: .NET 이벤트 이름 지침).</p>
+  <div class="tbl"><table>
+    <thead><tr><th>사건</th><th>알리는 때</th><th>구독하는 유니크</th></tr></thead>
+    <tbody>
+      <tr><td class="num">DamageModifying</td><td>피해 값을 고치는 중</td><td>받는 피해 감소</td></tr>
+      <tr><td class="num">DamageApplying</td><td>고친 피해를 체력에 적용하기 직전</td><td>치명상 버티기</td></tr>
+      <tr><td class="num">BaseAttacking</td><td>평타 피해를 계산하기 전</td><td>다섯 번째 평타 치명타</td></tr>
+    </tbody>
+  </table></div>
+<pre><code>public class DamageContext
+{
+    public float Damage;
+    public float DamageDecreaseRatio;
+}
+
+public class BaseAttackContext
+{
+    public bool IsCritical;
+}</code></pre>
+  <div class="tbl"><table>
+    <thead><tr><th>왜</th><th>이유</th></tr></thead>
+    <tbody>
+      <tr><td>class(참조 형식)인가</td><td><code>float</code> 하나만 넘기면 구독자는 복사본을 받아서, 고쳐도 <code>TakeDamage</code> 쪽 값은 그대로다</td></tr>
+      <tr><td>readonly가 아닌가</td><td>고치라고 만든 상자라서. 평타가 끝난 뒤의 결과 보고서(<code>AttackResult</code>)는 readonly로 두고 역할을 나눴다</td></tr>
+      <tr><td>반환값으로 받지 않나</td><td>구독자가 여럿이면 반환값은 마지막 구독자 것만 남는다 (공식 문서: 멀티캐스트 델리게이트)</td></tr>
+    </tbody>
+  </table></div>
+  <p>치명상 버티기를 위해 처음에는 <code>ShouldSurviveAtOneHp</code> 같은 칸을 상자에 넣으려 했습니다. 그런데 그건 <b>유니크 하나만을 위한 칸</b>이라, 유니크가 늘면 공용 상자에 칸이 계속 늘고 <code>TakeDamage</code>가 그 칸을 읽는 <code>if</code>도 늡니다. <code>if</code>가 쌓이던 문제가 상자로 옮겨 올 뿐이라 넣지 않았습니다. 치명상 버티기는 피해 값을 "체력 − 1"로 고치는 것으로 했습니다.</p>
+</section>
+
+<section class="card" aria-labelledby="try1">
+  <h2 id="try1">직접 눌러 보기 — 같은 사건에 붙으면 구독 순서가 실행 순서</h2>
+  <p>체력 100인 영웅이 치명상 버티기와 받는 피해 감소 장비를 낍니다. 사건 구조와 장비 끼는 순서를 바꿔 보세요.</p>
+  <p id="noJs" class="bad">이 칸은 스크립트로 계산합니다. 값이 나오지 않으면 파일을 브라우저에서 직접 열어 주세요.</p>
+  <div class="rowhead">사건 구조</div>
+  <div class="pills" id="phasePills" role="group" aria-label="사건 구조 고르기"></div>
+  <div class="rowhead">장비 끼는 순서 (= 구독 순서)</div>
+  <div class="pills" id="orderPills" role="group" aria-label="장비 끼는 순서 고르기"></div>
+  <div class="rowhead">들어오는 피해</div>
+  <div class="pills" id="damagePills" role="group" aria-label="피해 고르기"></div>
+  <div class="log" id="orderLog" aria-live="polite"></div>
+</section>
+
+<section>
+  <h2>5. 같은 사건 안에서는 구독 순서가 실행 순서다</h2>
+  <p>처음에는 받는 피해 감소와 치명상 버티기를 둘 다 "피해를 적용하기 직전" 사건 하나에 붙였습니다. 그러자 <b>장비를 낀 순서</b>에 따라 결과가 달라졌습니다. 치명상 버티기 장비를 먼저 끼고 체력 100에 피해 105를 받으면, 치명상 버티기가 줄기 전 피해 105를 보고 "쓰러진다"고 판정해서 <b>쓸 필요가 없는데 써 버립니다.</b> 정답은 105 × 0.9 = 94.5만 받아서 체력 5.5, 치명상 버티기는 안 쓰는 것입니다.</p>
+  <p>그래서 피해 사건을 <b>두 단계로 쪼갰습니다</b>. 값을 고치는 유니크는 <code>DamageModifying</code>, 판정하는 유니크는 <code>DamageApplying</code>에 붙습니다. 순서는 <code>TakeDamage</code> 안에서 두 사건을 부르는 <b>코드 순서</b>가 정하니, 장비를 어떤 순서로 껴도 "줄이고 나서 판정"이 지켜집니다.</p>
+<pre><code>DamageContext damageContext = new DamageContext(incomingDamage);
+DamageModifying.Notify(damageContext);                              // 1단계: 값 고치기
+damageContext.Damage *= (1f - damageContext.DamageDecreaseRatio);
+DamageApplying.Notify(damageContext);                               // 2단계: 판정
+// 그다음 체력 깎기</code></pre>
+  <p>이때 나온 체력 <code>10.900002</code>의 끝자리는 부동소수점 오차입니다 (89.1이 float으로 정확히 표현되지 않음). 소수점 아래 아주 작은 차이는 오차, 딱 떨어지는 차이는 계산식이 다른 것입니다.</p>
+</section>
+
+<section>
+  <h2>6. 유니크 모드 class</h2>
+<pre><code>public abstract class UniqueModBase
+{
+    protected Hero _ownerHero;
+
+    public virtual void Attach(Hero hero)
+    {
+        _ownerHero = hero;
+        SubscribeEvents(hero);
+    }
+
+    public virtual void Detach()
+    {
+        UnsubscribeEvents(_ownerHero);
+        _ownerHero = null;
+    }
+
+    protected abstract void SubscribeEvents(Hero hero);
+    protected abstract void UnsubscribeEvents(Hero hero);
+}</code></pre>
+  <div class="tbl"><table>
+    <thead><tr><th>정한 것</th><th>이유</th></tr></thead>
+    <tbody>
+      <tr><td>abstract class</td><td>모든 유니크가 "자기 영웅 기억하기, 붙이고 떼기"를 똑같이 한다. 공통 필드와 공통 코드는 부모에 한 번만</td></tr>
+      <tr><td>숫자는 생성자로</td><td><code>EveryNthBaseAttackCriticalMod(5)</code>. "세 번째 평타마다 치명타"가 생겨도 class를 새로 안 만들고 <code>(3)</code>으로. 숫자가 들어간 건 게임 아이템 이름(enum 값)이고, class는 동작이다</td></tr>
+      <tr><td>알림 받는 메서드는 On + 사건 이름</td><td><code>OnDamageModifying</code>, <code>OnDamageApplying</code>, <code>OnBaseAttacking</code>. 어느 사건에 붙은 메서드인지 이름으로 보인다</td></tr>
+      <tr><td>Attach / Detach를 virtual로</td><td>스테이지 사건이 필요한 유니크(치명상 버티기)만 override해서 구독을 덧붙인다</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>7. 사용 기록은 어디에 둘까</h2>
+  <p>치명상 버티기의 "이번 스테이지에 썼나"를 어디에 두느냐가 가장 오래 고민한 곳입니다. 기준은 두 질문이었습니다. <b>언제 지워져야 하나, 무엇을 하면 지워지면 안 되나.</b></p>
+
+  <div class="card" aria-labelledby="try2">
+    <h3 id="try2">직접 넘겨 보기 — 기록을 둔 곳에 따라</h3>
+    <p>기사와 궁수가 둘 다 치명상 버티기 장비를 끼고 한 스테이지 안에서 아래 일이 차례로 일어납니다. 기록을 어디에 두느냐에 따라 결과가 어떻게 달라지는지 보세요.</p>
+    <div class="pills" id="storePills" role="group" aria-label="기록 둘 곳 고르기"></div>
+    <div class="log" id="storeLog" aria-live="polite"></div>
+    <div class="pills">
+      <button type="button" class="pill" id="storeStep">다음 일</button>
+      <button type="button" class="pill" id="storeAll">끝까지</button>
+      <button type="button" class="pill" id="storeReset">처음으로</button>
+    </div>
+  </div>
+
+  <p>세 번째(class의 static Dictionary, 영웅 고유 키 → 횟수)로 했습니다. 영웅마다 겹치지 않는 고유 키(<code>HeroKey</code>)를 붙이고, 스테이지가 시작되면 Dictionary를 통째로 비웁니다. 회사 코드도 "장비를 바꿔도 사라지면 안 되는 값"은 유니크 모드 class의 static에 두고 스테이지 시작 · 재시작 사건에 초기화를 물려 두는 방식이었습니다.</p>
+<pre><code>public class SurviveLethalMod : UniqueModBase
+{
+    // 영웅 고유 키 → 이번 스테이지에 버틴 횟수
+    private static Dictionary&lt;int, int&gt; _activateHistory = new();
+
+    public override void Attach(Hero hero)
+    {
+        base.Attach(hero);
+        Stage.OnStageStart.Subscribe(Reset);
+    }
+
+    public override void Detach()
+    {
+        base.Detach();
+        Stage.OnStageStart.Unsubscribe(Reset);
+    }
+
+    private void Reset(Stage stage)
+    {
+        _activateHistory.Clear();
+    }
+
+    private void OnDamageApplying(DamageContext context)
+    {
+        if (!_activateHistory.TryGetValue(_ownerHero.HeroKey, out int count) || count &lt;= 0)
+        {
+            if (_ownerHero.CurrentHp - context.Damage &lt;= 0)
+            {
+                context.Damage = _ownerHero.CurrentHp - 1f;
+                if (!_activateHistory.TryAdd(_ownerHero.HeroKey, 1))
+                {
+                    _activateHistory[_ownerHero.HeroKey]++;
+                }
+            }
+        }
+    }
+}</code></pre>
+  <h3>짜면서 실제로 걸린 것</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>쓴 코드</th><th>일어난 일</th><th>바로잡은 것</th></tr></thead>
+    <tbody>
+      <tr><td><code>TryGetValue(...) &amp;&amp; count &lt;= 0</code></td><td>스테이지 처음엔 기록이 없어서 <code>TryGetValue</code>가 false → 한 번도 안 버팀</td><td>"기록 없음"은 "아직 안 씀". <code>!TryGetValue(...) || count &lt;= 0</code></td></tr>
+      <tr><td><code>_activateHistory[key]++</code></td><td>키가 없을 때 <code>++</code>의 읽기에서 <code>KeyNotFoundException</code></td><td>없으면 넣고, 있으면 더하기 (<code>TryAdd</code> 먼저)</td></tr>
+      <tr><td>기록 늘리기를 "쓰러질 피해인가" if 바깥에 둠</td><td>쓰러지지 않는 피해에도 "썼다"로 기록 → 정작 쓰러질 때 못 버팀</td><td>체력 1로 버티게 한 자리 안에서만 기록</td></tr>
+      <tr><td>구독과 해제에 람다를 각각 씀</td><td>글자는 같아도 두 람다는 <b>다른 객체</b>라 해제가 안 되고, 구독이 계속 쌓임</td><td>구독과 해제에 같은 메서드(<code>Reset</code>)를 넘긴다</td></tr>
+      <tr><td>장비를 뺄 때 스테이지 사건만 해제</td><td>장비를 빼도 받는 피해 감소가 계속 20%</td><td>붙일 때 한 일을 뗄 때 모두 되돌린다 (<code>Detach</code>)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>8. 장비 → 유니크 모드 객체는 static 관리자가</h2>
+  <p><code>Hero</code>가 유니크 모드 객체 목록과 "유니크 종류 → 객체 만들기" switch까지 들고 있으면, 영웅 class에 유니크 사정이 남습니다. 그래서 static <code>UniqueModHandler</code>로 뺐습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>누가</th><th>하는 일</th></tr></thead>
+    <tbody>
+      <tr><td><code>Hero.Equip</code> / <code>Unequip</code></td><td>장비 목록에 넣고 빼고, <code>UniqueModHandler</code>에 넘기기만</td></tr>
+      <tr><td><code>UniqueModHandler</code> (static)</td><td>유니크 종류로 객체 만들기, 장비 번호 → 객체 목록, 낄 때 <code>Attach</code>, 뺄 때 <code>Detach</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>사용 횟수는 static 하나로 두면 영웅끼리 섞였는데, <b>장비 번호 → 객체</b> 목록은 static 하나로 둬도 됩니다. 장비 고유 번호가 게임 전체에서 겹치지 않아서, 기사의 장비와 궁수의 장비가 같은 칸을 쓸 일이 없기 때문입니다. 같은 static이라도 <b>키가 무엇이냐</b>가 괜찮은지 아닌지를 정했습니다.</p>
+  <p>새 유니크가 생기면 고칠 곳은 이제 <code>UniqueModHandler</code>의 switch 한 줄과 새 유니크 모드 class 하나입니다. <code>Hero</code>, <code>Battle</code>, <code>Stage</code>에는 유니크 이름이 남지 않습니다.</p>
+</section>
+
+<section>
+  <h2>9. 남겨 둔 것</h2>
+  <p><code>TakeDamage</code>가 아직 감소 비율을 곱하는 계산까지 하고 있습니다. 이름은 "피해를 받는다"인데 "피해를 어떻게 계산하나"라는 규칙이 섞여 있어서, 다른 종류의 피해 보정이 생기면 이 줄이 다시 늘어납니다. 피해 계산 흐름을 한곳으로 모으는 리팩토링에서 함께 다루기로 하고, 코드에도 그렇게 적어 뒀습니다.</p>
+</section>
+
+<section>
+  <h2>정리</h2>
+  <ol>
+    <li>유니크 코드를 영웅과 전투 흐름에서 빼고, 영웅은 사건만 알린다. 유니크 모드는 필요한 사건만 구독한다</li>
+    <li>리팩토링 전에 검사기로 동작을 고정하고, 시나리오가 모두 성공인 지점마다 작게 커밋한다</li>
+    <li>사건에 넘기는 값은 구독자가 고칠 수 있는 class 상자. 특정 유니크 전용 칸은 공용 상자에 넣지 않는다</li>
+    <li>같은 사건 안에서는 구독 순서가 실행 순서다. 순서가 중요하면 사건을 단계로 쪼개서 코드 순서로 정한다</li>
+    <li>숫자는 class 이름이 아니라 생성자 값으로. class는 동작, enum 값은 게임 아이템</li>
+    <li>사용 기록은 "언제 지워져야 하나, 무엇을 하면 지워지면 안 되나"로 둘 곳을 정한다. 빼고 끼기로 사라지면 안 되고 영웅끼리 섞이면 안 되면, class의 static Dictionary를 영웅 키로</li>
+    <li>구독과 해제에는 같은 메서드를 넘긴다. 람다는 매번 다른 객체다</li>
+    <li>static으로 모아도 되는지는 키가 겹치느냐로 판단한다</li>
+  </ol>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="boxing-dictionary.html">박싱 / 언박싱 — Dictionary와 struct</a> — 값 형식과 참조 형식. 상자를 class로 만든 이유와 이어진다</li>
+    <li><a href="state-propagation.html">상태 전파 — event, static, ReactiveProperty</a> — event와 UniRx를 처음 비교했던 노트</li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  document.getElementById('noJs').hidden = true;
+  const fmt = v => (Math.round(v * 10) / 10).toString();
+
+  function makePills(container, labels, initial, onPick){
+    const buttons = labels.map((label, index) => {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'pill'; button.textContent = label;
+      button.addEventListener('click', () => { buttons.forEach((b, i) => b.setAttribute('aria-pressed', i === index ? 'true' : 'false')); onPick(index); });
+      container.appendChild(button);
+      return button;
+    });
+    buttons.forEach((b, i) => b.setAttribute('aria-pressed', i === initial ? 'true' : 'false'));
+  }
+
+  // ── 1. 사건 순서 ──
+  let isTwoPhase = false, isSurviveFirst = true, incomingDamage = 105;
+  function runOrder(){
+    const hp = 100;
+    let damage = incomingDamage, ratio = 0, used = false;
+    const lines = [`체력 ${hp}, 들어오는 피해 ${damage}`];
+    const reduce = (label) => {
+      if (isTwoPhase){ ratio += 0.1; lines.push(`${label} 받는 피해 감소: 비율 합계 +0.1 → ${fmt(ratio)}`); }
+      else { damage *= 0.9; lines.push(`${label} 받는 피해 감소: 피해 × 0.9 → ${fmt(damage)}`); }
+    };
+    const survive = (label) => {
+      if (hp - damage <= 0){ damage = hp - 1; used = true; lines.push(`${label} 치명상 버티기: 쓰러질 피해 → 피해를 ${fmt(damage)}로 고치고 <b>사용 기록 +1</b>`); }
+      else { lines.push(`${label} 치명상 버티기: 피해 ${fmt(damage)}로는 안 쓰러짐 → 안 씀`); }
+    };
+    if (isTwoPhase){
+      lines.push('<span class="mut">DamageModifying 알림</span>'); reduce('  ·');
+      damage *= (1 - ratio); lines.push(`  · TakeDamage: 피해 × (1 − ${fmt(ratio)}) → ${fmt(damage)}`);
+      lines.push('<span class="mut">DamageApplying 알림</span>'); survive('  ·');
+    } else {
+      lines.push('<span class="mut">사건 하나에 둘 다 구독, 구독 순서대로 실행</span>');
+      if (isSurviveFirst){ survive('  1.'); reduce('  2.'); } else { reduce('  1.'); survive('  2.'); }
+    }
+    const left = Math.max(hp - damage, 0);
+    const correctDamage = incomingDamage * 0.9;
+    const shouldUse = hp - correctDamage <= 0;
+    const correctLeft = shouldUse ? 1 : hp - correctDamage;
+    const isRight = Math.abs(left - correctLeft) < 0.001 && used === shouldUse;
+    lines.push(`<b>남은 체력 ${fmt(left)}</b>, 치명상 버티기 ${used ? '씀' : '안 씀'} → ` +
+      (isRight ? '<span class="ok">정답과 같음</span>' : `<span class="bad">정답(체력 ${fmt(correctLeft)}, ${shouldUse ? '씀' : '안 씀'})과 다름</span>`));
+    document.getElementById('orderLog').innerHTML = lines.map(l => `<span class="step">${l}</span>`).join('');
+  }
+  makePills(document.getElementById('phasePills'), ['사건 하나 (처음 모양)', '두 단계로 쪼갬 (고친 모양)'], 0, i => { isTwoPhase = i === 1; runOrder(); });
+  makePills(document.getElementById('orderPills'), ['치명상 버티기 먼저', '받는 피해 감소 먼저'], 0, i => { isSurviveFirst = i === 0; runOrder(); });
+  makePills(document.getElementById('damagePills'), ['105', '200'], 0, i => { incomingDamage = i === 0 ? 105 : 200; runOrder(); });
+  runOrder();
+
+  // ── 2. 기록 둘 곳 ──
+  const STORES = ['객체의 필드', 'class의 static 숫자 하나', 'class의 static Dictionary (영웅 키)'];
+  const EVENTS = [
+    { text: '스테이지 시작', act: s => { s.reset(); return '기록 비움'; } },
+    { text: '기사가 쓰러질 피해를 받음', act: s => s.hit('기사') },
+    { text: '기사가 치명상 버티기 장비를 뺐다 다시 낌', act: s => s.reequip('기사') },
+    { text: '기사가 또 쓰러질 피해를 받음', act: s => s.hit('기사'), expect: '못 버팀' },
+    { text: '궁수가 쓰러질 피해를 받음', act: s => s.hit('궁수'), expect: '버팀' },
+  ];
+  let storeIndex = 0, eventIndex = 0, state = null;
+  function newState(){
+    // field: 영웅별 객체 기록, 끼면 0 / single: 하나 / dict: 영웅별
+    const fieldCounts = { '기사': 0, '궁수': 0 };
+    let singleCount = 0;
+    const dictCounts = {};
+    return {
+      reset(){ fieldCounts['기사'] = 0; fieldCounts['궁수'] = 0; singleCount = 0; for (const k in dictCounts) delete dictCounts[k]; },
+      used(hero){ return storeIndex === 0 ? fieldCounts[hero] : storeIndex === 1 ? singleCount : (dictCounts[hero] || 0); },
+      mark(hero){ if (storeIndex === 0) fieldCounts[hero]++; else if (storeIndex === 1) singleCount++; else dictCounts[hero] = (dictCounts[hero] || 0) + 1; },
+      hit(hero){ if (this.used(hero) === 0){ this.mark(hero); return '버팀'; } return '못 버팀'; },
+      reequip(hero){ if (storeIndex === 0){ fieldCounts[hero] = 0; return '새 객체 → 기록 0'; } return '객체는 새로 생겼지만 static 기록은 그대로'; },
+      view(){ return storeIndex === 0 ? `기사 ${fieldCounts['기사']} · 궁수 ${fieldCounts['궁수']} (각 객체 안)` : storeIndex === 1 ? `${singleCount} (모두가 같이 씀)` : `기사 ${dictCounts['기사'] || 0} · 궁수 ${dictCounts['궁수'] || 0}`; }
+    };
+  }
+  function renderStore(){
+    const lines = [];
+    for (let i = 0; i < eventIndex; i++){
+      const ev = EVENTS[i];
+      const result = ev.result;
+      let mark = '';
+      if (ev.expect){ mark = result === ev.expect ? ' <span class="ok">맞음</span>' : ` <span class="bad">틀림 (정답: ${ev.expect})</span>`; }
+      lines.push(`<span class="step">${i + 1}. ${ev.text} → ${result}${mark}</span>`);
+    }
+    lines.push(`<span class="step mut">지금 기록: ${state.view()}</span>`);
+    document.getElementById('storeLog').innerHTML = lines.join('');
+    document.getElementById('storeStep').disabled = eventIndex >= EVENTS.length;
+    document.getElementById('storeAll').disabled = eventIndex >= EVENTS.length;
+  }
+  function stepStore(){ if (eventIndex < EVENTS.length){ EVENTS[eventIndex].result = EVENTS[eventIndex].act(state); eventIndex++; } }
+  function resetStore(){ state = newState(); eventIndex = 0; EVENTS.forEach(e => delete e.result); renderStore(); }
+  makePills(document.getElementById('storePills'), STORES, 0, i => { storeIndex = i; resetStore(); });
+  document.getElementById('storeStep').addEventListener('click', () => { stepStore(); renderStore(); });
+  document.getElementById('storeAll').addEventListener('click', () => { while (eventIndex < EVENTS.length) stepStore(); renderStore(); });
+  document.getElementById('storeReset').addEventListener('click', resetStore);
+  resetStore();
+})();
+</script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "Observer": "알림 목록 하나. Subscribe로 등록, Notify로 등록된 메서드를 모두 부른다",
+  "UniqueModBase": "유니크 모드의 부모. 장비를 끼면 Attach, 빼면 Detach",
+  "DamageContext": "피해 사건에 넘기는 상자. 구독자가 Damage와 감소 비율을 고친다",
+  "BaseAttackContext": "평타 사건에 넘기는 상자. 구독자가 IsCritical을 켠다",
+  "DamageModifying": "피해 값을 고치는 중에 울리는 사건 (1단계)",
+  "DamageApplying": "고친 피해를 체력에 적용하기 직전에 울리는 사건 (2단계)",
+  "HeroKey": "영웅마다 겹치지 않는 고유 번호. static 기록의 키",
+  "_activateHistory": "치명상 버티기의 static 기록. 영웅 키 → 이번 스테이지에 버틴 횟수"
+});
+</script>
+</body>
+</html>
