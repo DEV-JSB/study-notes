@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>피해 중재자와 HealthController</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: intro → before (one function, five jobs) → three roles → mediator → HealthController → one door (try-it) → checker → also fixed → summary */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --fg:#1b2230; --muted:#5d6676; --line:#d9dde4;
+  --ok:#178a66; --bad:#d23b3b; --info:#2f6fd0; --warn:#d2552a;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --fg:#e4e8ee; --muted:#98a2b2; --line:#2e3642;
+  --ok:#4cc79c; --bad:#f07070; --info:#6aa3f0; --warn:#f08a5d; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;padding-inline:16px;padding-block:32px 56px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
+h1{font-size:30px;font-weight:600;margin:0;line-height:1.4;text-wrap:balance}
+h2{font-size:24px;font-weight:700;margin:0;padding-top:20px;border-top:2px solid var(--line);line-height:1.45;text-wrap:balance}
+.card h2{font-size:19px;font-weight:600;padding-top:0;border-top:0}
+p{margin:0;max-width:68ch}
+a{color:var(--info)}
+section{display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.lead{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.src{font-size:12px;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:13px}
+code{font-family:var(--mono);font-size:.92em}
+:not(pre)>code{overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:13.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0;overflow-x:auto;line-height:1.6}
+.bad{color:var(--bad)} .ok{color:var(--ok)} .mut{color:var(--muted)}
+ul,ol{margin:0;padding-left:20px}
+
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font:13px var(--sans);padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
+.pill:hover{border-color:var(--muted)}
+.pill[aria-pressed="true"]{background:var(--info);border-color:var(--info);color:#fff}
+.pill:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.rowhead{font-size:14px;color:var(--muted);margin-top:4px}
+.log{font:13.5px/1.8 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-wrap:anywhere}
+.log .step{display:block}
+
+/* 피해 길 그림 */
+.path{display:flex;flex-direction:column;gap:6px}
+.node{display:flex;gap:10px;align-items:baseline;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.node .who{font:500 13px var(--mono);min-width:17ch;color:var(--info)}
+.node .what{font-size:14px}
+.node.skip{opacity:.5;border-style:dashed}
+.node.skip .who{color:var(--muted)}
+.node .tag{margin-left:auto;font-size:12px;white-space:nowrap}
+@media (max-width:560px){
+  .node{flex-wrap:wrap;gap:2px 10px}
+  .node .who{min-width:0;flex:1 1 auto}
+  .node .what{flex-basis:100%;order:3}
+}
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:10px">
+  <span class="eyebrow">Unity · C# 설계 · 2026-11-24</span>
+  <h1>피해는 어디로 들어오나 — Hero.TakeDamage를 중재자와 HealthController로 나누기</h1>
+  <p class="lead">한 함수가 하던 피해 계산 · 체력 처리를 세 역할로 나눈 노트. 한 줄 결론: <b>피해 계산 순서는 중재자(DamageCalculator)가, 체력 규칙은 HealthController가 맡고, 영웅은 알림을 받아 연출만 한다. 피해가 체력에 닿는 문은 하나만 둔다.</b></p>
+  <p class="src">글 버전 <a href="damage-mediator.md">damage-mediator.md</a> · 앞 노트 <a href="unique-mod-observer.html">유니크가 늘 때마다 if가 쌓인다</a> · 실습 원본 <a href="https://github.com/DEV-JSB/unity-study/tree/main/Assets/Chapter/08.SkillFeatureRefactor">unity-study / 08.SkillFeatureRefactor</a></p>
+</header>
+
+<section>
+  <h2>발단</h2>
+  <p>앞 노트에서 장비 특수 효과(유니크 모드)를 <code>if</code> 분기에서 Observer 구독으로 옮겼습니다. 그런데 <code>Hero.TakeDamage</code>가 아직 <b>피해를 계산하는 일까지</b> 하고 있었습니다. 이름은 "피해를 받는다"인데, 안에는 "피해를 어떻게 계산하나"라는 규칙이 섞여 있습니다. 다른 종류의 피해 보정이 생기면 이 함수가 또 늘어납니다.</p>
+  <p>이 노트는 피해를 넣는 구조를 세 역할로 나눈 기록입니다.</p>
+</section>
+
+<section>
+  <h2>1. 바꾸기 전 — 한 함수가 다섯 가지 일을 했다</h2>
+<pre><code>// Hero
+public void TakeDamage(float incomingDamage)
+{
+    if (IsDead) return;
+
+    DamageContext damageContext = new DamageContext(incomingDamage);   // 1. 피해 상자 만들기
+    DamageModifying.Notify(damageContext);                              // 2. 피해 값 고치기 사건 (받는 피해 감소)
+    damageContext.Damage *= (1f - damageContext.DamageDecreaseRatio);   // 3. 감소 비율 곱하기
+    DamageApplying.Notify(damageContext);                               // 4. 판정 사건 (치명상 버티기)
+
+    if (CurrentHp - damageContext.Damage &gt; 0f)                          // 5. 체력 깎기, 0 하한
+    {
+        CurrentHp -= damageContext.Damage;
+        return;
+    }
+    CurrentHp = 0f;
+}
+
+// Battle.BaseAttack
+target.TakeDamage(attackResult.damage);</code></pre>
+  <div class="tbl"><table>
+    <thead><tr><th>일</th><th>성격</th></tr></thead>
+    <tbody>
+      <tr><td>1~4</td><td>피해를 <b>어떻게 계산하나</b> (규칙, 순서)</td></tr>
+      <tr><td>5</td><td>체력을 <b>어떻게 바꾸나</b> (0 아래로 안 내려감, 쓰러짐)</td></tr>
+      <tr><td class="mut">(없음)</td><td>맞았을 때 <b>무엇을 보여 주나</b> (피격 이펙트, UI)</td></tr>
+    </tbody>
+  </table></div>
+  <p>세 가지 성격이 한 함수에 섞여 있고, 연출이 들어갈 자리는 아예 없습니다.</p>
+</section>
+
+<section>
+  <h2>2. 세 역할로 나눈다</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>누가</th><th>하는 일</th></tr></thead>
+    <tbody>
+      <tr><td><code>DamageCalculator</code><br><span class="mut">(중재자, mediator)</span></td><td>최종 피해를 계산한다. 대상의 사건을 순서대로 울리고, 감소 비율을 곱한다</td></tr>
+      <tr><td><code>HealthController</code></td><td>최종 피해를 체력에 반영한다. 0 하한, 쓰러짐 판정, 회복, 그리고 알림</td></tr>
+      <tr><td><code>Hero</code></td><td>장비, 공격력, 유니크 사건 같은 영웅 고유의 것. 체력은 <code>HealthController</code>에 맡기고, 알림을 받아 연출한다</td></tr>
+    </tbody>
+  </table></div>
+  <p>바꾼 뒤 피해 한 번이 지나가는 길은 이렇습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>순서</th><th>누가</th><th>하는 일</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><code>Battle.BaseAttack</code></td><td>평타 결과 계산 (공격자의 <code>BaseAttacking</code> 알림 → 치명타 여부)</td></tr>
+      <tr><td>2</td><td><code>DamageCalculator.ApplyAttackResult</code></td><td>피해 상자 만들기 → 대상의 <code>DamageModifying</code> → 감소 비율 곱하기 → 대상의 <code>DamageApplying</code></td></tr>
+      <tr><td>3</td><td><code>HealthController.ApplyDamage</code></td><td>체력 깎기, 0 하한</td></tr>
+      <tr><td>4</td><td><code>HealthController</code>의 알림</td><td><code>Damaged</code> → <code>HpChanged</code> → (0이면) <code>Died</code></td></tr>
+      <tr><td>5</td><td><code>Hero</code> (구독)</td><td>피격 연출, 쓰러졌을 때 할 일</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>3. 중재자 — 계산 순서를 한곳에</h2>
+<pre><code>public static class DamageCalculator
+{
+    public static AttackResult CalculateBaseAttack(Hero attacker, bool isCritical) { ... }
+
+    public static void ApplyAttackResult(Hero target, AttackResult damage)
+    {
+        if (target == null || damage == null)
+        {
+            return;
+        }
+
+        DamageContext damageContext = new DamageContext(damage.damage);
+        target.DamageModifying.Notify(damageContext);
+        damageContext.Damage *= (1f - damageContext.DamageDecreaseRatio);
+        target.DamageApplying.Notify(damageContext);
+
+        target.Health.ApplyDamage(damageContext);
+    }
+}</code></pre>
+  <ul>
+    <li>회사 코드도 피해 처리 쪽에서 <b>공격자와 대상을 둘 다</b> 받아 처리했습니다. 공격자 쪽 유니크(치명타)와 대상 쪽 유니크(감소, 버티기)가 피해 한 번에 같이 돌아야 하기 때문입니다.</li>
+    <li>사건(<code>DamageModifying</code>, <code>DamageApplying</code>)은 그대로 영웅마다 있습니다. 중재자는 <b>대상 영웅의 사건을 어떤 순서로 울릴지</b>만 맡습니다. 유니크 모드는 앞 노트처럼 자기 주인의 사건만 구독하면 됩니다.</li>
+    <li>평타는 <code>Battle.BaseAttack</code>이 결과를 계산한 뒤 이 중재자에 넘깁니다.</li>
+  </ul>
+<pre><code>// Battle.BaseAttack
+AttackResult attackResult = DamageCalculator.CalculateBaseAttack(attacker, baseAttackContext.IsCritical);
+DamageCalculator.ApplyAttackResult(target, attackResult);</code></pre>
+</section>
+
+<section>
+  <h2>4. HealthController — 체력 규칙을 한곳에</h2>
+  <p>회사 코드에는 영웅에 붙는 <code>HealthController</code>가 따로 있었습니다. 최대 체력, 현재 체력, UI에 알리는 사건, 그리고 영웅의 쓰러짐 처리를 부르는 부분이 있었습니다. 같은 모양으로 만들었습니다.</p>
+<pre><code>public class HealthController
+{
+    public float MaxHp { get; private set; }
+    public float CurrentHp { get; private set; }
+    public bool IsDead =&gt; CurrentHp &lt;= 0f;
+
+    public readonly Observer&lt;DamageContext&gt; Damaged = new();       // 피격 연출이 구독
+    public readonly Observer&lt;float&gt; HpChanged = new();             // UI 가 구독
+    public readonly Observer&lt;HealthController&gt; Died = new();       // 주인이 구독
+
+    public void ApplyDamage(DamageContext damageContext)
+    {
+        if (IsDead || damageContext.Damage &lt;= 0f)
+        {
+            return;
+        }
+
+        CurrentHp = Mathf.Max(0f, CurrentHp - damageContext.Damage);
+        Damaged.Notify(damageContext);
+        HpChanged.Notify(CurrentHp);
+
+        if (IsDead)
+        {
+            Died.Notify(this);
+        }
+    }
+
+    public void Heal(float healAmount) { ... }   // 최대 체력을 넘지 않는다. 쓰러진 뒤에는 회복하지 않는다
+}</code></pre>
+  <p><code>Hero</code>는 체력을 직접 들지 않고, 알림을 구독합니다.</p>
+<pre><code>// Hero
+public HealthController Health { get; }
+public float CurrentHp =&gt; Health.CurrentHp;
+public bool IsDead =&gt; Health.IsDead;
+
+public Hero(string heroName, float startHp, float attackPower)
+{
+    ...
+    Health = new HealthController(startHp);
+    Health.Damaged.Subscribe(OnDamaged);   // 피격 연출 자리
+    Health.Died.Subscribe(OnDied);         // 쓰러졌을 때 할 일
+}</code></pre>
+  <div class="tbl"><table>
+    <thead><tr><th>정한 것</th><th>이유</th></tr></thead>
+    <tbody>
+      <tr><td><code>SetHp</code> 같은 public 체력 설정을 두지 않음</td><td>체력을 아무 데서나 바꾸면 0 하한, 쓰러짐 확인을 부르는 쪽마다 지켜야 한다. 규칙은 <code>HealthController</code> 안에서만 지킨다</td></tr>
+      <tr><td><code>Died</code>로 <b>알림</b>, 영웅의 쓰러짐 함수를 직접 부르지 않음</td><td>회사 코드는 직접 불렀다. 그러면 <code>HealthController</code>가 <code>Hero</code>를 알아야 해서 몬스터에 붙일 때 또 고쳐야 한다. 알림이면 주인이 누군지 몰라도 된다</td></tr>
+      <tr><td><code>ApplyDamage</code>가 <code>DamageContext</code>를 통째로 받음</td><td>나중에 상자에 피격 이펙트 정보 같은 게 들어온다고 보고, 그걸 <code>Damaged</code> 알림으로 영웅 쪽에 넘긴다. 상자는 특정 대상이 아니라 피해 정보라서, 몬스터에 붙여도 문제없다</td></tr>
+      <tr><td><code>HpChanged</code>는 현재 체력(<code>float</code>)만</td><td>UI는 체력 값만 있으면 된다. 최대 체력은 <code>Health.MaxHp</code>를 읽는다</td></tr>
+    </tbody>
+  </table></div>
+  <p>체력 처리를 위해 영웅과 몬스터를 묶는 부모 class를 꼭 만들 필요도 줄어듭니다. 같은 <code>HealthController</code>를 붙이면 됩니다. 상속 대신 조립(composition)입니다.</p>
+</section>
+
+<section>
+  <h2>5. 피해가 체력에 닿는 문은 하나</h2>
+  <p><code>HealthController.ApplyDamage</code>를 부르는 곳은 <b>중재자 한 곳뿐</b>이어야 합니다.</p>
+  <ul>
+    <li><code>Battle</code>이 <code>Health.ApplyDamage</code>를 직접 부르면, 대상의 <code>DamageModifying</code> / <code>DamageApplying</code>이 안 울립니다. 평타로 맞을 때만 받는 피해 감소와 치명상 버티기가 빠집니다.</li>
+    <li><code>Hero</code>에 public <code>TakeDamage</code>를 남겨 두고 중재자가 그걸 거쳐 가게 하는 모양도 생각했습니다. 하지만 그 함수를 바로 부르면 똑같이 유니크를 건너뜁니다. 그래서 <code>Hero</code>에서는 피해 입구를 아예 없앴습니다. 피격, 체력 변경, 쓰러짐은 모두 <code>HealthController</code>의 알림으로 받습니다.</li>
+  </ul>
+  <div class="tbl"><table>
+    <thead><tr><th>피해 종류</th><th>들어가는 길</th></tr></thead>
+    <tbody>
+      <tr><td>평타</td><td><code>Battle.BaseAttack</code> → <code>DamageCalculator.ApplyAttackResult</code> → 대상의 사건 → <code>HealthController.ApplyDamage</code> → 알림</td></tr>
+      <tr><td>공격자 없는 피해 (함정, 독)</td><td><code>DamageCalculator.ApplyAttackResult</code> → 대상의 사건 → <code>HealthController.ApplyDamage</code> → 알림</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card" aria-labelledby="try1">
+  <h2 id="try1">직접 눌러 보기 — 피해가 체력에 닿는 길</h2>
+  <p>체력 100인 영웅이 장비 하나를 끼고 피해를 받습니다. 피해가 어느 길로 들어오는지 바꿔 보세요. 흐린 칸은 그 길에서 건너뛰는 단계입니다.</p>
+  <p id="noJs" class="bad">이 칸은 스크립트로 계산합니다. 값이 나오지 않으면 파일을 브라우저에서 직접 열어 주세요.</p>
+  <div class="rowhead">들어오는 길</div>
+  <div class="pills" id="doorPills" role="group" aria-label="들어오는 길 고르기"></div>
+  <div class="rowhead">영웅이 낀 장비</div>
+  <div class="pills" id="gearPills" role="group" aria-label="장비 고르기"></div>
+  <div class="rowhead">들어오는 피해</div>
+  <div class="pills" id="hitPills" role="group" aria-label="피해 고르기"></div>
+  <div class="path" id="pathView"></div>
+  <div class="log" id="pathLog" aria-live="polite"></div>
+</section>
+
+<section>
+  <h2>6. 검사기는 부르는 모양만 바꾼다</h2>
+  <p>리팩토링 전 동작을 고정해 둔 검사기는 <code>hero.TakeDamage(150f)</code>로 피해를 줬습니다. <code>Hero.TakeDamage</code>가 없어졌으니, 검사기 안에 도우미 하나를 두고 중재자를 거치게 했습니다.</p>
+<pre><code>// 공격자 없이 피해만 준다. 중재자의 피해 입구가 바뀌면 이 한 곳만 고친다
+private static void DealDamage(Hero target, float damage)
+{
+    DamageCalculator.ApplyAttackResult(target, new AttackResult(damage, false));
+}</code></pre>
+  <p><code>hero.TakeDamage(150f)</code> → <code>DealDamage(hero, 150f)</code>로 부르는 모양만 바꾸고, <b>정답 값은 한 줄도 안 바꿨습니다.</b> 그대로 모두 성공해서 동작이 같다는 걸 값으로 확인했습니다.</p>
+  <p>시나리오도 하나 늘렸습니다. 그 전까지는 시나리오가 전부 영웅 하나짜리였습니다. 감소 장비를 낀 영웅, 치명상 버티기 장비를 낀 영웅, 아무것도 안 낀 영웅을 같이 두고, 각자 맞았을 때 <b>자기 장비만</b> 동작하는지 보는 시나리오를 넣었습니다.</p>
+</section>
+
+<section>
+  <h2>같이 고친 것 — 치명상 버티기 기록의 주인</h2>
+  <p>이 작업 전에, 치명상 버티기의 "이번 스테이지에 썼나" 기록이 <b>장비를 다 뺀 사이에 스테이지가 바뀌면 안 지워지는</b> 경우를 찾았습니다. 기록은 class의 static인데, 지우는 구독은 장비를 낄 때 걸고 뺄 때 풀어서 수명이 달랐기 때문입니다.</p>
+  <p>기록을 장착 · 해제를 맡는 static <code>UniqueModHandler</code>로 옮기고, 게임 시작 때 한 번 부르는 <code>Initialize()</code>에서 스테이지 시작을 구독하게 했습니다. 관리자는 장비가 하나도 없어도 늘 듣고 있으니 놓치지 않습니다. 치명상 버티기 class는 관리자에게 "이 영웅이 이번 스테이지에 몇 번 썼나"를 묻고 적기만 합니다.</p>
+</section>
+
+<section>
+  <h2>정리</h2>
+  <ol>
+    <li>"피해를 받는다"에 계산 규칙과 체력 규칙이 섞이면, 보정이 늘 때마다 그 함수가 커진다</li>
+    <li>피해 계산 순서는 중재자가 맡는다. 공격자와 대상을 둘 다 받고, 대상 영웅의 사건을 순서대로 울린다</li>
+    <li>체력 규칙(0 하한, 쓰러짐, 회복)은 <code>HealthController</code> 한곳에서 지킨다. 체력을 바꾸는 public 문을 따로 열지 않는다</li>
+    <li>주인에게는 직접 부르지 않고 알린다(<code>Damaged</code>, <code>HpChanged</code>, <code>Died</code>). 그래서 영웅에도 몬스터에도 붙일 수 있다</li>
+    <li>피해가 체력에 닿는 문은 하나. 옆문이 있으면 유니크를 건너뛴다</li>
+    <li>검사기는 부르는 모양만 바꾸고 정답 값은 그대로 둔다</li>
+  </ol>
+</section>
+
+<section>
+  <h2>더 보기</h2>
+  <ul>
+    <li><a href="unique-mod-observer.html">유니크가 늘 때마다 if가 쌓인다 — Observer 구독으로 옮기기</a> — 이 노트의 앞 단계. 사건을 두 단계로 나눈 이유, 사건에 넘기는 상자</li>
+  </ul>
+</section>
+</main>
+
+<script>
+(function(){
+  document.getElementById('noJs').hidden = true;
+  const fmt = v => (Math.round(v * 10) / 10).toString();
+
+  function makePills(container, labels, initial, onPick){
+    const buttons = labels.map((label, index) => {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'pill'; button.textContent = label;
+      button.addEventListener('click', () => { buttons.forEach((b, i) => b.setAttribute('aria-pressed', i === index ? 'true' : 'false')); onPick(index); });
+      container.appendChild(button);
+      return button;
+    });
+    buttons.forEach((b, i) => b.setAttribute('aria-pressed', i === initial ? 'true' : 'false'));
+  }
+
+  // door 0: 평타 → 중재자 / 1: 공격자 없는 피해 → 중재자 / 2: Battle이 Health.ApplyDamage를 바로 부름
+  let door = 0, gear = 0, hit = 0;
+  const HITS = [30, 120];
+  function renderPath(){
+    const hp = 100;
+    const incoming = HITS[hit];
+    const viaMediator = door !== 2;
+    const nodes = [];
+    if (door === 0 || door === 2) nodes.push({ who: 'Battle', what: '평타 결과 계산 (공격자의 BaseAttacking 알림)', on: true });
+    else nodes.push({ who: '함정 · 독', what: '공격자 없이 피해 값만 있음', on: true });
+
+    let damage = incoming, ratio = 0;
+    const log = [`체력 ${hp}, 들어오는 피해 ${incoming}`];
+    nodes.push({ who: 'DamageCalculator', what: 'ApplyAttackResult — 피해 상자 만들기', on: viaMediator });
+    nodes.push({ who: '대상의 사건', what: 'DamageModifying 알림 (받는 피해 감소가 비율 +0.1)', on: viaMediator });
+    nodes.push({ who: 'DamageCalculator', what: '피해 × (1 − 감소 비율)', on: viaMediator });
+    nodes.push({ who: '대상의 사건', what: 'DamageApplying 알림 (치명상 버티기가 판정)', on: viaMediator });
+    if (viaMediator){
+      if (gear === 0){ ratio += 0.1; log.push(`DamageModifying → 받는 피해 감소: 비율 ${fmt(ratio)}`); }
+      damage *= (1 - ratio);
+      log.push(`감소 비율 곱하기 → 피해 ${fmt(damage)}`);
+      if (gear === 1){
+        if (hp - damage <= 0){ damage = hp - 1; log.push(`DamageApplying → 치명상 버티기: 쓰러질 피해 → 피해를 ${fmt(damage)}로`); }
+        else log.push('DamageApplying → 치명상 버티기: 안 쓰러지는 피해라 안 씀');
+      }
+    } else {
+      log.push('<span class="bad">중재자를 건너뜀 → 대상의 사건이 울리지 않아 장비가 끼어들지 못함</span>');
+    }
+    nodes.push({ who: 'HealthController', what: 'ApplyDamage — 체력 깎기, 0 하한', on: true });
+    nodes.push({ who: 'HealthController', what: '알림: Damaged → HpChanged → (0이면) Died', on: true });
+    nodes.push({ who: 'Hero (구독)', what: 'OnDamaged 피격 연출, OnDied 쓰러졌을 때 할 일', on: true });
+
+    const left = Math.max(hp - damage, 0);
+    log.push(`HealthController.ApplyDamage(${fmt(damage)}) → <b>남은 체력 ${fmt(left)}</b>${left <= 0 ? ', Died 알림' : ''}`);
+    let correct = incoming;
+    if (gear === 0) correct = incoming * 0.9;
+    if (gear === 1 && hp - correct <= 0) correct = hp - 1;
+    const correctLeft = Math.max(hp - correct, 0);
+    if (viaMediator){
+      log.push('<span class="ok">장비가 제대로 끼어든 값</span>');
+    } else if (Math.abs(left - correctLeft) < 0.001){
+      log.push('<span class="mut">이번엔 결과가 같지만, 장비가 끼어들 기회 자체가 없었음</span>');
+    } else {
+      log.push(`<span class="bad">장비가 빠진 값 (중재자를 거쳤으면 체력 ${fmt(correctLeft)})</span>`);
+    }
+
+    document.getElementById('pathView').innerHTML = nodes.map(n =>
+      `<div class="node${n.on ? '' : ' skip'}"><span class="who">${n.who}</span><span class="what">${n.what}</span><span class="tag">${n.on ? '' : '건너뜀'}</span></div>`).join('');
+    document.getElementById('pathLog').innerHTML = log.map(l => `<span class="step">${l}</span>`).join('');
+  }
+  makePills(document.getElementById('doorPills'), ['평타 → 중재자', '공격자 없는 피해 → 중재자', 'Battle이 Health.ApplyDamage를 바로 부름'], 0, i => { door = i; renderPath(); });
+  makePills(document.getElementById('gearPills'), ['받는 피해 감소', '치명상 버티기'], 0, i => { gear = i; renderPath(); });
+  makePills(document.getElementById('hitPills'), ['30', '120'], 0, i => { hit = i; renderPath(); });
+  renderPath();
+})();
+</script>
+<script src="../assets/code-tips.js?v=3"></script>
+<script>
+CodeTips({
+  "DamageCalculator": "피해 계산 중재자. 대상의 사건을 순서대로 울리고 HealthController에 넘긴다",
+  "ApplyAttackResult": "피해가 체력에 닿기 전 거치는 유일한 문",
+  "HealthController": "체력 하나를 맡는다. 0 하한, 쓰러짐, 회복, 알림",
+  "DamageContext": "피해 사건에 넘기는 상자. 구독자가 Damage와 감소 비율을 고친다",
+  "DamageModifying": "피해 값을 고치는 중에 울리는 사건 (1단계)",
+  "DamageApplying": "고친 피해를 체력에 적용하기 직전에 울리는 사건 (2단계)",
+  "Damaged": "체력이 깎인 뒤 피해 정보를 알린다. 피격 연출이 구독",
+  "HpChanged": "체력이 바뀌면 현재 체력을 알린다. UI가 구독",
+  "Died": "체력이 0이 되면 알린다. 주인(Hero)이 구독",
+  "DealDamage": "검사기 도우미. 공격자 없는 피해를 중재자로 넣는다",
+  "UniqueModHandler": "장비 → 유니크 모드 객체를 관리하는 static 관리자. 사용 기록도 들고 있다"
+});
+</script>
+</body>
+</html>
