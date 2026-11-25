@@ -89,7 +89,7 @@ li+li{margin-top:4px}
 </header>
 
 <section>
-  <p class="def">외적 → <b>어느 축으로</b> 돌지. 내적 → <b>얼만큼</b> 돌지.<br>외적 크기(sin)로 얼만큼을 구하면, 타겟이 <b>뒤쪽</b>일 때 덜 돈다.</p>
+  <p class="def">외적 → <b>어느 축으로</b> 돌지. 내적 → <b>얼만큼</b> 돌지.<br>둘을 짝지으면 늘 <b>짧은 쪽</b>으로 돈다.<br>외적 크기(sin)로 얼만큼을 구하면, 타겟이 <b>뒤쪽</b>일 때 덜 돈다.</p>
   <p class="sub" style="margin-top:10px">이 두 줄이 이 노트의 전부예요. 아래는 이 두 줄이 왜 맞는지 값으로 확인하는 부분이에요.</p>
 </section>
 
@@ -308,8 +308,101 @@ li+li{margin-top:4px}
   </ul>
 </section>
 
+<section aria-labelledby="s12">
+  <h2 id="s12">4 · 외적 축은 늘 짧은 쪽으로 돌게 해 준다 (2026-11-26 보충)</h2>
+  <p>12시를 앞(Front)으로 두고 3시 방향으로 가고 싶으면, 시계 방향으로 90° 돌아도 되고 반시계 방향으로 270° 돌아도 된다. <b>길은 늘 두 개</b>다. 미사일은 어느 길을 고를까?</p>
+  <div class="tbl" style="margin-top:10px"><table>
+    <thead><tr><th>길</th><th>도는 방향</th><th>각도</th></tr></thead>
+    <tbody>
+      <tr><td>짧은 길</td><td>시계 방향 (오른쪽)</td><td class="num">90°</td></tr>
+      <tr><td>긴 길</td><td>반시계 방향 (왼쪽)</td><td class="num">270°</td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin-top:10px">답: <b>외적 축 + Acos(내적)</b> 짝이 늘 짧은 길을 고른다. 둘이 나눠 맡는 일은 이렇다.</p>
+  <ul style="margin-top:8px">
+    <li><code>Acos</code>는 <b>0°~180°</b>만 돌려준다. 그래서 "얼만큼"은 언제나 짧은 길의 각도다. 270° 같은 값은 애초에 나올 수 없다.</li>
+    <li>외적은 그 짧은 각도만큼 돌았을 때 <b>타겟에 닿는 쪽</b>을 축의 방향(+/−)으로 골라 준다.</li>
+    <li>하나만으로는 안 된다. 축 방향만 알면 얼만큼 돌지 모르고, 각도(90°)만 알면 3시인지 9시인지 모른다.</li>
+  </ul>
+
+  <h3>축의 방향이 곧 "오른쪽이냐 왼쪽이냐" (언리얼, 위에서 내려다볼 때)</h3>
+  <p class="sub">앞 방향 Forward = (1, 0, 0). 위에서 내려다보면 12시가 앞(X), 3시가 오른쪽(Y), 화면 밖이 위(Z)예요.</p>
+  <div class="tbl" style="margin-top:8px"><table>
+    <thead><tr><th>타겟</th><th>ToTarget</th><th>CrossProduct(Forward, ToTarget)</th><th>축</th><th>그 축으로 Acos만큼 돌면</th></tr></thead>
+    <tbody>
+      <tr><td>3시</td><td class="num">(0, 1, 0)</td><td class="num">(0, 0, +1)</td><td>위</td><td>오른쪽(시계 방향)으로 90°</td></tr>
+      <tr><td>5시</td><td class="num">(−0.87, 0.5, 0)</td><td class="num">(0, 0, +0.5)</td><td>위</td><td>오른쪽으로 150° (왼쪽 210°가 아님)</td></tr>
+      <tr><td>9시</td><td class="num">(0, −1, 0)</td><td class="num">(0, 0, −1)</td><td>아래</td><td>왼쪽(반시계 방향)으로 90°</td></tr>
+      <tr><td>7시</td><td class="num">(−0.87, −0.5, 0)</td><td class="num">(0, 0, −0.5)</td><td>아래</td><td>왼쪽으로 150°</td></tr>
+      <tr><td>6시 (정반대)</td><td class="num">(−1, 0, 0)</td><td class="num">(0, 0, 0)</td><td>없음</td><td>두 길이 180°로 같아서 고를 수 없음</td></tr>
+    </tbody>
+  </table></div>
+  <ul style="margin-top:10px">
+    <li>평평한 바닥에서는 축이 위(+Z)냐 아래(−Z)냐, 즉 <b>Cross의 Z 부호</b>가 오른쪽/왼쪽을 가른다. 이 Z 칸이 <a href="dot-cross.html">dot-cross 노트</a>의 2D 외적 <code>A.X × B.Y − A.Y × B.X</code>다.</li>
+    <li>외적이 가르는 건 <b>좌우</b>다. <b>앞뒤</b>는 내적의 부호가 가른다 (+면 앞, −면 뒤).</li>
+    <li>두 엔진 모두 "앞 × 오른쪽 = 위"이고, 위 축을 중심으로 + 방향으로 돌리면 오른쪽으로 돈다. UE <code>FVector::CrossProduct((1,0,0), (0,1,0))</code> = (0, 0, 1), Unity <code>Vector3.Cross(Vector3.forward, Vector3.right)</code> = <code>Vector3.up</code>. 10-28 미사일이 <code>CrossProduct(Forward, ToTarget)</code> 순서로 타겟에 닿은 것으로도 확인했다.</li>
+  </ul>
+
+  <h3>6시가 특별한 이유 — 짧은 길이 없으면 외적이 0이 된다</h3>
+  <p>정반대면 오른쪽으로 180°, 왼쪽으로 180°가 똑같이 짧다. "더 가까운 쪽"이 없으니 외적도 쪽을 고르지 못하고 (0, 0, 0)을 준다. 외적이 0이 되는 건 고장이 아니라 <b>고를 이유가 없다</b>는 정직한 대답이다. 3D에서는 위로 넘어가는 길, 비스듬히 넘어가는 길까지 180°짜리 길이 무수히 많다.</p>
+
+  <h3>인자 순서를 바꾸면 → 긴 길이 아니라 거울 쪽으로 간다</h3>
+  <p>순서를 바꾸면 축이 뒤집힌다. 그런데 Acos가 주는 양은 그대로 짧은 각도라서, 270° 긴 길로 타겟에 가는 게 아니라 <b>짧은 각도만큼 반대쪽으로 돌아 거울 위치</b>에 닿는다. 3시 타겟이면 9시를 보게 된다. 10-28에 미사일이 타겟 반대로 도망간 게 이것이다.</p>
+</section>
+
+<section class="lab" aria-labelledby="l3">
+  <h2 id="l3">실험 3 · 시계로 보기: 외적 축 + Acos는 늘 짧은 길</h2>
+  <p class="sub">위에서 내려다본 그림이에요 (12시 = 앞 X, 3시 = 오른쪽 Y). <b class="c-c">분홍 실선</b>은 외적 축으로 <code>Acos(내적)</code>만큼 실제로 도는 길, 회색 점선은 타겟까지 반대로 도는 긴 길이에요.</p>
+  <div class="ctrl">
+    <label for="ck">타겟 위치</label>
+    <input type="range" id="ck" min="-179" max="180" step="1" value="90">
+    <span id="ckOut" class="num" style="min-width:52px">90°</span>
+  </div>
+  <div class="btns">
+    <button data-h="30">1시</button>
+    <button data-h="90">3시</button>
+    <button data-h="150">5시</button>
+    <button data-h="180">6시</button>
+    <button data-h="-150">7시</button>
+    <button data-h="-90">9시</button>
+    <button data-h="-30">11시</button>
+    <label style="display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer"><input type="checkbox" id="flip"> 인자 순서 바꾸기 (CrossProduct(ToTarget, Forward))</label>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--fwd)"></i>앞 (12시)</span>
+    <span><i style="background:var(--fg)"></i>타겟</span>
+    <span><i style="background:var(--c)"></i>실제로 도는 길</span>
+    <span><i style="background:var(--muted)"></i>반대로 도는 긴 길</span>
+  </div>
+  <div class="stage">
+    <svg id="sv4" viewBox="0 0 360 300" role="img" aria-label="시계판 위에서 앞 방향 12시와 타겟 방향, 외적 축으로 도는 짧은 길과 반대로 도는 긴 길을 비교하는 그림">
+      <defs><marker id="ah3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+      <circle cx="180" cy="150" r="105" fill="none" stroke="var(--line)" stroke-width="1"/>
+      <g id="ticks"></g>
+      <text x="180" y="20" fill="var(--muted)" font-size="13" text-anchor="middle">12시 (앞)</text>
+      <text x="318" y="154" fill="var(--muted)" font-size="13" text-anchor="middle">3시</text>
+      <text x="180" y="292" fill="var(--muted)" font-size="13" text-anchor="middle">6시</text>
+      <text x="42" y="154" fill="var(--muted)" font-size="13" text-anchor="middle">9시</text>
+      <path id="arcL" d="" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="5 5" marker-end="url(#ah3)"/>
+      <path id="arcS" d="" fill="none" stroke="var(--c)" stroke-width="3.5" marker-end="url(#ah3)"/>
+      <line x1="180" y1="150" x2="180" y2="55" stroke="var(--fwd)" stroke-width="2.5" marker-end="url(#ah3)"/>
+      <line id="tgt3" x1="180" y1="150" x2="180" y2="150" stroke="var(--fg)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ah3)"/>
+      <circle id="land" cx="180" cy="150" r="7" fill="var(--c)" stroke="var(--panel)" stroke-width="2"/>
+      <circle cx="180" cy="150" r="4" fill="var(--fg)"/>
+    </svg>
+    <div class="read">
+      <div class="row"><span>타겟</span><span class="num" id="k0"></span></div>
+      <div class="row"><span>Cross의 Z</span><span class="num" id="k1"></span></div>
+      <div class="row"><span>Acos(내적)</span><span class="num" id="k2"></span></div>
+      <div class="row"><span>실제로 도는 길</span><span class="num" id="k3"></span></div>
+      <div class="row"><span>반대로 도는 긴 길</span><span class="num" id="k4"></span></div>
+      <p class="msg" id="k5"></p>
+    </div>
+  </div>
+</section>
+
 <section aria-labelledby="s6">
-  <h2 id="s6">4 · 헷갈렸던 이유 — 서로 다른 두 이야기가 섞였다</h2>
+  <h2 id="s6">5 · 헷갈렸던 이유 — 서로 다른 두 이야기가 섞였다</h2>
   <div class="tbl"><table>
     <thead><tr><th>이야기</th><th>무슨 문제인가</th><th>내 미사일 코드에 해당하나</th></tr></thead>
     <tbody>
@@ -321,7 +414,7 @@ li+li{margin-top:4px}
 </section>
 
 <section aria-labelledby="s7">
-  <h2 id="s7">5 · 내 미사일 코드에서 외적과 내적의 역할</h2>
+  <h2 id="s7">6 · 내 미사일 코드에서 외적과 내적의 역할</h2>
   <p class="sub">GameMathLab <code>Missile.cpp</code>, 내가 짠 코드 그대로.</p>
 <pre>const FVector Rotate = FVector::CrossProduct(ForwardVector,ToTarget).GetSafeNormal();
 
@@ -344,7 +437,7 @@ AddActorWorldRotation(FQuat(Rotate, FMath::DegreesToRadians(RotateSpeed)));</pre
 </section>
 
 <section aria-labelledby="s8" style="display:flex;flex-direction:column;gap:12px">
-  <h2 id="s8">6 · 내가 던진 질문들 (2026-10-31)</h2>
+  <h2 id="s8">7 · 내가 던진 질문들 (2026-10-31, 11-26)</h2>
   <div class="quote">
     <q>결국 외적을 통해서 얻은 벡터는 어느쪽으로 기울어야하나를 정하는거고, 얼만큼은 결국 내적을 통해서 알아내야하는거다.</q>
     <span class="verdict ok">맞음.</span>
@@ -380,14 +473,20 @@ AddActorWorldRotation(FQuat(Rotate, FMath::DegreesToRadians(RotateSpeed)));</pre
     <span class="verdict ok">맞음.</span>
     <span class="sub">Asin(0.5) = 30°라서 올바른 쪽으로 30°만 돌고 멈춘다. 타겟과 120° 어긋남 → 실험 2.</span>
   </div>
+  <div class="quote">
+    <q>Front를 12시 기준으로 두고 3시 방향으로 가고 싶을 때 시계 방향으로 90도 또는 반시계로 270도 돌아도 되잖아. 근데 외적은 결국 최단이라고 해야 하나… 가장 가까운 곳으로 갈 수 있도록 축을 구할 수 있는 거잖아. (2026-11-26)</q>
+    <span class="verdict ok">맞음. 두 가지만 보충.</span>
+    <span class="sub">① 짧은 길은 외적 혼자가 아니라 0°~180°만 주는 Acos와 짝을 이뤄서 고른다. ② 외적이 가르는 건 앞뒤가 아니라 좌우(Cross의 Z 부호), 앞뒤는 내적 부호. 그리고 정반대(6시)에서 외적이 0이 되는 건 짧은 길이 둘이라서다 → 4절, 실험 3.</span>
+  </div>
 </section>
 
 <section aria-labelledby="s9">
-  <h2 id="s9">7 · 다음에 복기할 때</h2>
+  <h2 id="s9">8 · 다음에 복기할 때</h2>
   <ol>
     <li><b>이 노트를 보기 전에</b>, 빈 종이에 위 맨 처음 두 줄을 내 말로 먼저 써 본다. 막히는 곳이 오늘 다시 볼 곳이다.</li>
     <li>실험 1에서 버튼을 ①→⑤ 순서대로 하나씩 누르고, 각 버튼마다 "왜 이렇게 나오지?"를 말로 해 본다. 답은 바로 아래 표에 있다.</li>
     <li>실험 2에서 타겟을 30° → 150°로 옮기며 주황 화살표가 언제부터 틀리기 시작하는지 본다 (90°).</li>
+    <li>실험 3에서 3시 → 5시 → 6시 → 7시를 누르며 분홍 길이 어느 쪽으로 도는지, 6시에서 왜 사라지는지 말해 본다. 그다음 "인자 순서 바꾸기"를 켜고 3시를 눌러 어디에 닿는지 본다.</li>
     <li>마지막으로 <code>Missile.cpp</code>를 열어 73~87번 줄을 보고, 줄마다 외적인지 내적인지 말해 본다.</li>
   </ol>
   <div class="tbl" style="margin-top:12px"><table>
@@ -557,6 +656,79 @@ AddActorWorldRotation(FQuat(Rotate, FMath::DegreesToRadians(RotateSpeed)));</pre
   $('tg').addEventListener('input', e => draw2(+e.target.value));
   document.querySelectorAll('[data-t]').forEach(b => b.addEventListener('click', () => { $('tg').value = b.dataset.t; draw2(+b.dataset.t); }));
   draw2(150);
+
+  /* lab 3: clock face, cross axis + Acos always takes the short way */
+  const K = { x: 180, y: 150 }, KR = 105;
+  const kp = (a, r) => [K.x + r * Math.sin(rad(a)), K.y - r * Math.cos(rad(a))];
+  for (let h = 0; h < 12; h++) {
+    const l = document.createElementNS(NS, 'line');
+    const p = kp(h * 30, KR - 6), q = kp(h * 30, KR + 6);
+    set(l, { x1: p[0], y1: p[1], x2: q[0], y2: q[1], stroke: 'var(--muted)', 'stroke-width': h % 3 === 0 ? 2 : 1 });
+    $('ticks').appendChild(l);
+  }
+  function kArc(from, to, r, sweep, large){
+    const p = kp(from, r), q = kp(to, r);
+    return 'M ' + p[0] + ' ' + p[1] + ' A ' + r + ' ' + r + ' 0 ' + large + ' ' + sweep + ' ' + q[0] + ' ' + q[1];
+  }
+  function hourOf(a){
+    if (Math.abs(a / 30 - Math.round(a / 30)) > 0.001) { return null; }
+    const h = ((Math.round(a / 30) % 12) + 12) % 12;
+    return (h === 0 ? 12 : h) + '시';
+  }
+  function where(a){
+    a = Math.round(a);
+    const h = hourOf(a);
+    const side = Math.abs(Math.abs(a) - 180) < 0.5 ? '정반대' : (a > 0 ? '오른쪽 ' : '왼쪽 ') + Math.abs(a) + '°';
+    return (h ? h + ' · ' : '') + side;
+  }
+  function draw3(){
+    const phi = +$('ck').value, flip = $('flip').checked;
+    const cz = (flip ? -1 : 1) * Math.sin(rad(phi));
+    const theta = deg(Math.acos(Math.max(-1, Math.min(1, Math.cos(rad(phi))))));
+    const tp = kp(phi, KR - 10);
+    set($('tgt3'), { x2: tp[0], y2: tp[1] });
+    $('ckOut').textContent = phi + '°';
+    $('k0').textContent = where(phi);
+    $('k2').textContent = theta.toFixed(0) + '°';
+    if (theta < 0.5) {
+      $('arcS').setAttribute('d', ''); $('arcL').setAttribute('d', '');
+      set($('land'), { cx: tp[0], cy: tp[1], r: 7, fill: 'var(--c)' });
+      $('k1').textContent = '0.00 (축 없음)';
+      $('k3').textContent = '0°'; $('k4').textContent = '—';
+      $('k5').textContent = '이미 앞을 보고 있어요';
+      return;
+    }
+    if (Math.abs(cz) < 0.005) {
+      $('arcS').setAttribute('d', '');
+      $('arcL').setAttribute('d', kArc(0, 180, KR - 18, 1, 0) + ' ' + kArc(0, 180, KR - 18, 0, 0));
+      set($('land'), { cx: K.x, cy: K.y, r: 0 });
+      $('k1').textContent = '0.00 (축 없음)';
+      $('k3').textContent = '고를 수 없음';
+      $('k4').textContent = '오른쪽 180° = 왼쪽 180°';
+      $('k5').textContent = '두 길이 똑같이 180° → 외적이 (0, 0, 0)';
+      return;
+    }
+    const dir = cz > 0 ? 1 : -1;
+    const landAt = dir * theta;
+    const trueDir = Math.sin(rad(phi)) > 0 ? 1 : -1;
+    $('arcS').setAttribute('d', kArc(0, landAt, KR + 12, dir > 0 ? 1 : 0, 0));
+    $('arcL').setAttribute('d', kArc(0, phi, KR - 18, trueDir > 0 ? 0 : 1, 1));
+    const lp = kp(landAt, KR);
+    set($('land'), { cx: lp[0], cy: lp[1], r: 7, fill: flip ? 'var(--sin)' : 'var(--c)' });
+    $('k1').textContent = (cz > 0 ? '+' : '−') + Math.abs(cz).toFixed(2) + (cz > 0 ? ' → 축 위' : ' → 축 아래');
+    $('k3').textContent = (dir > 0 ? '오른쪽(시계)으로 ' : '왼쪽(반시계)으로 ') + theta.toFixed(0) + '°';
+    $('k4').textContent = (trueDir > 0 ? '왼쪽(반시계)으로 ' : '오른쪽(시계)으로 ') + (360 - theta).toFixed(0) + '°';
+    if (flip) {
+      const off = Math.min(2 * theta, 360 - 2 * theta);
+      $('k5').textContent = '축이 뒤집혀 거울 위치(' + where(landAt) + ')에 닿음 → 타겟과 ' + off.toFixed(0) + '° 어긋남';
+    } else {
+      $('k5').textContent = '짧은 길(' + theta.toFixed(0) + '°)로 타겟에 정확히 닿음';
+    }
+  }
+  $('ck').addEventListener('input', draw3);
+  $('flip').addEventListener('change', draw3);
+  document.querySelectorAll('[data-h]').forEach(b => b.addEventListener('click', () => { $('ck').value = b.dataset.h; draw3(); }));
+  draw3();
 })();
 </script>
 <script src="../assets/code-tips.js?v=3"></script>
